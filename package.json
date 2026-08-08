@@ -1,0 +1,13 @@
+{
+  "name": "noorani-cargo-enterprise",
+  "version": "1.0.0",
+  "description": "Noorani Cargo Enterprise | Multi-Site Logistics",
+  "scripts": {
+    "start": "node server/index.js",
+    "install-server": "cd server && npm install",
+    "build": "npm run install-server"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
