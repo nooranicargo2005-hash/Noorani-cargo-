@@ -16,6 +16,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
 </head>
 <body class="admin-panel">
     <div class="container" id="adminAppContainer">
@@ -218,9 +219,11 @@
                             <h3 class="panel-title"><i class="fa-solid fa-database"></i> All Shipments Management</h3>
                             <div class="table-tools" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                                 <button class="btn-action primary sm" onclick="window.location.href='?page=create-shipment'"><i class="fa-solid fa-plus"></i> Add New</button>
-                                <button class="btn-action sm" id="pdfImportBtn" title="Import PDF"><i class="fa-solid fa-file-pdf"></i> PDF</button>
-                                <button class="btn-action sm" id="excelImportBtn" title="Import Excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
+                                <button class="btn-action sm" id="btnOpenImportModal" style="pointer-events: auto !important; opacity: 1 !important;"><i class="fa-solid fa-file-import"></i> Import Data</button>
+                                <button class="btn-action sm" id="pdfImportBtn" title="Import PDF" hidden><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                                <button class="btn-action sm" id="excelImportBtn" title="Import Excel" hidden><i class="fa-solid fa-file-excel"></i> Excel</button>
                                 <input type="file" id="pdfImportInput" accept="application/pdf" hidden>
+                                <input type="file" id="dashPdfPicker" accept="application/pdf" hidden>
                                 <button class="btn-action sm" onclick="window.loadDashboard()" title="Refresh"><i class="fa-solid fa-rotate"></i> Refresh</button>
                                 <div class="export-group" style="display:flex; gap:5px;">
                                     <button class="btn-action sm" onclick="window.exportShipmentTable('xlsx')" title="Export Excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
@@ -325,6 +328,71 @@
             <strong>NOORANI LOGISTICS ENTERPRISE</strong>
             <span>Dubai HQ &bull; Global Operations &bull; 2026</span>
         </footer>
+    </div>
+
+    <!-- Data Import Modal -->
+    <div id="importDataModal" class="enterprise-modal-backdrop">
+        <div class="enterprise-modal workspace-modal">
+            <header class="workspace-modal-header">
+                <div>
+                    <span>Enterprise Utility</span>
+                    <h2>Import Shipment Data</h2>
+                </div>
+                <button class="close-btn" onclick="window.closeImportModal()">&times;</button>
+            </header>
+            <div class="workspace-modal-body">
+                <div id="importUploadZone" class="enterprise-data-port">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <h4>Select manifest or drop file</h4>
+                    <p>Supports CSV, Excel (.xlsx, .xls) and PDF manifests</p>
+                    <input type="file" id="importFileInput" accept=".csv, .xlsx, .xls, .pdf" hidden>
+                </div>
+
+                <div id="importFileDetails" style="display:none; margin-top:20px; padding:15px; background:rgba(255,255,255,0.03); border-radius:12px; border:1px solid var(--border);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong id="importFileName" style="color:var(--noorani-gold);">filename.pdf</strong><br>
+                            <small id="importFileSize" style="color:var(--noorani-muted);">0 KB</small>
+                        </div>
+                        <button class="btn-action sm delete" onclick="window.resetImportModal()"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+
+                <div id="importProgress" style="display:none; margin-top:20px;">
+                    <div class="workspace-progress"><i id="importProgressBar" style="width:0%;"></i></div>
+                    <p id="importProgressStatus" style="text-align:center; font-size:0.8rem; margin-top:8px; color:var(--noorani-gold);">Analyzing file...</p>
+                </div>
+
+                <div id="importPreviewArea" style="display:none; margin-top:20px;">
+                    <h4 style="margin-bottom:10px;"><i class="fa-solid fa-table-list"></i> Data Preview</h4>
+                    <div class="table-responsive" style="max-height:300px;">
+                        <table class="table" style="min-width:1500px;">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Tracking #</th>
+                                    <th>Date</th>
+                                    <th>Sender</th>
+                                    <th>Consignee</th>
+                                    <th>Dest City</th>
+                                    <th>Type</th>
+                                    <th>Weight</th>
+                                    <th>Qty</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="importPreviewBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <footer class="workspace-modal-footer">
+                <div class="enterprise-btn-row" style="justify-content:flex-end;">
+                    <button class="enterprise-btn" onclick="window.closeImportModal()">Cancel</button>
+                    <button id="btnExecuteImport" class="enterprise-btn primary" disabled onclick="window.executeDataImport()">Import Shipments</button>
+                </div>
+            </footer>
+        </div>
     </div>
 
     <!-- System Logic -->

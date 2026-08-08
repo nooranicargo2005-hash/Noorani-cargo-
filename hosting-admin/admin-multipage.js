@@ -6,6 +6,8 @@
 (function () {
   'use strict';
 
+  console.log('[App Shell] Initializing Engine...');
+
   const pageConfigs = {
     'dashboard': {
       navKey: 'dashboard', title: 'Operational Command Center', intro: 'Live fleet metrics and shipment performance analytics.', breadcrumbs: ['Admin', 'Dashboard'],
@@ -93,10 +95,12 @@
         </div>
         <div class="enterprise-dashboard-actions">
           <button class="btn-primary-action" onclick="window.location.href='?page=create-shipment'"><i class="fa-solid fa-plus"></i>Create Shipment</button>
-          <button class="btn-action" onclick="document.getElementById('pdfImportInput').click()"><i class="fa-solid fa-file-import"></i>Import PDF</button>
+          <button class="btn-action" id="dashPdfTrigger"><i class="fa-solid fa-file-import"></i>Import Data</button>
           <button class="btn-action" onclick="window.refreshDashboard()"><i class="fa-solid fa-arrows-rotate"></i>Refresh Data</button>
         </div>
       </section>
+
+      <section id="dashboardDataPort" class="enterprise-data-port-container"></section>
 
       <section class="enterprise-kpi-grid">
         <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon"><i class="fa-solid fa-boxes-stacked"></i></span><div><small>Total Shipments</small><strong id="stat-total-shipments">0</strong></div></article>
@@ -164,6 +168,10 @@
     const authOverlay = $id('adminAuthOverlay');
     const splashOverlay = $id('nooraniSplashOverlay');
 
+    // CAPTURE MODALS before clearing body
+    const modals = document.querySelectorAll('.enterprise-modal-backdrop, .notification-drawer');
+    const modalsArray = Array.from(modals);
+
     const shell = document.createElement('div');
     shell.id = 'enterpriseAppShell';
     shell.className = 'enterprise-app';
@@ -182,8 +190,12 @@
 
     document.body.innerHTML = '';
     document.body.appendChild(shell);
+
     if (authOverlay) document.body.appendChild(authOverlay);
     if (splashOverlay) document.body.appendChild(splashOverlay);
+
+    // RESTORE MODALS
+    modalsArray.forEach(m => document.body.appendChild(m));
 
     shell.append(header, side, main);
     if (footer) main.appendChild(footer);
