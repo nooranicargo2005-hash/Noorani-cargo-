@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Admin Console | Noorani Cargo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./core.css">
+
+    <!-- External Libraries for Professional Logistics Features -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+</head>
+<body class="admin-panel">
+    <div class="container" id="adminAppContainer">
+        <!-- Application Top Bar -->
+        <header class="header-bar">
+            <div class="header-brand">
+                <div class="brand-emblem"><i class="fa-solid fa-shipping-fast"></i></div>
+                <div>
+                    <div class="brand-title">NOORANI CARGO</div>
+                    <div class="brand-sub">Enterprise Management</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div id="adminHeaderActions" class="admin-header-actions">
+                    <div class="notification-bell-wrapper" style="position:relative; margin-right:20px; cursor:pointer;" onclick="window.toggleNotificationDrawer()">
+                        <i class="fa-solid fa-bell" style="font-size:1.2rem;"></i>
+                        <span id="notif-count" class="badge-count" style="display:none; position:absolute; top:-8px; right:-8px; background:var(--noorani-danger); color:#000; font-size:0.6rem; font-weight:800; padding:2px 5px; border-radius:50%; min-width:16px; text-align:center;">0</span>
+                    </div>
+                    <span id="adminUserEmail" class="page-link-helper"></span>
+                    <span id="adminRoleBadge" class="role-badge"></span>
+                    <button id="adminLogoutBtn" type="button" class="btn-action delete" onclick="signOutAdminFromUi()">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="adminSidebar" hidden>
+            <div class="sidebar-brand">
+                <span class="sidebar-brand-mark"><i class="fa-solid fa-truck-fast"></i></span>
+                <span><strong>Enterprise</strong><small>Command center</small></span>
+            </div>
+            <nav class="sidebar-nav">
+                <section class="sidebar-section">
+                    <h4>Operations</h4>
+                    <a class="nav-item" href="?page=dashboard" data-nav-key="dashboard" data-permission="viewDashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a>
+                    <a class="nav-item" href="?page=create-shipment" data-nav-key="create-shipment" data-permission="createShipments"><i class="fa-solid fa-plus-circle"></i><span>Create Shipment</span></a>
+                    <a class="nav-item" href="?page=shipment-management" data-nav-key="shipment-management" data-permission="viewShipments"><i class="fa-solid fa-boxes-stacked"></i><span>All Shipments</span></a>
+                </section>
+                <section class="sidebar-section">
+                    <h4>Management</h4>
+                    <a class="nav-item" href="?page=customers" data-nav-key="customers" data-permission="viewCustomers"><i class="fa-solid fa-users"></i><span>Customers</span></a>
+                    <a class="nav-item" href="?page=branches" data-nav-key="branches" data-permission="viewBranches"><i class="fa-solid fa-code-branch"></i><span>Branches</span></a>
+                    <a class="nav-item" href="?page=employees" data-nav-key="employees" data-permission="viewEmployees"><i class="fa-solid fa-user-tie"></i><span>Employees</span></a>
+                    <a class="nav-item" href="?page=drivers" data-nav-key="drivers" data-permission="viewDrivers"><i class="fa-solid fa-id-card"></i><span>Drivers</span></a>
+                    <a class="nav-item" href="?page=vehicles-warehouses" data-nav-key="vehicles-warehouses" data-permission="viewVehicles"><i class="fa-solid fa-truck"></i><span>Vehicles</span></a>
+                </section>
+                <section class="sidebar-section">
+                    <h4>Business</h4>
+                    <a class="nav-item" href="?page=reports" data-nav-key="reports" data-permission="viewReports"><i class="fa-solid fa-chart-pie"></i><span>Reports</span></a>
+                    <a class="nav-item" href="?page=finance" data-nav-key="finance" data-permission="viewFinance"><i class="fa-solid fa-wallet"></i><span>Finance</span></a>
+                    <a class="nav-item" href="?page=invoices" data-nav-key="invoices" data-permission="viewFinance"><i class="fa-solid fa-file-invoice-dollar"></i><span>Invoices</span></a>
+                </section>
+                <section class="sidebar-section">
+                    <h4>System</h4>
+                    <a class="nav-item" href="?page=user-management" data-nav-key="user-management" data-permission="manageUsers"><i class="fa-solid fa-users-gear"></i><span>User Access</span></a>
+                    <a class="nav-item" href="?page=activity-log" data-nav-key="activity-log" data-permission="manageUsers"><i class="fa-solid fa-list-check"></i><span>Audit Logs</span></a>
+                    <a class="nav-item" href="?page=settings" data-nav-key="settings" data-permission="viewSettings"><i class="fa-solid fa-sliders"></i><span>Settings</span></a>
+                </section>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="nav-item nav-item--logout" type="button" onclick="signOutAdminFromUi()">
+                    <i class="fa-solid fa-right-from-bracket"></i><span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Notification Drawer -->
+        <div id="notificationDrawer" class="notification-drawer">
+            <header class="drawer-header">
+                <h3>Notifications</h3>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-action sm" onclick="window.clearNotifications()" title="Clear All"><i class="fa-solid fa-trash-can"></i></button>
+                    <button class="btn-action sm" onclick="window.toggleNotificationDrawer()">&times;</button>
+                </div>
+            </header>
+            <div id="notif-list" class="drawer-body">
+                <p class="empty-state">No new alerts.</p>
+            </div>
+            <footer class="drawer-footer">
+                <a href="?page=notifications" onclick="window.toggleNotificationDrawer()">View All Notifications</a>
+            </footer>
+        </div>
+
+        <!-- Main Workspace -->
+        <main class="admin-main" id="adminMainArea">
+            <div id="adminView" class="view-section active-view">
+                <!-- Page intro anchors -->
+                <div id="adminPageHeader" class="dashboard-page-meta">
+                    <nav id="adminPageBreadcrumbs" class="breadcrumbs"></nav>
+                    <p id="adminPageIntro" class="intro-copy"></p>
+                </div>
+
+                <!-- Dynamic Page Anchors -->
+                <div id="dashboardMainContent"></div>
+
+                <!-- Shared Shipment Registration Section -->
+                <div id="registerShipment" class="panel-card" hidden>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3 class="panel-title" style="margin:0;"><i class="fa-solid fa-pen-to-square"></i> New Shipment Registration</h3>
+                    </div>
+
+                    <!-- Basic Info -->
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Tracking Number</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="inputTracking" placeholder="NM-100001">
+                                <button class="btn-action sm" onclick="window.generateTrackingNumber()" title="Generate"><i class="fa-solid fa-rotate"></i></button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Shipment Status</label>
+                            <select id="inputStatus">
+                                <option value="Pending">Pending</option>
+                                <option value="Picked Up">Picked Up</option>
+                                <option value="In Transit">In Transit</option>
+                                <option value="Arrived">Arrived</option>
+                                <option value="Out for Delivery">Out for Delivery</option>
+                                <option value="Delivered">Delivered</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group"><label>Registration Date</label><input type="date" id="inputDate"></div>
+                        <div class="form-group">
+                            <label>Shipment Type</label>
+                            <select id="inputType">
+                                <option value="Air Freight">Air Freight</option>
+                                <option value="Sea Freight">Sea Freight</option>
+                                <option value="Land Transport">Land Transport</option>
+                                <option value="Express">Express</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Sender Info -->
+                    <div class="enterprise-form-divider">Sender Information</div>
+                    <div class="form-grid">
+                        <div class="form-group"><label>Sender Name</label><input type="text" id="inputSender"></div>
+                        <div class="form-group"><label>Sender Phone</label><input type="text" id="inputSenderPhone"></div>
+                    </div>
+                    <div class="form-group full-width"><label>Sender Address</label><input type="text" id="inputSenderAddress"></div>
+                    <div class="form-group full-width"><label>Origin Country</label><input type="text" id="inputOriginCountry"></div>
+
+                    <!-- Receiver Info -->
+                    <div class="enterprise-form-divider">Receiver Information (Consignee)</div>
+                    <div class="form-grid">
+                        <div class="form-group"><label>Receiver Name</label><input type="text" id="inputReceiver"></div>
+                        <div class="form-group"><label>Receiver Phone</label><input type="text" id="inputReceiverPhone"></div>
+                    </div>
+                    <div class="form-group full-width"><label>Receiver Address</label><input type="text" id="inputReceiverAddress"></div>
+                    <div class="form-grid">
+                        <div class="form-group"><label>Destination City</label><input type="text" id="inputDestination"></div>
+                        <div class="form-group"><label>Destination Country</label><input type="text" id="inputDestinationCountry"></div>
+                    </div>
+
+                    <!-- Logistics & Cost -->
+                    <div class="enterprise-form-divider">Logistics & Financials</div>
+                    <div class="form-grid">
+                        <div class="form-group"><label>Weight (KG)</label><input type="text" id="inputWeight"></div>
+                        <div class="form-group"><label>Pieces (Qty)</label><input type="text" id="inputQuantity"></div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group"><label>Shipping Cost</label><input type="text" id="inputCost"></div>
+                        <div class="form-group">
+                            <label>Payment Status</label>
+                            <select id="inputPaymentStatus">
+                                <option value="Unpaid">Unpaid</option>
+                                <option value="Paid">Paid</option>
+                                <option value="Partial">Partial</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Dispatch -->
+                    <div class="form-grid">
+                        <div class="form-group"><label>Assigned Driver</label><input type="text" id="inputDriver"></div>
+                        <div class="form-group"><label>Assigned Vehicle</label><input type="text" id="inputVehicle"></div>
+                    </div>
+
+                    <div class="form-group full-width"><label>Notes</label><textarea id="inputNotes" style="min-height: 80px;"></textarea></div>
+
+                    <!-- Attachments -->
+                    <div class="form-grid">
+                        <div class="form-group"><label>Upload Images</label><input type="file" id="inputImages" multiple accept="image/*"></div>
+                        <div class="form-group"><label>Upload Documents</label><input type="file" id="inputDocs" multiple accept=".pdf,.doc,.docx"></div>
+                    </div>
+
+                    <div id="uploadProgress" style="display:none; margin: 10px 0; color: var(--noorani-gold);">Uploading attachments...</div>
+
+                    <button class="btn-primary-action" id="btnRegisterShipment" onclick="window.saveShipment()">Register & Sync to Database</button>
+                </div>
+
+                <!-- Shared Database Table Section -->
+                <div id="databaseSection" class="database-section" hidden>
+                    <div class="database-header-row">
+                        <div style="display:flex; flex-direction:column; gap:8px; flex: 1;">
+                            <h3 class="panel-title"><i class="fa-solid fa-database"></i> All Shipments Management</h3>
+                            <div class="table-tools" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                <button class="btn-action primary sm" onclick="window.location.href='?page=create-shipment'"><i class="fa-solid fa-plus"></i> Add New</button>
+                                <button class="btn-action sm" id="pdfImportBtn" title="Import PDF"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                                <button class="btn-action sm" id="excelImportBtn" title="Import Excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
+                                <input type="file" id="pdfImportInput" accept="application/pdf" hidden>
+                                <button class="btn-action sm" onclick="window.loadDashboard()" title="Refresh"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                                <div class="export-group" style="display:flex; gap:5px;">
+                                    <button class="btn-action sm" onclick="window.exportShipmentTable('xlsx')" title="Export Excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
+                                    <button class="btn-action sm" onclick="window.exportShipmentTable('pdf')" title="Export PDF"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                                    <button class="btn-action sm" onclick="window.exportShipmentTable('csv')" title="Export CSV"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+                            <div id="importStatus" style="font-size:0.85rem; font-weight:700; color:var(--noorani-gold); background:rgba(0,0,0,0.3); padding:4px 12px; border-radius:8px; display:none; border:1px solid var(--border);"></div>
+                            <div class="search-box-wrapper" style="position:relative; width:100%;">
+                                <input type="text" id="searchDbInput" class="search-db" placeholder="Search Tracking, Name, Phone...">
+                                <i class="fa-solid fa-magnifying-glass" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); opacity:0.5;"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Filters -->
+                    <div class="filters-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:20px; background:rgba(255,255,255,0.02); padding:15px; border-radius:12px; border:1px solid var(--border);">
+                        <div class="filter-group">
+                            <label style="display:block; font-size:0.7rem; color:var(--noorani-muted); margin-bottom:5px;">Status</label>
+                            <select id="filterStatus" class="edit-input" onchange="window.loadDashboard()">
+                                <option value="">All Statuses</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Picked Up">Picked Up</option>
+                                <option value="In Transit">In Transit</option>
+                                <option value="Arrived">Arrived</option>
+                                <option value="Out for Delivery">Out for Delivery</option>
+                                <option value="Delivered">Delivered</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label style="display:block; font-size:0.7rem; color:var(--noorani-muted); margin-bottom:5px;">Payment</label>
+                            <select id="filterPayment" class="edit-input" onchange="window.loadDashboard()">
+                                <option value="">All Payments</option>
+                                <option value="Paid">Paid</option>
+                                <option value="Unpaid">Unpaid</option>
+                                <option value="Partial">Partial</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label style="display:block; font-size:0.7rem; color:var(--noorani-muted); margin-bottom:5px;">Origin</label>
+                            <input id="filterOrigin" class="edit-input" placeholder="Origin Hub" onkeyup="window.loadDashboard()">
+                        </div>
+                        <div class="filter-group">
+                            <label style="display:block; font-size:0.7rem; color:var(--noorani-muted); margin-bottom:5px;">Destination</label>
+                            <input id="filterDest" class="edit-input" placeholder="Dest Hub" onkeyup="window.loadDashboard()">
+                        </div>
+                        <div class="filter-group">
+                            <label style="display:block; font-size:0.7rem; color:var(--noorani-muted); margin-bottom:5px;">Sort By</label>
+                            <select id="filterSort" class="edit-input" onchange="window.loadDashboard()">
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="tracking">Tracking #</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label style="display:block; font-size:0.7rem; color:var(--noorani-muted); margin-bottom:5px;">Per Page</label>
+                            <select id="filterPageSize" class="edit-input" onchange="window.loadDashboard()">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Tracking #</th>
+                                    <th>Date</th>
+                                    <th>Sender</th>
+                                    <th>Receiver</th>
+                                    <th>Route (O-D)</th>
+                                    <th>Type</th>
+                                    <th>Cargo (W/P)</th>
+                                    <th>Finances</th>
+                                    <th>Status</th>
+                                    <th>Admin Details</th>
+                                    <th style="text-align:right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dbTableBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="pagination-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding:15px; background:rgba(255,255,255,0.02); border-radius:12px;">
+                        <div id="paginationInfo" style="font-size:0.85rem; color:var(--noorani-muted);">Showing 0 of 0 records</div>
+                        <div class="pagination-controls" style="display:flex; gap:10px;">
+                            <button class="btn-action sm" id="btnPrevPage" onclick="window.prevPage()"><i class="fa-solid fa-chevron-left"></i> Previous</button>
+                            <button class="btn-action sm" id="btnNextPage" onclick="window.nextPage()">Next <i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="app-footer">
+            <strong>NOORANI LOGISTICS ENTERPRISE</strong>
+            <span>Dubai HQ &bull; Global Operations &bull; 2026</span>
+        </footer>
+    </div>
+
+    <!-- System Logic -->
+    <script src="./ui-utils.js" defer></script>
+    <script type="module" src="./firebase.js"></script>
+    <script type="module" src="./admin-auth.js"></script>
+    <script type="module" src="./document-import.js"></script>
+    <script type="module" src="./enterprise-admin.js"></script>
+    <script type="module" src="./admin-multipage.js"></script>
+</body>
+</html>

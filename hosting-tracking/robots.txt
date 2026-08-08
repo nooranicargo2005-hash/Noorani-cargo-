@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://noorani-cargo-tracking-2005.web.app/sitemap.xml
