@@ -443,6 +443,10 @@
         }
 
         function updateUI(s) {
+            const resultArea = $id('resultArea');
+            resultArea.hidden = false;
+            $id('notFoundArea').hidden = true;
+
             $id('displayStatus').textContent = s.status || 'Active';
             $id('displayTracking').textContent = s.ref || s.trackingId;
 
@@ -486,8 +490,9 @@
 
             renderTimeline(s.status);
 
-            $id('resultArea').hidden = false;
-            $id('notFoundArea').hidden = true;
+            // Force browser reflow to fix rendering glitches with backdrop-filter/hidden elements
+            void resultArea.offsetHeight;
+            window.dispatchEvent(new Event('resize'));
         }
 
         async function performTrack() {
