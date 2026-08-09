@@ -183,9 +183,10 @@
                     </div>
                 </header>
 
-                <div class="mb-20 grid-4">
-                    <div style="position:relative; grid-column: span 2;">
-                        <input type="text" id="searchDbInput" placeholder="Search tracking, names, phone..." onkeyup="window.loadDashboard()">
+                <div class="mb-20 grid-4" style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:16px; align-items:center;">
+                    <div style="position:relative;">
+                        <input type="text" id="searchDbInput" class="search-db" placeholder="Search tracking, names, phone..." onkeyup="window.loadDashboard()">
+                        <i class="fa-solid fa-search" style="position:absolute; left:16px; top:50%; transform:translateY(-50%); opacity:0.5;"></i>
                     </div>
                     <select id="filterStatus" onchange="window.loadDashboard()">
                         <option value="">All Statuses</option>

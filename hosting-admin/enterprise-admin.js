@@ -30,83 +30,73 @@ function createUI() {
   const panel = createElement('div', 'enterprise-panel');
   panel.id = 'enterprise-admin-panel';
   panel.innerHTML = `
-    <div class="grid-2">
+    <div class="form-grid">
       <div id="enterpriseProfileCard" class="enterprise-card">
-        <h4><i class="fa-solid fa-user-shield"></i> Access Profile</h4>
-        <div id="enterpriseRoleSummary"></div>
-        <div id="enterprisePermSummary" class="enterprise-list"></div>
+        <header class="enterprise-card-heading"><h3><i class="fa-solid fa-user-shield"></i> Access Profile</h3></header>
+        <div id="enterpriseRoleSummary" style="margin-bottom:16px;"></div>
+        <div id="enterprisePermSummary" style="display:grid; gap:8px;"></div>
       </div>
-      <div id="enterpriseActivityCard" class="enterprise-card hidden">
-        <header class="enterprise-card-header">
-            <h4><i class="fa-solid fa-list-check"></i> System Audit Trail</h4>
-            <button class="enterprise-btn primary sm" onclick="window.exportAudit('xlsx')"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
-        </header>
-        <div class="enterprise-toolbar mb-20">
-            <input id="auditSearchInput" placeholder="Search Action, User, Module..." onkeyup="window.renderAuditLogs()">
+
+      <div id="enterpriseAnalyticsCard" class="enterprise-card">
+        <header class="enterprise-card-heading"><h3><i class="fa-solid fa-chart-line"></i> Logistics Insights</h3></header>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px; align-items:center;">
+          <div style="height:180px; position:relative;"><canvas id="statusChart"></canvas></div>
+          <div id="enterpriseAnalyticsContent" style="display:grid; gap:12px;"></div>
         </div>
-        <div class="table-responsive">
-            <table class="table">
-                <thead><tr><th>Timestamp</th><th>User</th><th>Action / Module</th><th class="text-right">Details</th></tr></thead>
-                <tbody id="auditTableBody"></tbody>
-            </table>
-        </div>
+        <button class="enterprise-btn primary sm" style="margin-top:20px; width:100%;" onclick="window.refreshDashboard()">Sync Live Stats</button>
       </div>
     </div>
 
-    <div id="enterpriseAnalyticsCard" class="enterprise-card mt-20">
-      <h4><i class="fa-solid fa-chart-line"></i> Logistics Insights</h4>
-      <div class="grid-2" style="align-items:center;">
-        <div class="chart-container-pie"><canvas id="statusChart"></canvas></div>
-        <div id="enterpriseAnalyticsContent" class="enterprise-list"></div>
-      </div>
-      <button class="enterprise-btn secondary mt-20" onclick="window.refreshDashboard()">Sync Live Stats</button>
-    </div>
-
-    <div id="enterpriseReportsCard" class="enterprise-card mt-20 hidden">
-      <header class="enterprise-card-header">
-        <h4><i class="fa-solid fa-chart-pie"></i> Business Intelligence</h4>
-        <button class="enterprise-btn secondary sm" onclick="window.refreshAnalytics()"><i class="fa-solid fa-arrows-rotate"></i> Reload</button>
+    <div id="enterpriseActivityCard" class="enterprise-card hidden" style="margin-top:24px;">
+      <header class="enterprise-card-heading">
+          <h3><i class="fa-solid fa-list-check"></i> System Audit Trail</h3>
+          <button class="enterprise-btn primary sm" onclick="window.exportAudit('xlsx')"><i class="fa-solid fa-file-excel"></i> Export</button>
       </header>
-      <div class="grid-4 mb-20">
-        <article class="enterprise-kpi-card"><small>Profitability</small><strong id="rep-kpi-profit">$0</strong></article>
-        <article class="enterprise-kpi-card"><small>Success Rate</small><strong id="rep-kpi-rate">0%</strong></article>
-        <article class="enterprise-kpi-card"><small>Active Fleet</small><strong id="rep-kpi-fleet">0</strong></article>
-        <article class="enterprise-kpi-card"><small>Due Balance</small><strong id="rep-kpi-due" style="color:var(--noorani-danger);">$0</strong></article>
+      <div class="mb-20">
+          <input id="auditSearchInput" placeholder="Search logs..." onkeyup="window.renderAuditLogs()">
       </div>
-      <nav class="workspace-modal-tabs mb-20">
-        <button class="ws-tab-btn active" onclick="window.switchReportTab(this, 'visuals')">Visual Trends</button>
+      <div class="table-responsive">
+          <table class="table">
+              <thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th class="text-right">Module</th></tr></thead>
+              <tbody id="auditTableBody"></tbody>
+          </table>
+      </div>
+    </div>
+
+    <div id="enterpriseReportsCard" class="enterprise-card hidden" style="margin-top:24px;">
+      <header class="enterprise-card-heading">
+        <h3><i class="fa-solid fa-chart-pie"></i> Business Intelligence</h3>
+        <button class="enterprise-btn sm" onclick="window.refreshAnalytics()"><i class="fa-solid fa-sync"></i></button>
+      </header>
+      <div class="enterprise-kpi-grid" style="margin-bottom:24px;">
+        <article class="enterprise-kpi-card"><div style="flex:1;"><small>Profitability</small><strong id="rep-kpi-profit">$0</strong></div></article>
+        <article class="enterprise-kpi-card"><div style="flex:1;"><small>Success Rate</small><strong id="rep-kpi-rate">0%</strong></strong ></article>
+        <article class="enterprise-kpi-card"><div style="flex:1;"><small>Active Fleet</small><strong id="rep-kpi-fleet">0</strong></div></article>
+        <article class="enterprise-kpi-card"><div style="flex:1;"><small>Due Balance</small><strong id="rep-kpi-due" style="color:var(--n-danger);">$0</strong></div></article>
+      </div>
+      <nav class="workspace-modal-tabs" style="margin-bottom:24px;">
+        <button class="ws-tab-btn active" onclick="window.switchReportTab(this, 'visuals')">Analytics</button>
         <button class="ws-tab-btn" onclick="window.switchReportTab(this, 'shipments')">Shipment Logs</button>
         <button class="ws-tab-btn" onclick="window.switchReportTab(this, 'financial')">Financials</button>
       </nav>
       <div id="rep-visuals" class="report-tab-content">
-        <div class="grid-2">
-            <div class="panel-card"><h5>Shipment Trends</h5><div class="chart-container"><canvas id="chart-shipment-trend"></canvas></div></div>
-            <div class="panel-card"><h5>Revenue/Expenses</h5><div class="chart-container"><canvas id="chart-finance-trend"></canvas></div></div>
+        <div class="form-grid">
+            <div class="panel-card"><h5>Volume Trends</h5><div class="chart-container"><canvas id="chart-shipment-trend"></canvas></div></div>
+            <div class="panel-card"><h5>Revenue Flow</h5><div class="chart-container"><canvas id="chart-finance-trend"></canvas></div></div>
         </div>
       </div>
       <div id="rep-shipments" class="report-tab-content hidden"><div id="rep-ship-content" class="table-responsive"></div></div>
-      <div id="rep-financial" class="report-tab-content hidden">
-        <div class="grid-2">
-            <div class="panel-card"><h6>Monthly Profit & Loss</h6><div id="pl-summary-list" class="enterprise-list"></div></div>
-            <div class="panel-card"><h6>High-Value Customers</h6><div id="top-cust-list" class="enterprise-list"></div></div>
-        </div>
-      </div>
     </div>
 
-    <div id="enterpriseCustomersCard" class="enterprise-card mt-20 hidden">
-      <header class="enterprise-card-header">
-        <h4><i class="fa-solid fa-address-book"></i> Customers</h4>
-        <button class="enterprise-btn primary sm" onclick="window.showCustomerForm()"><i class="fa-solid fa-plus"></i> New Customer</button>
+    <div id="enterpriseCustomersCard" class="enterprise-card hidden" style="margin-top:24px;">
+      <header class="enterprise-card-heading">
+        <h3><i class="fa-solid fa-address-book"></i> Customer Registry</h3>
+        <button class="enterprise-btn primary sm" onclick="window.showCustomerForm()"><i class="fa-solid fa-plus"></i> Add Client</button>
       </header>
-      <div class="grid-3 mb-20">
-        <article class="enterprise-kpi-card"><small>Total</small><strong id="cust-total">0</strong></article>
-        <article class="enterprise-kpi-card"><small>Active</small><strong id="cust-active">0</strong></article>
-        <article class="enterprise-kpi-card"><small>New</small><strong id="cust-month">0</strong></article>
+      <div class="mb-20">
+        <input id="custSearchInput" placeholder="Search customers..." onkeyup="window.renderCustomers()">
       </div>
-      <div class="enterprise-toolbar mb-20">
-        <input id="custSearchInput" placeholder="Search..." onkeyup="window.renderCustomers()">
-      </div>
-      <div class="table-responsive"><table class="table"><thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Contact</th><th>Location</th><th class="text-right">Actions</th></tr></thead><tbody id="custTableBody"></tbody></table></div>
+      <div class="table-responsive"><table class="table"><thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Contact</th><th>City</th><th class="text-right">Actions</th></tr></thead><tbody id="custTableBody"></tbody></table></div>
     </div>
 
     <div id="enterpriseDriversCard" class="enterprise-card mt-20 hidden">

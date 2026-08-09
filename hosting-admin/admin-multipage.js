@@ -89,56 +89,50 @@
     dashboard.innerHTML = `
       <section class="enterprise-dashboard-welcome enterprise-card">
         <div>
-          <span class="enterprise-kicker">Logistics Intelligence</span>
-          <h1>Operational Command Center</h1>
-          <p>Real-time analytics and management of the global Noorani Cargo network.</p>
+          <span class="breadcrumbs" style="color:var(--n-gold);">Logistics Intelligence</span>
+          <h1 style="margin-top:8px;">Operational Command Center</h1>
+          <p style="margin-top:8px; max-width:600px;">Real-time analytics and management of the global Noorani Cargo network.</p>
         </div>
-        <div class="enterprise-btn-row mt-20">
-          <button class="btn-primary-action" onclick="window.location.href='?page=create-shipment'"><i class="fa-solid fa-plus"></i>New shipment</button>
-          <button class="btn-action" onclick="window.openImportModal()"><i class="fa-solid fa-file-import"></i>Import Data</button>
-          <button class="btn-action" onclick="window.refreshDashboard()"><i class="fa-solid fa-sync"></i>Refresh</button>
+        <div style="display:flex; gap:12px; align-items:center;">
+          <button class="btn-primary-action" onclick="window.location.href='?page=create-shipment'"><i class="fa-solid fa-plus"></i> New Shipment</button>
+          <button class="btn-action" onclick="window.openImportModal()"><i class="fa-solid fa-file-import"></i> Import</button>
+          <button class="btn-action" onclick="window.refreshDashboard()"><i class="fa-solid fa-sync"></i></button>
         </div>
       </section>
 
-      <section class="enterprise-kpi-grid mt-20">
-        <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon"><i class="fa-solid fa-boxes-stacked"></i></span><div><small>Total</small><strong id="stat-total-shipments">0</strong></div></article>
-        <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon status-delivered"><i class="fa-solid fa-check"></i></span><div><small>Delivered</small><strong id="stat-delivered">0</strong></div></article>
-        <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon status-transit"><i class="fa-solid fa-truck"></i></span><div><small>In Transit</small><strong id="stat-transit">0</strong></div></article>
-        <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon"><i class="fa-solid fa-clock"></i></span><div><small>Pending</small><strong id="stat-pending">0</strong></div></article>
-        <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon"><i class="fa-solid fa-dollar-sign"></i></span><div><small>Revenue</small><strong id="stat-revenue">$0</strong></div></article>
-        <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon"><i class="fa-solid fa-users"></i></span><div><small>Clients</small><strong id="stat-customers">0</strong></div></article>
+      <section class="enterprise-kpi-grid">
+        <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon"><i class="fa-solid fa-boxes-stacked"></i></span><div><small>Total shipments</small><strong id="stat-total-shipments">0</strong></div></article>
+        <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon" style="color:var(--n-success);"><i class="fa-solid fa-check-circle"></i></span><div><small>Delivered</small><strong id="stat-delivered">0</strong></div></article>
+        <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon" style="color:var(--n-gold);"><i class="fa-solid fa-truck"></i></span><div><small>In Transit</small><strong id="stat-transit">0</strong></div></article>
+        <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon" style="color:var(--n-warning);"><i class="fa-solid fa-clock"></i></span><div><small>Pending</small><strong id="stat-pending">0</strong></div></article>
       </section>
 
-      <section class="grid-3 mt-20">
-        <article class="enterprise-card">
-          <header class="enterprise-card-heading"><h3>Daily Trends</h3></header>
+      <section class="form-grid">
+        <article class="enterprise-card chart-card">
+          <header class="enterprise-card-heading"><h3><i class="fa-solid fa-chart-line"></i> Shipment Volume</h3></header>
           <div class="chart-container"><canvas id="dailyChart"></canvas></div>
         </article>
-        <article class="enterprise-card">
-          <header class="enterprise-card-heading"><h3>Revenue</h3></header>
+        <article class="enterprise-card chart-card">
+          <header class="enterprise-card-heading"><h3><i class="fa-solid fa-wallet"></i> Revenue Distribution</h3></header>
           <div class="chart-container"><canvas id="revenueChart"></canvas></div>
         </article>
-        <article class="enterprise-card">
-          <header class="enterprise-card-heading"><h3>Distribution</h3></header>
-          <div class="chart-container-pie"><canvas id="statusChart"></canvas></div>
+        <article class="enterprise-card chart-card" style="display:grid; place-items:center;">
+          <header class="enterprise-card-heading" style="width:100%;"><h3><i class="fa-solid fa-circle-pie"></i> Fleet Status</h3></header>
+          <div style="height:220px; width:220px; position:relative; margin-top:20px;"><canvas id="statusChart"></canvas></div>
         </article>
       </section>
 
-      <section class="grid-3 mt-20">
+      <section class="form-grid">
         <article class="enterprise-card">
-          <header class="enterprise-card-heading"><h3>Activity</h3></header>
-          <div id="recent-activity-list" class="enterprise-list"></div>
+          <header class="enterprise-card-heading"><h3><i class="fa-solid fa-list-ul"></i> Recent Activity</h3></header>
+          <div id="recent-activity-list" class="sidebar-nav" style="padding:0; max-height:300px; overflow-y:auto;"></div>
         </article>
         <article class="enterprise-card">
-          <header class="enterprise-card-heading"><h3>Alerts</h3></header>
-          <div id="dashboard-notifications" class="enterprise-list"></div>
-        </article>
-        <article class="enterprise-card">
-          <header class="enterprise-card-heading"><h3>Quick Actions</h3></header>
-          <div class="enterprise-btn-row">
-            <a class="enterprise-btn" href="?page=customers">Add Customer</a>
-            <a class="enterprise-btn" href="?page=drivers">Add Driver</a>
-            <a class="enterprise-btn" href="?page=vehicles-warehouses">Add Vehicle</a>
+          <header class="enterprise-card-heading"><h3><i class="fa-solid fa-bolt"></i> Quick Actions</h3></header>
+          <div style="display:grid; gap:12px;">
+            <a class="nav-item" href="?page=customers" style="background:var(--n-raised);"><i class="fa-solid fa-user-plus"></i><span>Create Customer Record</span></a>
+            <a class="nav-item" href="?page=drivers" style="background:var(--n-raised);"><i class="fa-solid fa-id-card"></i><span>Register New Driver</span></a>
+            <a class="nav-item" href="?page=branches" style="background:var(--n-raised);"><i class="fa-solid fa-plus-square"></i><span>Add Global Hub</span></a>
           </div>
         </article>
       </section>
