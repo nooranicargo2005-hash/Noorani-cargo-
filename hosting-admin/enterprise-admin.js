@@ -249,11 +249,19 @@ window.refreshDashboard = async () => {
                         labels: ['Delivered', 'Transit', 'Pending', 'Cancelled'],
                         datasets: [{
                             data: [s.delivered || 0, s.inTransit || 0, s.pending || 0, s.cancelled || 0],
-                            backgroundColor: ['#86efac', '#ffd34e', '#f4b400', '#fca5a5'],
-                            borderWidth: 0
+                            backgroundColor: ['#10b981', '#f4b400', '#f59e0b', '#ef4444'],
+                            borderWidth: 0,
+                            hoverOffset: 10
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, cutout: '75%' }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '78%',
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
                 });
             }
         }
@@ -287,21 +295,21 @@ window.loadDashboard = async () => {
             const statusCls = String(s.status).includes('Deliv') ? 'status-delivered' : 'status-transit';
             return `
             <tr id="row_${i.trackingId}">
-                <td style="font-weight:800; color:var(--noorani-gold);">${i.trackingId}</td>
-                <td>${s.date || ''}</td>
+                <td style="font-weight:800; color:var(--n-gold);">${i.trackingId}</td>
                 <td>${s.branchCode || ''}</td>
                 <td>${s.swbSerial || ''}</td>
                 <td>${s.customerInvoice || ''}</td>
+                <td>${s.date || ''}</td>
                 <td>${s.sender || ''}</td>
                 <td>${s.receiver || ''}</td>
                 <td>${s.originalQuantity || ''}</td>
                 <td>${s.quantity || ''}</td>
                 <td>${s.originalWeight || ''}</td>
-                <td>${s.weight || ''}kg</td>
+                <td>${s.weight || ''}</td>
                 <td>${s.destination || ''}</td>
                 <td>${s.receiverAddress || ''}</td>
                 <td><span class="status-badge ${statusCls}">${s.status || 'Pending'}</span></td>
-                <td class="text-right"><div class="actions-cell" style="display:flex; justify-content:flex-end; gap:8px;"><button class="btn-action sm" onclick="window.openShipmentWorkspace('${i.trackingId}')"><i class="fa-solid fa-eye"></i></button><button class="btn-action sm" onclick="window.editRow('${i.trackingId}')"><i class="fa-solid fa-pen"></i></button><button class="btn-action sm" onclick="window.deleteRow('${i.trackingId}')"><i class="fa-solid fa-trash" style="color:var(--noorani-danger);"></i></button></div></td>
+                <td class="text-right"><div class="actions-cell"><button class="btn-action sm" onclick="window.openShipmentWorkspace('${i.trackingId}')"><i class="fa-solid fa-eye"></i></button><button class="btn-action sm" onclick="window.editRow('${i.trackingId}')"><i class="fa-solid fa-pen"></i></button><button class="btn-action sm" onclick="window.deleteRow('${i.trackingId}')"><i class="fa-solid fa-trash" style="color:var(--n-danger);"></i></button></div></td>
             </tr>`;
         }).join('');
     } catch (e) {

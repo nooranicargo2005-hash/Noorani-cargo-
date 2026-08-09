@@ -397,17 +397,17 @@ import { nooraniDb } from './firebase.js';
         return `
             <tr class="${isDupe && !updateExisting ? 'is-duplicate' : ''}">
                 <td class="${statusCls}">${statusText}</td>
-                <td style="font-weight:800;">${s.trackingId}</td>
-                <td>${s.date || '—'}</td>
+                <td style="font-weight:800; color:var(--n-gold);">${s.trackingId}</td>
                 <td>${s.branchCode || '—'}</td>
                 <td>${s.swbSerial || '—'}</td>
                 <td>${s.customerInvoice || '—'}</td>
+                <td>${s.date || '—'}</td>
                 <td>${s.sender || '—'}</td>
                 <td>${s.receiver || '—'}</td>
                 <td>${s.originalQuantity || '—'}</td>
                 <td>${s.quantity}</td>
                 <td>${s.originalWeight || '—'}</td>
-                <td>${s.weight}kg</td>
+                <td>${s.weight}</td>
                 <td>${s.destination || '—'}</td>
                 <td><small>${s.receiverAddress || '—'}</small></td>
             </tr>
