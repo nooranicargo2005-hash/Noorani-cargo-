@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Admin Console | Noorani Cargo</title>
+    <title>Enterprise Admin | Noorani Cargo</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./core.css">
 
@@ -21,11 +21,11 @@
 </head>
 <body class="admin-panel">
     <!-- Initial Loader -->
-    <div id="nooraniSplashOverlay" class="noorani-splash-screen">
-        <div class="noorani-splash-card">
-            <div class="splash-logo"><i class="fa-solid fa-shipping-fast"></i></div>
-            <h2 class="splash-title" style="font-size: 2rem; letter-spacing: -1px;">NOORANI CARGO</h2>
-            <p class="splash-tagline" style="margin-top: 8px; color: var(--n-muted);">Enterprise Command Center</p>
+    <div id="nooraniSplashOverlay" class="noorani-splash-screen" style="position:fixed; inset:0; z-index:99999; background:#000; display:flex; align-items:center; justify-content:center;">
+        <div class="noorani-splash-card" style="text-align:center;">
+            <div class="splash-logo" style="font-size:3.5rem; color:var(--n-gold); margin-bottom:20px; animation: pulse 2s infinite;"><i class="fa-solid fa-shipping-fast"></i></div>
+            <h2 class="splash-title" style="font-size:2.4rem; letter-spacing:-1.5px; color:#fff; font-family:var(--font-display);">NOORANI CARGO</h2>
+            <p class="splash-tagline" style="margin-top:10px; color:var(--n-muted); letter-spacing:2px; font-weight:700; text-transform:uppercase; font-size:0.75rem;">Enterprise Logistics Command</p>
         </div>
     </div>
 
@@ -39,13 +39,19 @@
             </div>
         </div>
         <div class="header-actions">
-            <div class="notification-bell-wrapper" onclick="window.toggleNotificationDrawer()">
+            <div class="notification-bell-wrapper" onclick="window.toggleNotificationDrawer()" style="position:relative; cursor:pointer;">
                 <i class="fa-solid fa-bell"></i>
                 <span id="notif-count" class="badge-count" style="display:none;">0</span>
             </div>
-            <span id="adminUserEmail" class="page-link-helper"></span>
-            <span id="adminRoleBadge" class="status-badge status-transit"></span>
-            <button id="adminLogoutBtn" type="button" class="btn-action" onclick="signOutAdminFromUi()">Logout</button>
+            <div style="display:flex; align-items:center; gap:16px;">
+                <div style="text-align:right;">
+                    <div id="adminUserEmail" style="font-size:0.85rem; font-weight:700; color:#fff;">—</div>
+                    <div id="adminRoleBadge" class="status-badge status-transit" style="font-size:0.6rem; padding:2px 8px; margin-top:2px;">GUEST</div>
+                </div>
+                <button id="adminLogoutBtn" type="button" class="btn-action" onclick="signOutAdminFromUi()">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
         </div>
     </header>
 
@@ -53,7 +59,7 @@
     <aside class="sidebar" id="adminSidebar" hidden>
         <div class="sidebar-brand">
             <span class="sidebar-brand-mark"><i class="fa-solid fa-truck-fast"></i></span>
-            <span><strong>Enterprise</strong></span>
+            <span style="font-family:var(--font-display); font-size:1.1rem; color:#fff;">Enterprise</span>
         </div>
         <nav class="sidebar-nav">
             <section class="sidebar-section">
@@ -83,27 +89,27 @@
                 <a class="nav-item" href="?page=settings" data-nav-key="settings" data-permission="viewSettings"><i class="fa-solid fa-sliders"></i><span>Settings</span></a>
             </section>
         </nav>
-        <div class="sidebar-footer">
-            <button class="nav-item" type="button" onclick="signOutAdminFromUi()" style="width:100%; border:none; background:transparent;">
-                <i class="fa-solid fa-right-from-bracket"></i><span>Logout</span>
+        <div class="sidebar-footer" style="padding-top:20px; border-top:1px solid var(--n-border);">
+            <button class="nav-item" type="button" onclick="signOutAdminFromUi()" style="width:100%; border:none; background:transparent; cursor:pointer;">
+                <i class="fa-solid fa-power-off"></i><span>System Logout</span>
             </button>
         </div>
     </aside>
 
     <!-- Notification Drawer -->
-    <div id="notificationDrawer" class="notification-drawer">
-        <header class="drawer-header">
-            <h3>Notifications</h3>
-            <div class="enterprise-btn-row">
+    <div id="notificationDrawer" class="notification-drawer" style="position:fixed; right:-400px; top:0; bottom:0; width:380px; background:var(--n-surface); z-index:10000; border-left:1px solid var(--n-border); transition:0.4s cubic-bezier(0.16, 1, 0.3, 1); box-shadow:-20px 0 50px rgba(0,0,0,0.5);">
+        <header class="drawer-header" style="padding:24px; border-bottom:1px solid var(--n-border); display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="font-size:1.1rem;"><i class="fa-solid fa-bell" style="color:var(--n-gold); margin-right:10px;"></i>Notifications</h3>
+            <div class="enterprise-btn-row" style="display:flex; gap:8px;">
                 <button class="btn-action sm" onclick="window.clearNotifications()"><i class="fa-solid fa-trash"></i></button>
                 <button class="btn-action sm" onclick="window.toggleNotificationDrawer()">&times;</button>
             </div>
         </header>
-        <div id="notif-list" class="drawer-body">
-            <p class="text-center mt-20">No new alerts.</p>
+        <div id="notif-list" class="drawer-body" style="padding:20px; overflow-y:auto; height:calc(100% - 140px);">
+            <p class="text-center mt-20" style="color:var(--n-muted); font-size:0.85rem;">No new alerts.</p>
         </div>
-        <footer class="drawer-footer">
-            <a href="?page=notifications" onclick="window.toggleNotificationDrawer()">View All Notifications</a>
+        <footer class="drawer-footer" style="padding:20px; border-top:1px solid var(--n-border); text-align:center;">
+            <a href="?page=notifications" onclick="window.toggleNotificationDrawer()" style="font-size:0.8rem; font-weight:800; color:var(--n-gold); text-transform:uppercase; letter-spacing:1px;">View All History</a>
         </footer>
     </div>
 
@@ -113,7 +119,7 @@
             <div id="dashboardMainContent"></div>
 
             <!-- Shipment Registration Form -->
-            <div id="registerShipment" class="enterprise-card mb-20" hidden>
+            <div id="registerShipment" class="enterprise-card" hidden>
                 <div class="enterprise-card-heading">
                     <h3><i class="fa-solid fa-pen-to-square"></i> New Shipment Registration</h3>
                 </div>
@@ -123,8 +129,8 @@
                         <label>Tracking / Shipping No</label>
                         <div style="display: flex; gap: 8px;">
                             <input type="text" id="inputTracking" placeholder="NM-100001">
-                            <button class="btn-action" onclick="window.generateTrackingNumber()"><i class="fa-solid fa-rotate"></i></button>
-                            <button class="btn-action" onclick="window.findShipmentInForm()"><i class="fa-solid fa-search"></i></button>
+                            <button class="btn-action" onclick="window.generateTrackingNumber()" title="Generate"><i class="fa-solid fa-rotate"></i></button>
+                            <button class="btn-action" onclick="window.findShipmentInForm()" title="Search"><i class="fa-solid fa-search"></i></button>
                         </div>
                     </div>
                     <div class="form-group">
@@ -143,12 +149,12 @@
 
                 <div class="form-grid">
                     <div class="form-group"><label>Date</label><input type="date" id="inputDate"></div>
-                    <div class="form-group"><label>Branch</label><input type="text" id="inputBranchCode"></div>
+                    <div class="form-group"><label>Branch</label><input type="text" id="inputBranchCode" placeholder="DXB-HQ"></div>
                 </div>
 
                 <div class="form-grid">
-                    <div class="form-group"><label>SWB Serial</label><input type="text" id="inputSwbSerial"></div>
-                    <div class="form-group"><label>Customer Invoice</label><input type="text" id="inputCustomerInvoice"></div>
+                    <div class="form-group"><label>SWB Serial</label><input type="text" id="inputSwbSerial" placeholder="SR-000"></div>
+                    <div class="form-group"><label>Customer Invoice</label><input type="text" id="inputCustomerInvoice" placeholder="INV-000"></div>
                 </div>
 
                 <div class="enterprise-form-divider">Parties</div>
@@ -164,29 +170,31 @@
 
                 <div class="enterprise-form-divider">Details</div>
                 <div class="form-grid">
-                    <div class="form-group"><label>Quantity</label><input type="number" id="inputQuantity"></div>
-                    <div class="form-group"><label>Weight (KG)</label><input type="number" id="inputWeight"></div>
+                    <div class="form-group"><label>Quantity</label><input type="number" id="inputQuantity" value="1"></div>
+                    <div class="form-group"><label>Weight (KG)</label><input type="number" id="inputWeight" value="0.00"></div>
                 </div>
 
-                <div class="form-group mb-20"><label>Notes</label><textarea id="inputNotes"></textarea></div>
+                <div class="form-group mb-20" style="margin-top:20px;"><label>Notes</label><textarea id="inputNotes" placeholder="Additional shipment details..."></textarea></div>
 
-                <button class="btn-primary-action" id="btnRegisterShipment" onclick="window.saveShipment()">Register & Sync Record</button>
+                <button class="btn-primary-action" id="btnRegisterShipment" onclick="window.saveShipment()" style="width:100%; justify-content:center; margin-top:20px; padding:16px;">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Register & Sync Record
+                </button>
             </div>
 
             <!-- Database Table Section -->
-            <div id="databaseSection" class="enterprise-card hidden" hidden>
+            <div id="databaseSection" class="enterprise-card" hidden>
                 <header class="enterprise-card-heading">
                     <h3><i class="fa-solid fa-database"></i> Shipments Inventory</h3>
                     <div class="enterprise-btn-row">
                         <button class="btn-action sm" id="btnOpenImportModal"><i class="fa-solid fa-file-import"></i> Import</button>
-                        <button class="btn-action sm" onclick="window.loadDashboard()"><i class="fa-solid fa-rotate"></i></button>
+                        <button class="btn-action sm" onclick="window.loadDashboard()"><i class="fa-solid fa-rotate"></i> Refresh</button>
                     </div>
                 </header>
 
-                <div class="mb-20 grid-4" style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:16px; align-items:center;">
+                <div class="mb-20" style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:16px; align-items:center; margin-bottom:24px;">
                     <div style="position:relative;">
-                        <input type="text" id="searchDbInput" class="search-db" placeholder="Search tracking, names, phone..." onkeyup="window.loadDashboard()">
-                        <i class="fa-solid fa-search" style="position:absolute; left:16px; top:50%; transform:translateY(-50%); opacity:0.5;"></i>
+                        <input type="text" id="searchDbInput" placeholder="Search tracking, names, phone..." onkeyup="window.loadDashboard()" style="padding-left:44px;">
+                        <i class="fa-solid fa-search" style="position:absolute; left:16px; top:50%; transform:translateY(-50%); opacity:0.4;"></i>
                     </div>
                     <select id="filterStatus" onchange="window.loadDashboard()">
                         <option value="">All Statuses</option>
@@ -230,20 +238,20 @@
                     </table>
                 </div>
 
-                <div class="pagination-footer mt-20" style="display:flex; justify-content:space-between; align-items:center;">
-                    <div id="paginationInfo" style="font-size:0.8rem; color:var(--noorani-muted);">Showing 0 records</div>
+                <div class="pagination-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:24px;">
+                    <div id="paginationInfo" style="font-size:0.75rem; color:var(--n-muted); font-weight:700; text-transform:uppercase;">Showing 0 records</div>
                     <div class="enterprise-btn-row">
-                        <button class="btn-action sm" id="btnPrevPage">Prev</button>
-                        <button class="btn-action sm" id="btnNextPage">Next</button>
+                        <button class="btn-action sm" id="btnPrevPage">Previous</button>
+                        <button class="btn-action sm" id="btnNextPage">Next Page</button>
                     </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <footer class="app-footer">
-        <strong>NOORANI LOGISTICS ENTERPRISE</strong>
-        <span>Dubai HQ &bull; Global Operations &bull; 2026</span>
+    <footer class="app-footer" style="text-align:center; padding:40px 0; border-top:1px solid var(--n-border); margin-top:40px;">
+        <strong style="color:var(--n-gold); letter-spacing:3px; font-size:1rem;">NOORANI LOGISTICS ENTERPRISE</strong>
+        <div style="font-size:0.75rem; color:var(--n-muted); margin-top:8px;">Global Operations &bull; UAE &bull; KSA &bull; 2026</div>
     </footer>
 
     <!-- Data Import Modal -->
@@ -251,36 +259,36 @@
         <div class="enterprise-modal workspace-modal">
             <header class="workspace-modal-header">
                 <div>
-                    <span class="enterprise-kicker">Enterprise Utility</span>
+                    <span style="font-size:0.7rem; color:var(--n-gold); text-transform:uppercase; letter-spacing:2px; font-weight:800;">Enterprise Utility</span>
                     <h2>Import Shipment Data</h2>
                 </div>
-                <button class="close-btn" onclick="window.closeImportModal()">&times;</button>
+                <button class="btn-action sm" onclick="window.closeImportModal()" style="border-radius:50%; width:36px; height:36px; padding:0; justify-content:center;">&times;</button>
             </header>
             <div class="workspace-modal-body">
-                <div id="importUploadZone" class="enterprise-data-port" style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:180px; border:2px dashed var(--border); border-radius:20px; cursor:pointer;">
-                    <i class="fa-solid fa-cloud-arrow-up" style="font-size:2.5rem; color:var(--noorani-gold); margin-bottom:15px;"></i>
-                    <h4>Select manifest or drop file</h4>
-                    <p>Supports CSV, Excel and PDF manifests</p>
+                <div id="importUploadZone" style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:220px; border:2px dashed var(--n-border); border-radius:var(--radius-md); cursor:pointer; transition:0.3s; background:rgba(0,0,0,0.2);">
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size:3.5rem; color:var(--n-gold); margin-bottom:20px; opacity:0.8;"></i>
+                    <h4 style="font-size:1.2rem; color:#fff;">Select manifest or drop file</h4>
+                    <p style="color:var(--n-muted); margin-top:8px;">Supports CSV, Excel and PDF manifests</p>
                     <input type="file" id="importFileInput" accept=".csv, .xlsx, .xls, .pdf" hidden>
                 </div>
 
-                <div id="importFileDetails" class="hidden mt-20" style="padding:15px; background:rgba(255,255,255,0.03); border-radius:12px; border:1px solid var(--border);">
+                <div id="importFileDetails" class="hidden" style="margin-top:24px; padding:20px; background:var(--n-raised); border-radius:14px; border:1px solid var(--n-border);">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div>
-                            <strong id="importFileName" style="color:var(--noorani-gold);">filename.xlsx</strong><br>
-                            <small id="importFileSize" style="color:var(--noorani-muted);">0 KB</small>
+                            <strong id="importFileName" style="color:var(--n-gold); font-size:1rem;">filename.xlsx</strong><br>
+                            <small id="importFileSize" style="color:var(--n-muted); font-weight:700;">0 KB</small>
                         </div>
-                        <button class="btn-action sm" onclick="window.resetImportModal()"><i class="fa-solid fa-trash" style="color:var(--noorani-danger);"></i></button>
+                        <button class="btn-action sm" onclick="window.resetImportModal()"><i class="fa-solid fa-trash" style="color:var(--n-danger);"></i></button>
                     </div>
                 </div>
 
-                <div id="importProgress" class="hidden mt-20">
-                    <div class="table-responsive" style="height:10px; border-radius:10px;"><div id="importProgressBar" style="height:100%; width:0%; background:var(--noorani-gold); transition:width 0.3s;"></div></div>
-                    <p id="importProgressStatus" class="text-center mt-20" style="font-size:0.8rem; color:var(--noorani-gold);">Processing...</p>
+                <div id="importProgress" class="hidden" style="margin-top:24px;">
+                    <div style="height:8px; background:var(--n-bg); border-radius:10px; overflow:hidden;"><div id="importProgressBar" style="height:100%; width:0%; background:var(--n-gold); transition:width 0.3s;"></div></div>
+                    <p id="importProgressStatus" class="text-center" style="font-size:0.85rem; color:var(--n-gold); font-weight:700; margin-top:16px;">Processing...</p>
                 </div>
 
-                <div id="importPreviewArea" class="hidden mt-20">
-                    <h4 class="mb-20"><i class="fa-solid fa-table-list"></i> Data Preview</h4>
+                <div id="importPreviewArea" class="hidden" style="margin-top:32px;">
+                    <h4 style="margin-bottom:20px;"><i class="fa-solid fa-table-list" style="color:var(--n-gold); margin-right:10px;"></i> Data Preview</h4>
                     <div class="table-responsive" style="max-height:350px;">
                         <table class="table">
                             <thead>
@@ -307,10 +315,10 @@
                 </div>
             </div>
             <footer class="workspace-modal-footer">
-                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:15px;">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <input type="checkbox" id="importUpdateToggle" style="width:18px; height:18px; cursor:pointer;">
-                        <label for="importUpdateToggle" style="cursor:pointer; font-weight:700; color:var(--noorani-gold); font-size:0.85rem;">Update existing records</label>
+                <div style="display:flex; align-items:center; justify-content:space-between; width:100%; flex-wrap:wrap; gap:15px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <input type="checkbox" id="importUpdateToggle" style="width:20px; height:20px; cursor:pointer; accent-color:var(--n-gold);">
+                        <label for="importUpdateToggle" style="cursor:pointer; font-weight:700; color:#fff; font-size:0.9rem;">Update existing records</label>
                     </div>
                     <div class="enterprise-btn-row">
                         <button class="enterprise-btn" onclick="window.closeImportModal()">Cancel</button>
@@ -328,5 +336,9 @@
     <script type="module" src="./document-import.js"></script>
     <script type="module" src="./enterprise-admin.js"></script>
     <script type="module" src="./admin-multipage.js"></script>
+
+    <style>
+        @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
+    </style>
 </body>
 </html>

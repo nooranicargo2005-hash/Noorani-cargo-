@@ -19,102 +19,102 @@
                 <div class="brand-emblem"><i class="fa-solid fa-shipping-fast"></i></div>
                 <div>
                     <div class="brand-title">NOORANI CARGO</div>
-                    <div class="brand-sub">Global Logistics Tracking</div>
+                    <div class="brand-sub">Global Logistics Intelligence</div>
                 </div>
             </div>
             <nav class="header-actions">
-                <a class="btn-track" href="/" style="padding: 12px 24px; font-size: 0.9rem; text-decoration: none; display: inline-flex; align-items: center; gap: 10px;">
-                    <i class="fa-solid fa-plus"></i> New Search
+                <a class="btn-track" href="/" style="padding: 14px 28px; font-size: 0.95rem; text-decoration: none; display: inline-flex; align-items: center; gap: 12px; border-radius:14px;">
+                    <i class="fa-solid fa-rotate-right"></i> New Search
                 </a>
             </nav>
         </header>
 
         <section class="tracking-header">
-            <h1 style="color:var(--n-gold-bright);">Global Cargo Intelligence</h1>
-            <p>Enter your tracking number for real-time delivery status and logistics milestones.</p>
+            <h1>Elite Cargo Intelligence</h1>
+            <p>Monitor your global logistics journey with real-time milestone synchronization.</p>
         </section>
 
         <section class="search-container">
             <div class="tracking-input-group">
-                <input id="trackingInput" type="text" placeholder="NC-12345678" autocomplete="off" autofocus>
-                <button id="trackButton" class="btn-track">Track Now</button>
+                <input id="trackingInput" type="text" placeholder="Enter Tracking Number..." autocomplete="off" autofocus>
+                <button id="trackButton" class="btn-track">Track Shipment</button>
             </div>
-            <p id="statusMsg" style="text-align: center; margin-top: 15px; font-weight: 600;"></p>
+            <p id="statusMsg" style="text-align: center; margin-top: 24px; font-weight: 700; color: var(--n-gold); text-transform: uppercase; letter-spacing: 2px; font-size: 0.85rem;"></p>
         </section>
 
         <main id="resultArea" hidden>
             <div class="status-banner">
                 <div>
-                    <span>Current Status</span>
-                    <strong id="displayStatus">In Transit</strong>
+                    <span>Live status</span>
+                    <strong id="displayStatus">—</strong>
                 </div>
                 <div style="text-align: right;">
-                    <span>Tracking Number</span>
-                    <strong id="displayTracking">NC-00000000</strong>
+                    <span>Manifest ID</span>
+                    <strong id="displayTracking">—</strong>
                 </div>
             </div>
 
             <div class="info-grid">
                 <div class="info-card">
-                    <h3><i class="fa-solid fa-box"></i> Shipment Overview</h3>
+                    <h3><i class="fa-solid fa-box-open"></i> Shipment Overview</h3>
                     <div class="data-row" id="row-date">
-                        <span class="data-label">Registration Date</span>
+                        <span class="data-label">Booking Date</span>
                         <span class="data-value" id="val-date">—</span>
                     </div>
                     <div class="data-row" id="row-type">
-                        <span class="data-label">Shipment Type</span>
+                        <span class="data-label">Service Type</span>
                         <span class="data-value" id="val-type">—</span>
                     </div>
                     <div class="data-row" id="row-weight">
-                        <span class="data-label">Weight</span>
+                        <span class="data-label">Net Weight</span>
                         <span class="data-value" id="val-weight">—</span>
                     </div>
                     <div class="data-row" id="row-payment">
-                        <span class="data-label">Payment Status</span>
+                        <span class="data-label">Settlement</span>
                         <span class="data-value" id="val-payment">—</span>
                     </div>
                 </div>
 
                 <div class="info-card">
-                    <h3><i class="fa-solid fa-route"></i> Route Details</h3>
+                    <h3><i class="fa-solid fa-map-location-dot"></i> Global Route</h3>
                     <div class="data-row" id="row-origin-country">
-                        <span class="data-label">Origin Country</span>
+                        <span class="data-label">Departure</span>
                         <span class="data-value" id="val-origin-country">—</span>
                     </div>
                     <div class="data-row" id="row-dest-country">
-                        <span class="data-label">Destination Country</span>
+                        <span class="data-label">Arrival</span>
                         <span class="data-value" id="val-dest-country">—</span>
                     </div>
                     <div class="data-row" id="row-location">
-                        <span class="data-label">Current Location</span>
+                        <span class="data-label">Current Hub</span>
                         <span class="data-value" id="val-location">—</span>
                     </div>
                 </div>
 
                 <div class="info-card">
-                    <h3><i class="fa-solid fa-user-check"></i> Party Details</h3>
+                    <h3><i class="fa-solid fa-user-shield"></i> Validated Parties</h3>
                     <div class="data-row" id="row-sender">
-                        <span class="data-label">Sender</span>
+                        <span class="data-label">Consignor</span>
                         <span class="data-value" id="val-sender">—</span>
                     </div>
                     <div class="data-row" id="row-receiver">
-                        <span class="data-label">Receiver</span>
+                        <span class="data-label">Consignee</span>
                         <span class="data-value" id="val-receiver">—</span>
                     </div>
                 </div>
             </div>
 
-            <div class="info-card" style="margin-top: 24px;">
-                <h3><i class="fa-solid fa-timeline"></i> Journey Timeline</h3>
+            <div class="info-card" style="margin-top: 40px;">
+                <h3><i class="fa-solid fa-clock-rotate-left"></i> Logistics Timeline</h3>
                 <div id="timelineContainer"></div>
             </div>
         </main>
 
         <div id="notFoundArea" hidden>
-            <div class="info-card" style="text-align: center; border-color: var(--noorani-danger); background: rgba(239, 68, 68, 0.05);">
-                <i class="fa-solid fa-circle-exclamation" style="font-size: 2.5rem; color: var(--noorani-danger); margin-bottom: 20px;"></i>
-                <h2 style="color: #fff;">Shipment Not Found</h2>
-                <p style="color: var(--tracking-muted);">We couldn't find any record matching that tracking number. Please check the number and try again.</p>
+            <div class="info-card" style="text-align: center; border-color: var(--n-danger); background: rgba(239, 68, 68, 0.08);">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size: 3rem; color: var(--n-danger); margin-bottom: 24px;"></i>
+                <h2 style="color: #fff; font-family:var(--font-display);">Manifest Not Found</h2>
+                <p style="color: var(--n-muted); font-size:1.1rem;">We couldn't locate any record matching that tracking identifier. Please verify and try again.</p>
             </div>
         </div>
 
@@ -122,42 +122,42 @@
             <div class="info-grid">
                 <!-- Company Profile -->
                 <div class="info-card">
-                    <h3><i class="fa-solid fa-building"></i> NOORANI CARGO SERVICE</h3>
-                    <p style="color:var(--n-gold-bright); font-weight:700; margin-bottom:12px;">Your Trust, Our Responsibility</p>
+                    <h3><i class="fa-solid fa-shield-halved"></i> NOORANI ENTERPRISE</h3>
+                    <p style="color:var(--n-gold-bright); font-weight:800; margin-bottom:16px; font-size:1.1rem;">Global Logistics Assurance</p>
                     <ul style="list-style:none; padding:0;">
-                        <li><i class="fa-solid fa-circle-check"></i> Door to Door Service</li>
-                        <li><i class="fa-solid fa-circle-check"></i> Air & Sea Cargo</li>
-                        <li><i class="fa-solid fa-circle-check"></i> Worldwide Delivery</li>
-                        <li><i class="fa-solid fa-circle-check"></i> Customs Clearance</li>
+                        <li><i class="fa-solid fa-check-double"></i> Premium Door-to-Door Logistics</li>
+                        <li><i class="fa-solid fa-check-double"></i> Secure Air & Maritime Freight</li>
+                        <li><i class="fa-solid fa-check-double"></i> Intelligent Customs Brokerage</li>
+                        <li><i class="fa-solid fa-check-double"></i> 24/7 Global Support Network</li>
                     </ul>
                 </div>
 
-                <!-- Coverage & Hours -->
+                <!-- Operations -->
                 <div class="info-card">
-                    <h3><i class="fa-solid fa-clock"></i> Operations</h3>
-                    <div class="data-row"><span class="data-label">Working Hours</span><span class="data-value">9 AM – 11 PM</span></div>
-                    <div class="data-row"><span class="data-label">Coverage</span><span class="data-value">Global Network</span></div>
-                    <p style="font-size:0.85rem; margin-top:20px; color:var(--n-muted);">Sahafa Street, Aziziyah, Jeddah, Saudi Arabia</p>
+                    <h3><i class="fa-solid fa-gears"></i> Network Status</h3>
+                    <div class="data-row"><span class="data-label">Operational Hours</span><span class="data-value">09:00 – 23:00 AST</span></div>
+                    <div class="data-row"><span class="data-label">Global Coverage</span><span class="data-value">Active</span></div>
+                    <p style="font-size:0.95rem; margin-top:24px; color:var(--n-muted);">Sahafa Street, Aziziyah District<br>Jeddah, Kingdom of Saudi Arabia</p>
                 </div>
 
-                <!-- Branch Contacts -->
+                <!-- Contacts -->
                 <div class="info-card">
-                    <h3><i class="fa-solid fa-phone-volume"></i> Branch Contacts</h3>
+                    <h3><i class="fa-solid fa-headset"></i> Premium Concierge</h3>
                     <div class="branch-list">
                         <div class="branch-item">
-                            <strong>Jeddah (جدة)</strong>
+                            <strong>Jeddah Regional Hub</strong>
                             <div class="contact-links">
-                                <a href="tel:0544897842">0544897842</a>
-                                <a href="tel:0596088919">0596088919</a>
+                                <a href="tel:0544897842">+966 54 489 7842</a>
+                                <a href="tel:0596088919">+966 59 608 8919</a>
                             </div>
                         </div>
                         <div class="branch-item">
-                            <strong>Makkah (مكة)</strong>
-                            <div class="contact-links"><a href="tel:0530703715">0530703715</a></div>
+                            <strong>Makkah Operations</strong>
+                            <div class="contact-links"><a href="tel:0530703715">+966 53 070 3715</a></div>
                         </div>
                         <div class="branch-item">
-                            <strong>Madinah (المدينة)</strong>
-                            <div class="contact-links"><a href="tel:0596548553">0596548553</a></div>
+                            <strong>Madinah Network</strong>
+                            <div class="contact-links"><a href="tel:0596548553">+966 59 654 8553</a></div>
                         </div>
                     </div>
                 </div>
@@ -165,8 +165,8 @@
         </section>
 
         <footer class="app-footer">
-            <strong style="display: block; margin-bottom: 8px;">NOORANI LOGISTICS ENTERPRISE</strong>
-            <p style="color: var(--tracking-muted); font-size: 0.8rem;">Global Freight & Supply Chain Solutions &bull; 2026</p>
+            <strong>NOORANI LOGISTICS ENTERPRISE</strong>
+            <p style="color: var(--n-muted); font-size: 0.85rem; margin-top:12px; font-weight:600; text-transform:uppercase; letter-spacing:1.5px;">Global Freight & Supply Chain Management &bull; 2026</p>
         </footer>
     </div>
 
@@ -177,12 +177,12 @@
         const $id = id => document.getElementById(id);
 
         const milestones = [
-            { id: 'Pending', label: 'Shipment Created' },
-            { id: 'Picked Up', label: 'Picked Up' },
-            { id: 'In Transit', label: 'In Transit' },
-            { id: 'Arrived', label: 'Arrived at Hub' },
-            { id: 'Out for Delivery', label: 'Out for Delivery' },
-            { id: 'Delivered', label: 'Delivered' }
+            { id: 'Pending', label: 'Order Registered' },
+            { id: 'Picked Up', label: 'Cargo Inbound' },
+            { id: 'In Transit', label: 'Global Transit' },
+            { id: 'Arrived', label: 'Arrived at Destination' },
+            { id: 'Out for Delivery', label: 'Local Dispatch' },
+            { id: 'Delivered', label: 'Successfully Delivered' }
         ];
 
         function renderTimeline(currentStatus) {
@@ -194,8 +194,8 @@
                     const isActive = i <= activeIndex;
                     return `
                         <div class="timeline-item ${isActive ? 'active' : ''}">
-                            <div class="timeline-marker">${isActive ? '<i class="fa-solid fa-check" style="font-size:0.7rem;"></i>' : ''}</div>
-                            <div class="timeline-content"><h4>${m.label}</h4><span>${isActive ? 'Completed' : 'Pending'}</span></div>
+                            <div class="timeline-marker">${isActive ? '<i class="fa-solid fa-check" style="font-size:0.8rem;"></i>' : ''}</div>
+                            <div class="timeline-content"><h4>${m.label}</h4><span>${isActive ? 'Verified' : 'Pending'}</span></div>
                         </div>`;
                 }).join('')}
             </div>`;
@@ -242,18 +242,17 @@
             const code = $id('trackingInput').value.trim().toUpperCase();
             stopListener();
             $id('statusMsg').textContent = '';
-            $id('statusMsg').style.color = 'var(--noorani-gold)';
             $id('resultArea').hidden = true;
             $id('resultArea').style.display = 'none';
             $id('notFoundArea').hidden = true;
 
             if (!code) {
-                $id('statusMsg').textContent = 'Please enter a tracking number.';
-                $id('statusMsg').style.color = 'var(--noorani-danger)';
+                $id('statusMsg').textContent = 'Tracking ID Required';
+                $id('statusMsg').style.color = 'var(--n-danger)';
                 return;
             }
 
-            $id('statusMsg').textContent = 'Locating shipment...';
+            $id('statusMsg').textContent = 'Establishing Secure Connection...';
 
             try {
                 const res = await getShipmentByTracking(code);
@@ -268,8 +267,8 @@
                     $id('notFoundArea').hidden = false;
                 }
             } catch (err) {
-                $id('statusMsg').textContent = 'Could not connect to tracking service.';
-                $id('statusMsg').style.color = 'var(--noorani-danger)';
+                $id('statusMsg').textContent = 'API Connection Error';
+                $id('statusMsg').style.color = 'var(--n-danger)';
             }
         }
 

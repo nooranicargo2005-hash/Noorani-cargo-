@@ -1,32 +1,47 @@
-# Fix Import Data Feature for Custom Excel Structure
+# UI/UX Redesign: Premium Noorani Logistics System
 
-Correct the `document-import.js` logic to handle Excel files where metadata is above headers, headers are on rows 13-14, and each shipment record spans two rows.
+Redesign the entire Noorani Cargo system (Admin and Public Tracking) with a premium dark/charcoal and gold aesthetic, while preserving all existing functionality and backend integrations.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> The implementation assumes that the "Date" and "Shipping No" at the top of the Excel sheet should be applied to every shipment imported from that file. If there are shipment-specific dates, they will be used as a fallback or override if found in the data rows.
+> This redesign modifies `core.css` files and slightly adjusts `index.html` structures to improve layout consistency. No functional JavaScript or backend logic will be changed.
 
 ## Proposed Changes
 
-### hosting-admin
+### Shared Design System
+- **Colors**: Deep Charcoal (`#0a0a0b`), Surface (`#141417`), Noorani Gold (`#f4b400`), Muted Blue-Grey (`#94a3b8`).
+- **Typography**: Inter for UI/Body, Merriweather for Headings (Gold accents).
+- **Components**:
+  - Ultra-modern cards with subtle borders and deep shadows.
+  - Sidebar with refined glassmorphism effects.
+  - High-performance data tables with improved spacing and readability.
+  - Buttons with premium hover states and gold glows.
 
-#### [MODIFY] [document-import.js](file:///C:/noorani-cargo-tracking/hosting-admin/document-import.js)
-- Update `processFile` to read raw rows (`header: 1`).
-- Extract `masterDate` and `masterShippingNo` from the first 12 rows.
-- Implement a robust multi-row parser that:
-  - Scans row 13 for header mapping.
-  - Processes data rows starting from row 15 in pairs.
-  - Combines Row 1 (details) and Row 2 (Qty/Weight) into a single record.
-  - Maps fields correctly to database columns.
+### [hosting-admin](file:///C:/noorani-cargo-tracking/hosting-admin)
+
+#### [MODIFY] [core.css](file:///C:/noorani-cargo-tracking/hosting-admin/core.css)
+- Implement the new charcoal/gold variables.
+- Refine the sidebar/topbar layout for better professional feel.
+- Optimize table density and typography for high-information density.
+
+#### [MODIFY] [index.html](file:///C:/noorani-cargo-tracking/hosting-admin/index.html)
+- Minor structural tweaks to support the refined sidebar and topbar if needed.
+- Ensure all functional IDs remain intact.
+
+### [hosting-tracking](file:///C:/noorani-cargo-tracking/hosting-tracking)
+
+#### [MODIFY] [core.css](file:///C:/noorani-cargo-tracking/hosting-tracking/core.css)
+- Apply the same premium design language as the admin panel.
+- Enhance the "Tracking Search" hero section for a more "Elite Logistics" impact.
+- Improve the shipment timeline visualization with gold accents and smoother transitions.
+
+#### [MODIFY] [index.html](file:///C:/noorani-cargo-tracking/hosting-tracking/index.html)
+- Align the branding elements (emblem, titles) with the admin panel for 100% consistency.
 
 ## Verification Plan
 
-### Automated Tests
-- Not applicable for this project as it lacks a JS test suite.
-
 ### Manual Verification
-- Upload the specific Excel file provided by the user (or a mock one following the described structure).
-- Verify that the "Data Preview" shows the combined records correctly.
-- Verify that "Date" and "Shipping No" are correctly populated from the header area.
-- Verify that clicking "Import Shipments" adds them to the system without errors.
+- **Visual Audit**: Navigate through all admin pages (Dashboard, Shipment Management, Customers, etc.) and the public tracking page to ensure design consistency.
+- **Responsiveness Test**: Verify layout on Desktop (1920x1080), Tablet (iPad Air), and Mobile (iPhone 14) using browser developer tools.
+- **Functional Check**: Verify that Excel import, tracking search, and form submissions still work exactly as before.
