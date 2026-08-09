@@ -17,6 +17,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
 </head>
 <body class="admin-panel">
     <div class="container" id="adminAppContainer">
@@ -121,10 +122,12 @@
                     <!-- Basic Info -->
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Tracking Number</label>
+                            <label>Tracking / Shipping No</label>
                             <div style="display: flex; gap: 8px;">
                                 <input type="text" id="inputTracking" placeholder="NM-100001">
                                 <button class="btn-action sm" onclick="window.generateTrackingNumber()" title="Generate"><i class="fa-solid fa-rotate"></i></button>
+                                <button class="btn-action sm" id="btnSearchShipment" onclick="window.findShipmentInForm()" title="Search"><i class="fa-solid fa-magnifying-glass"></i> Find</button>
+                                <button class="btn-action sm" onclick="window.resetShipmentForm()" title="Clear Form"><i class="fa-solid fa-eraser"></i> New</button>
                             </div>
                         </div>
                         <div class="form-group">
@@ -142,72 +145,38 @@
                     </div>
 
                     <div class="form-grid">
-                        <div class="form-group"><label>Registration Date</label><input type="date" id="inputDate"></div>
-                        <div class="form-group">
-                            <label>Shipment Type</label>
-                            <select id="inputType">
-                                <option value="Air Freight">Air Freight</option>
-                                <option value="Sea Freight">Sea Freight</option>
-                                <option value="Land Transport">Land Transport</option>
-                                <option value="Express">Express</option>
-                            </select>
-                        </div>
+                        <div class="form-group"><label>SWB Date</label><input type="date" id="inputDate"></div>
+                        <div class="form-group"><label>Branch</label><input type="text" id="inputBranchCode" placeholder="Dubai HQ"></div>
                     </div>
 
-                    <!-- Sender Info -->
-                    <div class="enterprise-form-divider">Sender Information</div>
                     <div class="form-grid">
-                        <div class="form-group"><label>Sender Name</label><input type="text" id="inputSender"></div>
-                        <div class="form-group"><label>Sender Phone</label><input type="text" id="inputSenderPhone"></div>
-                    </div>
-                    <div class="form-group full-width"><label>Sender Address</label><input type="text" id="inputSenderAddress"></div>
-                    <div class="form-group full-width"><label>Origin Country</label><input type="text" id="inputOriginCountry"></div>
-
-                    <!-- Receiver Info -->
-                    <div class="enterprise-form-divider">Receiver Information (Consignee)</div>
-                    <div class="form-grid">
-                        <div class="form-group"><label>Receiver Name</label><input type="text" id="inputReceiver"></div>
-                        <div class="form-group"><label>Receiver Phone</label><input type="text" id="inputReceiverPhone"></div>
-                    </div>
-                    <div class="form-group full-width"><label>Receiver Address</label><input type="text" id="inputReceiverAddress"></div>
-                    <div class="form-grid">
-                        <div class="form-group"><label>Destination City</label><input type="text" id="inputDestination"></div>
-                        <div class="form-group"><label>Destination Country</label><input type="text" id="inputDestinationCountry"></div>
+                        <div class="form-group"><label>SWB Serial No</label><input type="text" id="inputSwbSerial"></div>
+                        <div class="form-group"><label>Customer Invoice No</label><input type="text" id="inputCustomerInvoice"></div>
                     </div>
 
-                    <!-- Logistics & Cost -->
-                    <div class="enterprise-form-divider">Logistics & Financials</div>
+                    <!-- Shipper & Consignee -->
+                    <div class="enterprise-form-divider">Shipment Parties</div>
                     <div class="form-grid">
-                        <div class="form-group"><label>Weight (KG)</label><input type="text" id="inputWeight"></div>
-                        <div class="form-group"><label>Pieces (Qty)</label><input type="text" id="inputQuantity"></div>
+                        <div class="form-group"><label>Shipper Name</label><input type="text" id="inputSender"></div>
+                        <div class="form-group"><label>Consignee Name</label><input type="text" id="inputReceiver"></div>
                     </div>
                     <div class="form-grid">
-                        <div class="form-group"><label>Shipping Cost</label><input type="text" id="inputCost"></div>
-                        <div class="form-group">
-                            <label>Payment Status</label>
-                            <select id="inputPaymentStatus">
-                                <option value="Unpaid">Unpaid</option>
-                                <option value="Paid">Paid</option>
-                                <option value="Partial">Partial</option>
-                            </select>
-                        </div>
+                        <div class="form-group"><label>Consignee City</label><input type="text" id="inputDestination"></div>
+                        <div class="form-group"><label>Consignee Address</label><input type="text" id="inputReceiverAddress"></div>
                     </div>
 
-                    <!-- Dispatch -->
+                    <!-- Logistics -->
+                    <div class="enterprise-form-divider">Cargo Details</div>
                     <div class="form-grid">
-                        <div class="form-group"><label>Assigned Driver</label><input type="text" id="inputDriver"></div>
-                        <div class="form-group"><label>Assigned Vehicle</label><input type="text" id="inputVehicle"></div>
+                        <div class="form-group"><label>Original Qty</label><input type="number" id="inputOriginalQty"></div>
+                        <div class="form-group"><label>Qty</label><input type="number" id="inputQuantity"></div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group"><label>Original Weight (KG)</label><input type="number" id="inputOriginalWeight"></div>
+                        <div class="form-group"><label>Weight (KG)</label><input type="number" id="inputWeight"></div>
                     </div>
 
                     <div class="form-group full-width"><label>Notes</label><textarea id="inputNotes" style="min-height: 80px;"></textarea></div>
-
-                    <!-- Attachments -->
-                    <div class="form-grid">
-                        <div class="form-group"><label>Upload Images</label><input type="file" id="inputImages" multiple accept="image/*"></div>
-                        <div class="form-group"><label>Upload Documents</label><input type="file" id="inputDocs" multiple accept=".pdf,.doc,.docx"></div>
-                    </div>
-
-                    <div id="uploadProgress" style="display:none; margin: 10px 0; color: var(--noorani-gold);">Uploading attachments...</div>
 
                     <button class="btn-primary-action" id="btnRegisterShipment" onclick="window.saveShipment()">Register & Sync to Database</button>
                 </div>
@@ -296,16 +265,20 @@
                         <table class="table">
                             <thead>
                                 <tr>
-                                    <th>Tracking #</th>
-                                    <th>Date</th>
-                                    <th>Sender</th>
-                                    <th>Receiver</th>
-                                    <th>Route (O-D)</th>
-                                    <th>Type</th>
-                                    <th>Cargo (W/P)</th>
-                                    <th>Finances</th>
+                                    <th>Tracking / Shipping No</th>
+                                    <th>Branch</th>
+                                    <th>SWB Serial No</th>
+                                    <th>Customer Invoice No</th>
+                                    <th>SWB Date</th>
+                                    <th>Shipper Name</th>
+                                    <th>Consignee Name</th>
+                                    <th>Orig. Qty</th>
+                                    <th>Qty</th>
+                                    <th>Orig. Wgt</th>
+                                    <th>Weight</th>
+                                    <th>Consignee City</th>
+                                    <th>Consignee Address</th>
                                     <th>Status</th>
-                                    <th>Admin Details</th>
                                     <th style="text-align:right;">Actions</th>
                                 </tr>
                             </thead>
@@ -370,15 +343,19 @@
                             <thead>
                                 <tr>
                                     <th>Status</th>
-                                    <th>Tracking #</th>
-                                    <th>Date</th>
-                                    <th>Sender</th>
-                                    <th>Consignee</th>
-                                    <th>Dest City</th>
-                                    <th>Type</th>
-                                    <th>Weight</th>
+                                    <th>Tracking / Shipping No</th>
+                                    <th>Branch</th>
+                                    <th>SWB Serial No</th>
+                                    <th>Customer Invoice No</th>
+                                    <th>SWB Date</th>
+                                    <th>Shipper Name</th>
+                                    <th>Consignee Name</th>
+                                    <th>Orig. Qty</th>
                                     <th>Qty</th>
-                                    <th>Notes</th>
+                                    <th>Orig. Wgt</th>
+                                    <th>Weight</th>
+                                    <th>Consignee City</th>
+                                    <th>Consignee Address</th>
                                 </tr>
                             </thead>
                             <tbody id="importPreviewBody"></tbody>

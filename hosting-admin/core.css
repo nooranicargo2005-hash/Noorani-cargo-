@@ -627,7 +627,7 @@ html, body {
 .enterprise-empty-copy { margin: 0; color: #8f9db2; font-size: .76rem; }
 .database-section { padding: 22px; border-radius: 20px; }
 .database-header-row { margin-bottom: 14px; }.database-header-row .search-db { max-width: 340px; }
-.table-responsive { overflow: hidden; }.database-section .table { min-width: 0; table-layout: fixed; }.database-section .table th, .database-section .table td { padding: 13px 10px; white-space: normal; overflow-wrap: anywhere; }.database-section .table th { font-size: .64rem; }.database-section .table th:nth-child(1) { width: 13%; }.database-section .table th:nth-child(2) { width: 12%; }.database-section .table th:nth-child(3) { width: 27%; }.database-section .table th:nth-child(4) { width: 16%; }.database-section .table th:last-child { width: 11%; }.database-section .table th:nth-child(n+5):nth-child(-n+13), .database-section .table td:nth-child(n+5):nth-child(-n+13) { display: none; }
+.table-responsive { overflow: auto; }.database-section .table { min-width: 100%; table-layout: auto; }.database-section .table th, .database-section .table td { padding: 13px 10px; white-space: nowrap; }
 #paginationControls { gap: 14px; flex-wrap: wrap; }
 
 /* Light Mode Overrides */
@@ -697,8 +697,7 @@ body.light-mode input, body.light-mode select, body.light-mode textarea { backgr
   .enterprise-dashboard-welcome { align-items: flex-start; flex-direction: column; padding: 20px; }.enterprise-dashboard-actions { justify-content: flex-start; }
   .enterprise-pie-layout { justify-content: center; }.enterprise-map-legend { flex-wrap: wrap; }
   .database-section { padding: 15px 10px; }.database-header-row { align-items: stretch; }.database-header-row .search-db { max-width: none; }
-  .database-section .table th:nth-child(2), .database-section .table td:nth-child(2) { display: none; }.database-section .table th:nth-child(1) { width: 21%; }.database-section .table th:nth-child(3) { width: 36%; }.database-section .table th:nth-child(4) { width: 25%; }
-  #paginationControls, #paginationControls > div { width: 100%; justify-content: space-between !important; }.table-responsive { overflow: hidden; }
+  #paginationControls, #paginationControls > div { width: 100%; justify-content: space-between !important; }.table-responsive { overflow: auto; }
 }
 
 /* Shared Enterprise component styles. */

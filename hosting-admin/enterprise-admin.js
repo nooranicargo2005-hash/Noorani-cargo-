@@ -273,7 +273,7 @@ window.loadDashboard = async () => {
         const res = await db.queryShipments({ search: $id('searchDbInput')?.value });
 
         if (!res || !res.items || res.items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" class="empty-state">No shipments found in Database.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="15" class="empty-state">No shipments found in Database.</td></tr>';
             const pi = $id('paginationInfo'); if (pi) pi.textContent = 'Showing 0 of 0 records';
             return;
         }
@@ -284,94 +284,125 @@ window.loadDashboard = async () => {
         tbody.innerHTML = res.items.map(i => {
             const s = i.data;
             const statusCls = String(s.status).includes('Deliv') ? 'status-delivered' : 'status-on-journey';
-            const payCls = String(s.paymentStatus).includes('Paid') ? 'status-delivered' : 'status-on-journey';
             return `
             <tr id="row_${i.trackingId}">
                 <td class="value-highlight"><strong>${i.trackingId}</strong></td>
+                <td>${s.branchCode || ''}</td>
+                <td>${s.swbSerial || ''}</td>
+                <td>${s.customerInvoice || ''}</td>
                 <td>${s.date || ''}</td>
                 <td>${s.sender || ''}</td>
                 <td>${s.receiver || ''}</td>
-                <td>${s.origin || ''} > ${s.destination || ''}</td>
-                <td>${s.shipmentType || ''}</td>
-                <td>W: ${s.weight || 0}kg<br>P: ${s.quantity || 1}</td>
-                <td>$${s.shippingCost || 0}<br><span class="status-badge ${payCls}" style="font-size:0.6rem;">${s.paymentStatus || 'Unpaid'}</span></td>
+                <td>${s.originalQuantity || ''}</td>
+                <td>${s.quantity || ''}</td>
+                <td>${s.originalWeight || ''}</td>
+                <td>${s.weight || ''}kg</td>
+                <td>${s.destination || ''}</td>
+                <td>${s.receiverAddress || ''}</td>
                 <td><span class="status-badge ${statusCls}">${s.status || 'Pending'}</span></td>
-                <td>By: ${s.author || 'Admin'}<br><small>${formatTime(s.updatedAt || s.updated_at)}</small></td>
                 <td style="text-align:right;"><div class="actions-cell"><button class="btn-action sm view" onclick="window.openShipmentWorkspace('${i.trackingId}')"><i class="fa-solid fa-eye"></i></button><button class="btn-action sm edit" onclick="window.editRow('${i.trackingId}')"><i class="fa-solid fa-pen"></i></button><button class="btn-action sm delete" onclick="window.deleteRow('${i.trackingId}')"><i class="fa-solid fa-trash"></i></button></div></td>
             </tr>`;
         }).join('');
     } catch (e) {
         console.error('[Table] Load FAILED', e);
-        tbody.innerHTML = '<tr><td colspan="11" class="empty-state" style="color:var(--noorani-danger);">SYNC ERROR: Could not connect to API.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="empty-state" style="color:var(--noorani-danger);">SYNC ERROR: Could not connect to API.</td></tr>';
     }
 };
 
 window.generateTrackingNumber = () => { $id('inputTracking').value = 'NM-' + (Math.floor(Math.random() * 900000) + 100000); window.findShipmentInForm(); };
 
 window.findShipmentInForm = async () => {
-    const id = $id('inputTracking').value.toUpperCase(); if (!id) return;
+    const id = $id('inputTracking').value.toUpperCase();
+    if (!id) return alert('Enter Tracking Number first');
+
     const db = getDb(); if (!db) return;
     try {
+        console.log('[Form] Searching for:', id);
         const res = await db.getShipmentByTracking(id);
         const btn = $id('btnRegisterShipment');
+
         if (res && res.data) {
             const d = res.data;
             $id('inputStatus').value = d.status || 'Pending';
             $id('inputDate').value = d.date || '';
-            $id('inputType').value = d.shipmentType || 'Air Freight';
+            $id('inputBranchCode').value = d.branchCode || '';
+            $id('inputSwbSerial').value = d.swbSerial || '';
+            $id('inputCustomerInvoice').value = d.customerInvoice || '';
             $id('inputSender').value = d.sender || '';
-            $id('inputSenderPhone').value = d.senderPhone || '';
-            $id('inputSenderAddress').value = d.senderAddress || '';
-            $id('inputOriginCountry').value = d.originCountry || '';
             $id('inputReceiver').value = d.receiver || '';
-            $id('inputReceiverPhone').value = d.receiverPhone || '';
-            $id('inputReceiverAddress').value = d.receiverAddress || '';
             $id('inputDestination').value = d.destination || '';
-            $id('inputDestinationCountry').value = d.destinationCountry || '';
-            $id('inputWeight').value = d.weight || '';
+            $id('inputReceiverAddress').value = d.receiverAddress || '';
+            $id('inputOriginalQty').value = d.originalQuantity || '';
             $id('inputQuantity').value = d.quantity || '';
-            $id('inputCost').value = d.shippingCost || '';
-            $id('inputPaymentStatus').value = d.paymentStatus || 'Unpaid';
-            $id('inputDriver').value = d.driver || '';
-            $id('inputVehicle').value = d.vehicle || '';
+            $id('inputOriginalWeight').value = d.originalWeight || '';
+            $id('inputWeight').value = d.weight || '';
             $id('inputNotes').value = d.notes || '';
+
             if (btn) btn.textContent = 'Update Existing Shipment';
-        } else { if (btn) btn.textContent = 'Register & Sync to Database'; }
-    } catch (e) { console.warn('[Form] Check failed', e); }
+            alert(`Shipment ${id} found and loaded.`);
+        } else {
+            alert('Shipment Not Found. You can create it as a new record.');
+            window.resetShipmentForm(false);
+            $id('inputTracking').value = id;
+        }
+    } catch (e) {
+        console.error('[Form] Search failed', e);
+        alert('Shipment Not Found or Error connecting to API.');
+    }
+};
+
+window.resetShipmentForm = (clearTracking = true) => {
+    if (clearTracking) $id('inputTracking').value = '';
+
+    const fields = [
+        'inputStatus', 'inputDate', 'inputBranchCode', 'inputSwbSerial',
+        'inputCustomerInvoice', 'inputSender', 'inputReceiver',
+        'inputDestination', 'inputReceiverAddress', 'inputOriginalQty',
+        'inputQuantity', 'inputOriginalWeight', 'inputWeight', 'inputNotes'
+    ];
+
+    fields.forEach(f => {
+        const el = $id(f);
+        if (el) {
+            if (el.tagName === 'SELECT') el.selectedIndex = 0;
+            else el.value = '';
+        }
+    });
+
+    const btn = $id('btnRegisterShipment');
+    if (btn) btn.textContent = 'Register & Sync to Database';
 };
 
 window.saveShipment = async () => {
     const id = $id('inputTracking').value.toUpperCase(); if (!id) return alert('Tracking ID required');
     const db = getDb(); if (!db) return;
+
+    const isUpdate = $id('btnRegisterShipment').textContent.includes('Update');
+
     const d = {
         status: $id('inputStatus').value,
         date: $id('inputDate').value || new Date().toISOString().split('T')[0],
-        shipmentType: $id('inputType').value,
+        branchCode: $id('inputBranchCode').value,
+        swbSerial: $id('inputSwbSerial').value,
+        customerInvoice: $id('inputCustomerInvoice').value,
         sender: $id('inputSender').value,
-        senderPhone: $id('inputSenderPhone').value,
-        senderAddress: $id('inputSenderAddress').value,
-        originCountry: $id('inputOriginCountry').value,
         receiver: $id('inputReceiver').value,
-        receiverPhone: $id('inputReceiverPhone').value,
-        receiverAddress: $id('inputReceiverAddress').value,
         destination: $id('inputDestination').value,
-        destinationCountry: $id('inputDestinationCountry').value,
-        weight: $id('inputWeight').value,
+        receiverAddress: $id('inputReceiverAddress').value,
+        originalQuantity: $id('inputOriginalQty').value,
         quantity: $id('inputQuantity').value,
-        shippingCost: $id('inputCost').value,
-        paymentStatus: $id('inputPaymentStatus').value,
-        driver: $id('inputDriver').value,
-        vehicle: $id('inputVehicle').value,
+        originalWeight: $id('inputOriginalWeight').value,
+        weight: $id('inputWeight').value,
         notes: $id('inputNotes').value,
         public: true,
         source: 'manual'
     };
     try {
         await db.saveShipment(id, d);
-        alert('Successfully saved to Database');
+        alert(isUpdate ? `Shipment ${id} Updated Successfully` : `Shipment ${id} Registered Successfully`);
         window.loadDashboard();
         window.refreshDashboard();
-    } catch (e) { alert('Save Failed: ' + e.message); }
+    } catch (e) { alert('Operation Failed: ' + e.message); }
 };
 
 window.editRow = id => {
@@ -583,9 +614,15 @@ window.openShipmentWorkspace = async id => {
         $id('wsForm').innerHTML = `
             <div class="form-grid">
                 <div class="form-group"><label>Status</label><select id="wsStatus">${$id('inputStatus').innerHTML}</select></div>
-                <div class="form-group"><label>Sender</label><input id="wsSender" value="${d.sender||''}"></div>
-                <div class="form-group"><label>Receiver</label><input id="wsReceiver" value="${d.receiver||''}"></div>
-                <div class="form-group"><label>Cost</label><input id="wsCost" value="${d.shippingCost||0}"></div>
+                <div class="form-group"><label>Branch</label><input id="wsBranch" value="${d.branchCode||''}"></div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group"><label>Shipper</label><input id="wsSender" value="${d.sender||''}"></div>
+                <div class="form-group"><label>Consignee</label><input id="wsReceiver" value="${d.receiver||''}"></div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group"><label>Weight</label><input id="wsWeight" value="${d.weight||0}"></div>
+                <div class="form-group"><label>Qty</label><input id="wsQty" value="${d.quantity||1}"></div>
             </div>`;
         $id('wsStatus').value = d.status;
 
@@ -602,9 +639,11 @@ window.saveWS = async () => {
     try {
         await db.saveShipment(enterpriseAdminState.activeTracking, {
             status: $id('wsStatus').value,
+            branchCode: $id('wsBranch').value,
             sender: $id('wsSender').value,
             receiver: $id('wsReceiver').value,
-            shippingCost: $id('wsCost').value
+            weight: $id('wsWeight').value,
+            quantity: $id('wsQty').value
         });
         alert('Synced to Database'); window.loadDashboard();
     } catch (e) { alert('Sync failed: ' + e.message); }

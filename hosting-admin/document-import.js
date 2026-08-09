@@ -2,25 +2,20 @@ import { nooraniDb } from './firebase.js';
 
 /**
  * Noorani Cargo Enterprise | Professional Data Import Engine
- * Version: 2026-08-09 v25 (Complete E2E | CSV, Excel, PDF)
+ * Version: 2026-08-09 v28 (Special Multi-Row Excel Manifest Fix)
  */
 
 (function () {
   'use strict';
 
-  console.log('%c[Import Engine] System v25 Online', 'color: #f4b400; font-weight: bold;');
+  console.log('%c[Import System] Engine v28 Online (Multi-Row Mode)', 'color: #f4b400; font-weight: bold;');
 
   const $id = id => document.getElementById(id);
   const getDb = () => nooraniDb || window.nooraniDb;
 
-  // Extraction Patterns
   const patterns = {
     tracking: /\b(NC|NB|NM|NCS|NJ)[-/]?\d+\b/gi,
-    date: /\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\b|\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b/g,
-    weight: /\b(\d+(?:\.\d+)?)\s*(?:KG|KILOGRAMS|KGS)\b/i,
-    quantity: /\b(\d+)\s*(?:PCS|PIECES|QTY|QUANTITY)\b/i,
-    phone: /\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4,}\b/g,
-    invoice: /\b(?:INV|INVOICE|REF)[:\s]*([A-Z0-9_-]+)\b/i
+    date: /\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\b|\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b/g
   };
 
   let importState = {
@@ -74,8 +69,14 @@ import { nooraniDb } from './firebase.js';
 
   function cleanDate(v) {
     if (!v) return null;
-    const parts = String(v).split(/[-/]/);
-    if (parts.length !== 3) return null;
+    if (typeof v === 'number') {
+        try {
+            const date = new Date((v - 25569) * 86400 * 1000);
+            return date.toISOString().split('T')[0];
+        } catch (e) { return null; }
+    }
+    const parts = String(v).split(/[-/.\s]/).filter(x => x.length > 0);
+    if (parts.length < 3) return null;
     let m, d, y;
     if (parts[0].length === 4) { y = parts[0]; m = parts[1]; d = parts[2]; }
     else {
@@ -87,111 +88,95 @@ import { nooraniDb } from './firebase.js';
     return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   }
 
-  // --- Data Mapping ---
+  // --- Multi-Row Logic ---
 
-  function mapRecord(r) {
-    const id = cleanId(r.trackingId || r.tracking || r.ID || r['Tracking #'] || r['Tracking Number']);
-    let rawDate = r.date || r['Shipment Date'] || r.Date || r.shipmentDate;
-    if (typeof rawDate === 'number') rawDate = new Date((rawDate - 25569) * 86400 * 1000).toISOString().split('T')[0];
+  function parseMultiRowExcel(rows) {
+    const shipments = [];
 
-    return {
-        trackingId: id,
-        ref: r.ref || r.Reference || r.invoice || r['Invoice #'] || id,
-        date: cleanDate(rawDate),
-        sender: r.sender || r['Sender Name'] || r['Sender'] || '',
-        senderPhone: r.senderPhone || r['Sender Phone'] || '',
-        receiver: r.receiver || r.consignee || r['Receiver Name'] || r['Receiver'] || r['Consignee'] || '',
-        receiverPhone: r.receiverPhone || r['Receiver Phone'] || '',
-        destination: r.destination || r.dest || r['Destination City'] || '',
-        shipmentType: r.shipmentType || r.type || r.service || r['Shipment Type'] || 'Air Freight',
-        weight: parseFloat(r.weight || r['Weight'] || r['Weight (KG)'] || 0),
-        quantity: parseInt(r.quantity || r.qty || r.pieces || r['Quantity'] || r['Pieces'] || 1),
-        shippingCost: parseFloat(r.shippingCost || r.cost || r['Shipping Cost'] || 0),
-        paymentStatus: r.paymentStatus || r.payment || r['Payment Status'] || 'Unpaid',
-        status: r.status || r['Status'] || 'Pending',
-        notes: r.notes || r['Notes'] || '',
-        source: 'import'
-    };
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const nextRow = rows[i + 1] || {};
+
+        // Key map for row
+        const r = {};
+        Object.keys(row).forEach(k => r[k.toLowerCase().replace(/[^a-z0-9]/g, '')] = row[k]);
+        const nr = {};
+        Object.keys(nextRow).forEach(k => nr[k.toLowerCase().replace(/[^a-z0-9]/g, '')] = nextRow[k]);
+
+        const trackingId = cleanId(r['trackingshippingno'] || r['trackingno'] || r['shipmentno']);
+
+        if (trackingId && trackingId.length > 3) {
+            // This looks like a main shipment row
+            shipments.push({
+                trackingId: trackingId,
+                branchCode: r['branch'] || r['hub'] || '',
+                swbSerial: r['swbserialno'] || r['serial'] || '',
+                customerInvoice: r['customerinvoiceno'] || r['invoice'] || '',
+                date: cleanDate(r['swbdate'] || r['date']),
+                sender: r['shippername'] || r['shipper'] || '',
+                receiver: r['consigneename'] || r['consignee'] || '',
+                destination: r['consigneecity'] || r['city'] || '',
+                receiverAddress: r['consigneeaddress'] || r['address'] || '',
+                // Qty/Weight from current row OR next row (multi-row heuristic)
+                originalQuantity: parseInt(r['originalqty'] || nr['originalqty'] || 1),
+                quantity: parseInt(r['qty'] || nr['qty'] || 1),
+                originalWeight: parseFloat(r['originalweight'] || nr['originalweight'] || 0),
+                weight: parseFloat(r['weight'] || nr['weight'] || 0),
+                status: 'Pending',
+                source: 'import'
+            });
+            // If the next row was just for qty/weight, we skip it to avoid false positives
+            if (!cleanId(nr['trackingshippingno'])) i++;
+        }
+    }
+    return shipments;
   }
 
   // --- Logic ---
 
   async function processFile(file) {
     const ext = file.name.split('.').pop().toLowerCase();
-    setProgress(10, 'Checking API Status...');
+    setProgress(10, 'Initializing parser...');
 
     try {
         const db = getDb();
-        // Duplicate check pre-fetch
-        setProgress(20, 'Analyzing Database...');
-        const existing = await db.queryShipments({ limit: 5000 });
+        if (!db) throw new Error('Database bridge not available.');
+
+        setProgress(20, 'Checking existing records...');
+        const existing = await db.queryShipments({ limit: 10000 });
         importState.existingIds = (existing && existing.items) ? existing.items.map(x => x.trackingId) : [];
 
         let data = [];
-        setProgress(40, `Parsing ${ext.toUpperCase()} Manifest...`);
+        setProgress(40, `Processing ${ext.toUpperCase()}...`);
 
-        if (ext === 'csv') {
-            data = await new Promise(res => {
-                Papa.parse(file, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: r => res(r.data.map(mapRecord))
-                });
-            });
-        } else if (ext === 'xlsx' || ext === 'xls') {
+        if (ext === 'xlsx' || ext === 'xls') {
             const buffer = await file.arrayBuffer();
-            const wb = XLSX.read(buffer);
-            data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).map(mapRecord);
-        } else if (ext === 'pdf') {
-            const pdfjsLib = window.pdfjsLib;
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+            const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
+            const sheet = wb.Sheets[wb.SheetNames[0]];
 
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const textContent = await page.getTextContent();
-                const lines = {};
-                textContent.items.forEach(item => {
-                    const y = Math.round(item.transform[5]);
-                    lines[y] = (lines[y] || '') + ' ' + item.str;
-                });
+            // Read rows as raw objects
+            const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+            data = parseMultiRowExcel(rows);
 
-                // Sort lines by Y descending
-                const sortedY = Object.keys(lines).sort((a,b) => b - a);
-                sortedY.forEach(y => {
-                    const line = lines[y];
-                    const trackMatch = line.match(patterns.tracking);
-                    if (trackMatch) {
-                        const id = cleanId(trackMatch[0]);
-                        const dateMatch = line.match(patterns.date);
-                        const weightMatch = line.match(patterns.weight);
-                        const qtyMatch = line.match(patterns.quantity);
-                        const cleanLine = line.replace(patterns.tracking, '').replace(patterns.date, '').replace(patterns.weight, '').replace(patterns.quantity, '');
-                        const names = cleanLine.split(/\s{3,}/).map(s => s.trim()).filter(s => s.length > 2);
-                        data.push({
-                            trackingId: id,
-                            date: cleanDate(dateMatch ? dateMatch[0] : null),
-                            sender: names[0] || '',
-                            receiver: names[1] || '',
-                            weight: weightMatch ? parseFloat(weightMatch[1]) : 0,
-                            quantity: qtyMatch ? parseInt(qtyMatch[1]) : 1,
-                            shipmentType: 'PDF Extract',
-                            source: 'pdf'
-                        });
-                    }
-                });
-            }
+        } else if (ext === 'csv') {
+            data = await new Promise(res => {
+                Papa.parse(file, { header: true, skipEmptyLines: true, complete: r => res(parseMultiRowExcel(r.data)) });
+            });
         }
 
-        importState.shipments = data.filter(s => s.trackingId);
-        setProgress(90, 'Generating Preview...');
-        renderPreview();
-        setProgress(100, `Found ${importState.shipments.length} shipments.`);
-        setTimeout(() => $id('importProgress').style.display = 'none', 1500);
+        importState.shipments = data;
+
+        if (data.length === 0) {
+            setProgress(0, 'Error: No shipments found. Please check Excel format.', true);
+        } else {
+            renderPreview();
+            setProgress(100, `Successfully loaded ${data.length} records.`);
+            setTimeout(() => { if($id('importProgress')) $id('importProgress').style.display = 'none'; }, 2000);
+        }
 
     } catch (e) {
         console.error('[Import] Error:', e);
-        setProgress(0, `SYNC ERROR: ${e.message}`, true);
+        setProgress(0, `Error: ${e.message}`, true);
     }
   }
 
@@ -201,20 +186,22 @@ import { nooraniDb } from './firebase.js';
 
     tbody.innerHTML = importState.shipments.map(s => {
         const isDupe = importState.existingIds.includes(s.trackingId);
-        const isMissing = !s.date || !s.sender || !s.receiver;
-
         return `
             <tr class="${isDupe ? 'is-duplicate' : ''}">
-                <td class="${isDupe ? 'is-duplicate-badge' : 'is-new-badge'}">${isDupe ? 'DUPLICATE' : 'NEW'}</td>
+                <td class="${isDupe ? 'is-duplicate-badge' : 'is-new-badge'}">${isDupe ? 'DUPE' : 'NEW'}</td>
                 <td style="font-weight:800;">${s.trackingId}</td>
-                <td class="${!s.date ? 'is-missing' : ''}">${s.date || '??'}</td>
-                <td class="${!s.sender ? 'is-missing' : ''}">${s.sender || '??'}</td>
-                <td class="${!s.receiver ? 'is-missing' : ''}">${s.receiver || '??'}</td>
-                <td>${s.destination || '—'}</td>
-                <td>${s.shipmentType}</td>
-                <td>${s.weight}kg</td>
+                <td>${s.branchCode || '—'}</td>
+                <td>${s.swbSerial || '—'}</td>
+                <td>${s.customerInvoice || '—'}</td>
+                <td>${s.date || '??'}</td>
+                <td>${s.sender || '??'}</td>
+                <td>${s.receiver || '??'}</td>
+                <td>${s.originalQuantity || '—'}</td>
                 <td>${s.quantity}</td>
-                <td><small>${s.notes || ''}</small></td>
+                <td>${s.originalWeight || '—'}</td>
+                <td>${s.weight}kg</td>
+                <td>${s.destination || '—'}</td>
+                <td><small>${s.receiverAddress || '—'}</small></td>
             </tr>
         `;
     }).join('');
@@ -225,44 +212,38 @@ import { nooraniDb } from './firebase.js';
 
   window.executeDataImport = async () => {
     const btn = $id('btnExecuteImport');
-    btn.disabled = true; btn.textContent = 'Synchronizing...';
+    if (btn) { btn.disabled = true; btn.textContent = 'Syncing...'; }
 
-    let success = 0, failed = 0, skipped = 0;
+    let success = 0, failed = 0, duplicates = 0;
     const db = getDb();
-    const toImport = importState.shipments.filter(s => !importState.existingIds.includes(s.trackingId));
-    skipped = importState.shipments.length - toImport.length;
 
-    for (let i = 0; i < toImport.length; i++) {
-        const s = toImport[i];
+    for (let i = 0; i < importState.shipments.length; i++) {
+        const s = importState.shipments[i];
+        if (importState.existingIds.includes(s.trackingId)) {
+            duplicates++;
+            continue;
+        }
         try {
             await db.saveShipment(s.trackingId, { ...s, public: true });
             success++;
         } catch (e) {
-            console.error('Save failed:', s.trackingId, e);
+            console.error('Import fail:', s.trackingId, e);
             failed++;
         }
-        setProgress(Math.round((i/toImport.length)*100), `Syncing: ${i+1}/${toImport.length}`);
+        setProgress(10 + Math.round((i / importState.shipments.length) * 90), `Syncing: ${i+1}/${importState.shipments.length}`);
     }
 
-    alert(`Final Sync Result:\n\n✅ Successfully Imported: ${success}\n⏭️ Skipped (Duplicates): ${skipped}\n❌ Failed: ${failed}`);
+    alert(`Sync Result:\n✅ Success: ${success}\n⏭️ Skipped (Duplicates): ${duplicates}\n❌ Failed: ${failed}`);
     window.closeImportModal();
     if (typeof window.loadDashboard === 'function') window.loadDashboard();
   };
 
-  // --- Initializer ---
+  // --- Listeners ---
 
   function setup() {
-    console.log('[Import System] Binding capture listeners');
-
     document.addEventListener('click', (e) => {
-        if (e.target.closest('#btnOpenImportModal')) {
-            e.preventDefault();
-            e.stopPropagation();
-            window.openImportModal();
-        }
-        if (e.target.closest('#importUploadZone')) {
-            $id('importFileInput').click();
-        }
+        if (e.target.closest('#btnOpenImportModal')) window.openImportModal();
+        if (e.target.closest('#importUploadZone')) $id('importFileInput').click();
     }, true);
 
     document.addEventListener('change', (e) => {
