@@ -206,6 +206,11 @@ function initModals() {
         `<form id="userEntryForm" class="enterprise-form"><input type="hidden" id="user-id"><div class="form-grid"><div class="form-group"><label>Login Email</label><input id="user-email"></div><div class="form-group"><label>Role</label><select id="user-role"><option value="admin">Admin</option><option value="employee">Employee</option></select></div></div><div id="userPassGroup" class="form-group"><label>Password</label><input id="user-pass" type="password"></div></form>`,
         `<button class="enterprise-btn primary" onclick="window.submitUserForm()">Provision Account</button>`
     );
+
+    createModal('transactionFormModal', 'Financial Transaction',
+        `<form id="transactionEntryForm" class="enterprise-form"><input type="hidden" id="txn-id"><div class="form-grid"><div class="form-group"><label>Type</label><select id="txn-type"><option value="income">Income</option><option value="expense">Expense</option></select></div><div class="form-group"><label>Date</label><input type="date" id="txn-date"></div></div><div class="form-grid"><div class="form-group"><label>Category</label><input id="txn-category"></div><div class="form-group"><label>Amount</label><input type="number" id="txn-amount" step="0.01"></div></div><div class="form-group"><label>Description</label><textarea id="txn-desc"></textarea></div></form>`,
+        `<button class="enterprise-btn primary" onclick="window.submitTransactionForm()">Sync Ledger</button>`
+    );
 }
 
 // --- Logistics Handlers ---
@@ -498,6 +503,99 @@ window.submitBranchForm = async () => {
 };
 window.deleteBranch = async id => { if (confirm('Delete branch?')) { const db = getDb(); if (!db) return; try { await db.deleteBranch(id); window.renderBranches(); } catch(e){} } };
 
+// --- Navigation & UI Handlers ---
+
+window.toggleNotificationDrawer = () => {
+    const d = $id('notificationDrawer');
+    if (d) d.style.right = d.style.right === '0px' ? '-400px' : '0px';
+};
+
+window.clearNotifications = async () => {
+    if (confirm('Clear all notifications?')) {
+        const db = getDb(); if (!db) return;
+        try {
+            await db.clearNotifications();
+            window.renderNotifications([]);
+        } catch (e) { alert('Failed to clear: ' + e.message); }
+    }
+};
+
+window.closeWorkspace = () => {
+    $id('shipmentWorkspaceModal').classList.remove('is-open');
+    enterpriseAdminState.activeTracking = null;
+};
+
+// --- Report Handlers ---
+
+window.refreshAnalytics = async () => {
+    const db = getDb(); if (!db) return;
+    try {
+        console.log('[Reports] Refreshing analytics...');
+        const s = await db.getFinanceStats();
+        $id('rep-kpi-profit').textContent = `$${(s.totalRevenue - s.totalExpenses).toLocaleString()}`;
+        $id('rep-kpi-fleet').textContent = (await db.getDashboardStats()).totalVehicles;
+        // Further analytics implementation...
+    } catch (e) { console.error('[Reports] Refresh Failed', e); }
+};
+
+window.switchReportTab = (btn, tabId) => {
+    const parent = btn.closest('#enterpriseReportsCard');
+    if (!parent) return;
+    parent.querySelectorAll('.ws-tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+    parent.querySelectorAll('.report-tab-content').forEach(c => c.classList.toggle('hidden', c.id !== 'rep-' + tabId));
+};
+
+// --- Settings Handlers ---
+
+window.switchSettingsTab = (btn, tabId) => {
+    const parent = btn.closest('#enterpriseSettingsCard');
+    if (!parent) return;
+    parent.querySelectorAll('.ws-tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+    parent.querySelectorAll('.settings-tab-content').forEach(c => c.classList.toggle('hidden', c.id !== 'set-' + tabId));
+};
+
+window.saveAllSettings = async () => {
+    const db = getDb(); if (!db) return;
+    try {
+        const settings = {
+            companyName: $id('set-comp-name').value,
+            companyEmail: $id('set-comp-email').value,
+            shipmentPrefix: $id('set-ship-prefix').value,
+            shipmentStart: $id('set-ship-start').value,
+            themeMode: $id('set-app-theme').value,
+            accentColor: $id('set-app-color').value
+        };
+        await db.saveSystemSettings('general', { settings });
+        alert('Settings saved successfully.');
+    } catch (e) { alert('Save failed: ' + e.message); }
+};
+
+// --- Shipment Workspace Helpers ---
+
+window.addWSNote = async () => {
+    const id = enterpriseAdminState.activeTracking;
+    const content = $id('wsNewNote').value;
+    if (!id || !content) return;
+    const db = getDb(); if (!db) return;
+    try {
+        const p = window.nooraniAdminProfile || await db.getCurrentAdminProfile();
+        await db.saveShipmentNote(id, content);
+        $id('wsNewNote').value = '';
+        window.openShipmentWorkspace(id);
+    } catch (e) { alert('Failed to add note: ' + e.message); }
+};
+
+window.uploadWSAsset = async () => {
+    const id = enterpriseAdminState.activeTracking;
+    const file = $id('wsAssetInput').files[0];
+    if (!id || !file) return;
+    const db = getDb(); if (!db) return;
+    try {
+        await db.uploadShipmentDocument(id, file);
+        window.openShipmentWorkspace(id);
+    } catch (e) { alert('Upload failed: ' + e.message); }
+};
+
 window.renderEmployees = async () => {
     const db = getDb(); if (!db) return;
     try {
@@ -549,6 +647,39 @@ window.renderFinance = async () => {
         $id('fin-profit').textContent = `$${(s.netProfit || 0).toLocaleString()}`;
         $id('finTableBody').innerHTML = (res.items || []).map(t => `<tr><td>${t.id}</td><td>${t.date}</td><td>${t.category}</td><td>${t.paymentMethod || ''}</td><td>$${t.amount}</td><td>${t.status}</td><td class="text-right"><button class="btn-action sm" onclick="window.deleteTransaction('${t.id}')"><i class="fa-solid fa-trash" style="color:var(--noorani-danger);"></i></button></td></tr>`).join('') || '<tr><td colspan="7" class="text-center">No records.</td></tr>';
     } catch (e) {}
+};
+
+window.showTransactionForm = (type = 'income') => {
+    $id('transactionEntryForm').reset();
+    $id('txn-type').value = type;
+    $id('txn-date').value = new Date().toISOString().split('T')[0];
+    $id('transactionFormModal').classList.add('is-open');
+};
+
+window.submitTransactionForm = async () => {
+    const db = getDb(); if (!db) return;
+    try {
+        const d = {
+            type: $id('txn-type').value,
+            date: $id('txn-date').value,
+            category: $id('txn-category').value,
+            amount: $id('txn-amount').value,
+            description: $id('txn-desc').value
+        };
+        await db.saveTransaction(d);
+        $id('transactionFormModal').classList.remove('is-open');
+        window.renderFinance();
+    } catch (e) { alert(e.message); }
+};
+
+window.deleteTransaction = async id => {
+    if (confirm('Delete this transaction?')) {
+        const db = getDb(); if (!db) return;
+        try {
+            await db.deleteTransaction(id);
+            window.renderFinance();
+        } catch (e) { alert(e.message); }
+    }
 };
 
 window.renderAuditLogs = async () => {

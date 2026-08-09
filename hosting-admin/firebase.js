@@ -157,17 +157,33 @@ export const nooraniDb = {
     // --- Operations & Fleet ---
     saveCustomer: (d) => apiFetch('/customers', { method: 'POST', body: JSON.stringify(d) }),
     queryCustomers: (o = {}) => apiFetch(`/customers?${new URLSearchParams(o).toString()}`),
+    getCustomerDetails: (id) => apiFetch(`/customers/${id}`),
+    deleteCustomer: (id) => apiFetch(`/customers/${id}`, { method: 'DELETE' }),
+
     saveDriver: (d) => apiFetch('/drivers', { method: 'POST', body: JSON.stringify(d) }),
     queryDrivers: () => apiFetch('/drivers'),
+    getDriverDetails: (id) => apiFetch(`/drivers/${id}`),
+    deleteDriver: (id) => apiFetch(`/drivers/${id}`, { method: 'DELETE' }),
+
     saveVehicle: (d) => apiFetch('/vehicles', { method: 'POST', body: JSON.stringify(d) }),
     queryVehicles: () => apiFetch('/vehicles'),
+    getVehicleDetails: (id) => apiFetch(`/vehicles/${id}`),
+    deleteVehicle: (id) => apiFetch(`/vehicles/${id}`, { method: 'DELETE' }),
+
     saveBranch: (d) => apiFetch('/branches', { method: 'POST', body: JSON.stringify(d) }),
     queryBranches: () => apiFetch('/branches'),
+    getBranchDetails: (id) => apiFetch(`/branches/${id}`),
+    deleteBranch: (id) => apiFetch(`/branches/${id}`, { method: 'DELETE' }),
+
     saveEmployee: (d) => apiFetch('/employees', { method: 'POST', body: JSON.stringify(d) }),
     queryEmployees: () => apiFetch('/employees'),
+    getEmployeeDetails: (id) => apiFetch(`/employees/${id}`),
+    deleteEmployee: (id) => apiFetch(`/employees/${id}`, { method: 'DELETE' }),
 
     // --- Finance & System ---
     queryTransactions: (o = {}) => apiFetch(`/transactions?${new URLSearchParams(o).toString()}`),
+    saveTransaction: (d) => apiFetch('/transactions', { method: 'POST', body: JSON.stringify(d) }),
+    deleteTransaction: (id) => apiFetch(`/transactions/${id}`, { method: 'DELETE' }),
     getFinanceStats: async () => {
         const s = await apiFetch('/stats/dashboard');
         return { totalRevenue: s.totalRevenue, totalExpenses: s.totalExpenses, netProfit: s.profit };
@@ -177,6 +193,7 @@ export const nooraniDb = {
         const poll = async () => { try { const res = await apiFetch('/notifications'); cb(res); } catch (e) {} };
         poll(); const itv = setInterval(poll, 10000); return () => clearInterval(itv);
     },
+    clearNotifications: () => apiFetch('/notifications', { method: 'DELETE' }),
     getSystemSettings: (cat) => apiFetch(`/settings/${cat}`),
     saveSystemSettings: (cat, data) => apiFetch(`/settings/${cat}`, { method: 'POST', body: JSON.stringify(data) }),
     getUserAccounts: () => apiFetch('/users'),
