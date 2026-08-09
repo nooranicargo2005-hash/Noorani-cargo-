@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./core.css">
 
-    <!-- External Libraries for Professional Logistics Features -->
+    <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js" defer></script>
@@ -20,359 +20,217 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
 </head>
 <body class="admin-panel">
-    <div class="container" id="adminAppContainer">
-        <!-- Application Top Bar -->
-        <header class="header-bar">
-            <div class="header-brand">
-                <div class="brand-emblem"><i class="fa-solid fa-shipping-fast"></i></div>
-                <div>
-                    <div class="brand-title">NOORANI CARGO</div>
-                    <div class="brand-sub">Enterprise Management</div>
-                </div>
+    <!-- Initial Loader -->
+    <div id="nooraniSplashOverlay" class="noorani-splash-screen">
+        <div class="noorani-splash-card">
+            <div class="splash-logo"><div class="splash-icon"><i class="fa-solid fa-shipping-fast"></i></div></div>
+            <h2 class="splash-title">NOORANI CARGO</h2>
+            <p class="splash-tagline">Initializing Enterprise Command Center...</p>
+            <div class="splash-status">Authenticating...</div>
+        </div>
+    </div>
+
+    <!-- Application Top Bar -->
+    <header class="header-bar">
+        <div class="header-brand">
+            <div class="brand-emblem"><i class="fa-solid fa-shipping-fast"></i></div>
+            <div>
+                <div class="brand-title">NOORANI CARGO</div>
+                <div class="brand-sub">Enterprise Management</div>
             </div>
-            <div class="header-actions">
-                <div id="adminHeaderActions" class="admin-header-actions">
-                    <div class="notification-bell-wrapper" style="position:relative; margin-right:20px; cursor:pointer;" onclick="window.toggleNotificationDrawer()">
-                        <i class="fa-solid fa-bell" style="font-size:1.2rem;"></i>
-                        <span id="notif-count" class="badge-count" style="display:none; position:absolute; top:-8px; right:-8px; background:var(--noorani-danger); color:#000; font-size:0.6rem; font-weight:800; padding:2px 5px; border-radius:50%; min-width:16px; text-align:center;">0</span>
-                    </div>
-                    <span id="adminUserEmail" class="page-link-helper"></span>
-                    <span id="adminRoleBadge" class="role-badge"></span>
-                    <button id="adminLogoutBtn" type="button" class="btn-action delete" onclick="signOutAdminFromUi()">Logout</button>
-                </div>
+        </div>
+        <div class="header-actions">
+            <div class="notification-bell-wrapper" onclick="window.toggleNotificationDrawer()">
+                <i class="fa-solid fa-bell"></i>
+                <span id="notif-count" class="badge-count" style="display:none;">0</span>
+            </div>
+            <span id="adminUserEmail" class="page-link-helper"></span>
+            <span id="adminRoleBadge" class="status-badge status-transit"></span>
+            <button id="adminLogoutBtn" type="button" class="btn-action" onclick="signOutAdminFromUi()">Logout</button>
+        </div>
+    </header>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="adminSidebar" hidden>
+        <div class="sidebar-brand">
+            <span class="sidebar-brand-mark"><i class="fa-solid fa-truck-fast"></i></span>
+            <span><strong>Enterprise</strong></span>
+        </div>
+        <nav class="sidebar-nav">
+            <section class="sidebar-section">
+                <h4>Operations</h4>
+                <a class="nav-item" href="?page=dashboard" data-nav-key="dashboard" data-permission="viewDashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a>
+                <a class="nav-item" href="?page=create-shipment" data-nav-key="create-shipment" data-permission="createShipments"><i class="fa-solid fa-plus-circle"></i><span>Create Shipment</span></a>
+                <a class="nav-item" href="?page=shipment-management" data-nav-key="shipment-management" data-permission="viewShipments"><i class="fa-solid fa-boxes-stacked"></i><span>All Shipments</span></a>
+            </section>
+            <section class="sidebar-section">
+                <h4>Management</h4>
+                <a class="nav-item" href="?page=customers" data-nav-key="customers" data-permission="viewCustomers"><i class="fa-solid fa-users"></i><span>Customers</span></a>
+                <a class="nav-item" href="?page=branches" data-nav-key="branches" data-permission="viewBranches"><i class="fa-solid fa-code-branch"></i><span>Branches</span></a>
+                <a class="nav-item" href="?page=employees" data-nav-key="employees" data-permission="viewEmployees"><i class="fa-solid fa-user-tie"></i><span>Employees</span></a>
+                <a class="nav-item" href="?page=drivers" data-nav-key="drivers" data-permission="viewDrivers"><i class="fa-solid fa-id-card"></i><span>Drivers</span></a>
+                <a class="nav-item" href="?page=vehicles-warehouses" data-nav-key="vehicles-warehouses" data-permission="viewVehicles"><i class="fa-solid fa-truck"></i><span>Vehicles</span></a>
+            </section>
+            <section class="sidebar-section">
+                <h4>Business</h4>
+                <a class="nav-item" href="?page=reports" data-nav-key="reports" data-permission="viewReports"><i class="fa-solid fa-chart-pie"></i><span>Reports</span></a>
+                <a class="nav-item" href="?page=finance" data-nav-key="finance" data-permission="viewFinance"><i class="fa-solid fa-wallet"></i><span>Finance</span></a>
+                <a class="nav-item" href="?page=invoices" data-nav-key="invoices" data-permission="viewFinance"><i class="fa-solid fa-file-invoice-dollar"></i><span>Invoices</span></a>
+            </section>
+            <section class="sidebar-section">
+                <h4>System</h4>
+                <a class="nav-item" href="?page=user-management" data-nav-key="user-management" data-permission="manageUsers"><i class="fa-solid fa-users-gear"></i><span>User Access</span></a>
+                <a class="nav-item" href="?page=activity-log" data-nav-key="activity-log" data-permission="manageUsers"><i class="fa-solid fa-list-check"></i><span>Audit Logs</span></a>
+                <a class="nav-item" href="?page=settings" data-nav-key="settings" data-permission="viewSettings"><i class="fa-solid fa-sliders"></i><span>Settings</span></a>
+            </section>
+        </nav>
+        <div class="sidebar-footer">
+            <button class="nav-item" type="button" onclick="signOutAdminFromUi()" style="width:100%; border:none; background:transparent;">
+                <i class="fa-solid fa-right-from-bracket"></i><span>Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Notification Drawer -->
+    <div id="notificationDrawer" class="notification-drawer">
+        <header class="drawer-header">
+            <h3>Notifications</h3>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-action" onclick="window.clearNotifications()"><i class="fa-solid fa-trash"></i></button>
+                <button class="btn-action" onclick="window.toggleNotificationDrawer()">&times;</button>
             </div>
         </header>
-
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar" id="adminSidebar" hidden>
-            <div class="sidebar-brand">
-                <span class="sidebar-brand-mark"><i class="fa-solid fa-truck-fast"></i></span>
-                <span><strong>Enterprise</strong><small>Command center</small></span>
-            </div>
-            <nav class="sidebar-nav">
-                <section class="sidebar-section">
-                    <h4>Operations</h4>
-                    <a class="nav-item" href="?page=dashboard" data-nav-key="dashboard" data-permission="viewDashboard"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a>
-                    <a class="nav-item" href="?page=create-shipment" data-nav-key="create-shipment" data-permission="createShipments"><i class="fa-solid fa-plus-circle"></i><span>Create Shipment</span></a>
-                    <a class="nav-item" href="?page=shipment-management" data-nav-key="shipment-management" data-permission="viewShipments"><i class="fa-solid fa-boxes-stacked"></i><span>All Shipments</span></a>
-                </section>
-                <section class="sidebar-section">
-                    <h4>Management</h4>
-                    <a class="nav-item" href="?page=customers" data-nav-key="customers" data-permission="viewCustomers"><i class="fa-solid fa-users"></i><span>Customers</span></a>
-                    <a class="nav-item" href="?page=branches" data-nav-key="branches" data-permission="viewBranches"><i class="fa-solid fa-code-branch"></i><span>Branches</span></a>
-                    <a class="nav-item" href="?page=employees" data-nav-key="employees" data-permission="viewEmployees"><i class="fa-solid fa-user-tie"></i><span>Employees</span></a>
-                    <a class="nav-item" href="?page=drivers" data-nav-key="drivers" data-permission="viewDrivers"><i class="fa-solid fa-id-card"></i><span>Drivers</span></a>
-                    <a class="nav-item" href="?page=vehicles-warehouses" data-nav-key="vehicles-warehouses" data-permission="viewVehicles"><i class="fa-solid fa-truck"></i><span>Vehicles</span></a>
-                </section>
-                <section class="sidebar-section">
-                    <h4>Business</h4>
-                    <a class="nav-item" href="?page=reports" data-nav-key="reports" data-permission="viewReports"><i class="fa-solid fa-chart-pie"></i><span>Reports</span></a>
-                    <a class="nav-item" href="?page=finance" data-nav-key="finance" data-permission="viewFinance"><i class="fa-solid fa-wallet"></i><span>Finance</span></a>
-                    <a class="nav-item" href="?page=invoices" data-nav-key="invoices" data-permission="viewFinance"><i class="fa-solid fa-file-invoice-dollar"></i><span>Invoices</span></a>
-                </section>
-                <section class="sidebar-section">
-                    <h4>System</h4>
-                    <a class="nav-item" href="?page=user-management" data-nav-key="user-management" data-permission="manageUsers"><i class="fa-solid fa-users-gear"></i><span>User Access</span></a>
-                    <a class="nav-item" href="?page=activity-log" data-nav-key="activity-log" data-permission="manageUsers"><i class="fa-solid fa-list-check"></i><span>Audit Logs</span></a>
-                    <a class="nav-item" href="?page=settings" data-nav-key="settings" data-permission="viewSettings"><i class="fa-solid fa-sliders"></i><span>Settings</span></a>
-                </section>
-            </nav>
-            <div class="sidebar-footer">
-                <button class="nav-item nav-item--logout" type="button" onclick="signOutAdminFromUi()">
-                    <i class="fa-solid fa-right-from-bracket"></i><span>Logout</span>
-                </button>
-            </div>
-        </aside>
-
-        <!-- Notification Drawer -->
-        <div id="notificationDrawer" class="notification-drawer">
-            <header class="drawer-header">
-                <h3>Notifications</h3>
-                <div style="display:flex; gap:10px;">
-                    <button class="btn-action sm" onclick="window.clearNotifications()" title="Clear All"><i class="fa-solid fa-trash-can"></i></button>
-                    <button class="btn-action sm" onclick="window.toggleNotificationDrawer()">&times;</button>
-                </div>
-            </header>
-            <div id="notif-list" class="drawer-body">
-                <p class="empty-state">No new alerts.</p>
-            </div>
-            <footer class="drawer-footer">
-                <a href="?page=notifications" onclick="window.toggleNotificationDrawer()">View All Notifications</a>
-            </footer>
+        <div id="notif-list" class="drawer-body">
+            <p class="empty-state">No new alerts.</p>
         </div>
-
-        <!-- Main Workspace -->
-        <main class="admin-main" id="adminMainArea">
-            <div id="adminView" class="view-section active-view">
-                <!-- Page intro anchors -->
-                <div id="adminPageHeader" class="dashboard-page-meta">
-                    <nav id="adminPageBreadcrumbs" class="breadcrumbs"></nav>
-                    <p id="adminPageIntro" class="intro-copy"></p>
-                </div>
-
-                <!-- Dynamic Page Anchors -->
-                <div id="dashboardMainContent"></div>
-
-                <!-- Shared Shipment Registration Section -->
-                <div id="registerShipment" class="panel-card" hidden>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <h3 class="panel-title" style="margin:0;"><i class="fa-solid fa-pen-to-square"></i> New Shipment Registration</h3>
-                    </div>
-
-                    <!-- Basic Info -->
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Tracking / Shipping No</label>
-                            <div style="display: flex; gap: 8px;">
-                                <input type="text" id="inputTracking" placeholder="NM-100001">
-                                <button class="btn-action sm" onclick="window.generateTrackingNumber()" title="Generate"><i class="fa-solid fa-rotate"></i></button>
-                                <button class="btn-action sm" id="btnSearchShipment" onclick="window.findShipmentInForm()" title="Search"><i class="fa-solid fa-magnifying-glass"></i> Find</button>
-                                <button class="btn-action sm" onclick="window.resetShipmentForm()" title="Clear Form"><i class="fa-solid fa-eraser"></i> New</button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Shipment Status</label>
-                            <select id="inputStatus">
-                                <option value="Pending">Pending</option>
-                                <option value="Picked Up">Picked Up</option>
-                                <option value="In Transit">In Transit</option>
-                                <option value="Arrived">Arrived</option>
-                                <option value="Out for Delivery">Out for Delivery</option>
-                                <option value="Delivered">Delivered</option>
-                                <option value="Cancelled">Cancelled</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-grid">
-                        <div class="form-group"><label>SWB Date</label><input type="date" id="inputDate"></div>
-                        <div class="form-group"><label>Branch</label><input type="text" id="inputBranchCode" placeholder="Dubai HQ"></div>
-                    </div>
-
-                    <div class="form-grid">
-                        <div class="form-group"><label>SWB Serial No</label><input type="text" id="inputSwbSerial"></div>
-                        <div class="form-group"><label>Customer Invoice No</label><input type="text" id="inputCustomerInvoice"></div>
-                    </div>
-
-                    <!-- Shipper & Consignee -->
-                    <div class="enterprise-form-divider">Shipment Parties</div>
-                    <div class="form-grid">
-                        <div class="form-group"><label>Shipper Name</label><input type="text" id="inputSender"></div>
-                        <div class="form-group"><label>Consignee Name</label><input type="text" id="inputReceiver"></div>
-                    </div>
-                    <div class="form-grid">
-                        <div class="form-group"><label>Consignee City</label><input type="text" id="inputDestination"></div>
-                        <div class="form-group"><label>Consignee Address</label><input type="text" id="inputReceiverAddress"></div>
-                    </div>
-
-                    <!-- Logistics -->
-                    <div class="enterprise-form-divider">Cargo Details</div>
-                    <div class="form-grid">
-                        <div class="form-group"><label>Original Qty</label><input type="number" id="inputOriginalQty"></div>
-                        <div class="form-group"><label>Qty</label><input type="number" id="inputQuantity"></div>
-                    </div>
-                    <div class="form-grid">
-                        <div class="form-group"><label>Original Weight (KG)</label><input type="number" id="inputOriginalWeight"></div>
-                        <div class="form-group"><label>Weight (KG)</label><input type="number" id="inputWeight"></div>
-                    </div>
-
-                    <div class="form-group full-width"><label>Notes</label><textarea id="inputNotes" style="min-height: 80px;"></textarea></div>
-
-                    <button class="btn-primary-action" id="btnRegisterShipment" onclick="window.saveShipment()">Register & Sync to Database</button>
-                </div>
-
-                <!-- Shared Database Table Section -->
-                <div id="databaseSection" class="database-section" hidden>
-                    <div class="database-header-row">
-                        <div style="display:flex; flex-direction:column; gap:8px; flex: 1;">
-                            <h3 class="panel-title"><i class="fa-solid fa-database"></i> All Shipments Management</h3>
-                            <div class="table-tools" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                                <button class="btn-action primary sm" onclick="window.location.href='?page=create-shipment'"><i class="fa-solid fa-plus"></i> Add New</button>
-                                <button class="btn-action sm" id="btnOpenImportModal" style="pointer-events: auto !important; opacity: 1 !important;"><i class="fa-solid fa-file-import"></i> Import Data</button>
-                                <button class="btn-action sm" id="pdfImportBtn" title="Import PDF" hidden><i class="fa-solid fa-file-pdf"></i> PDF</button>
-                                <button class="btn-action sm" id="excelImportBtn" title="Import Excel" hidden><i class="fa-solid fa-file-excel"></i> Excel</button>
-                                <input type="file" id="pdfImportInput" accept="application/pdf" hidden>
-                                <input type="file" id="dashPdfPicker" accept="application/pdf" hidden>
-                                <button class="btn-action sm" onclick="window.loadDashboard()" title="Refresh"><i class="fa-solid fa-rotate"></i> Refresh</button>
-                                <div class="export-group" style="display:flex; gap:5px;">
-                                    <button class="btn-action sm" onclick="window.exportShipmentTable('xlsx')" title="Export Excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
-                                    <button class="btn-action sm" onclick="window.exportShipmentTable('pdf')" title="Export PDF"><i class="fa-solid fa-file-pdf"></i> PDF</button>
-                                    <button class="btn-action sm" onclick="window.exportShipmentTable('csv')" title="Export CSV"><i class="fa-solid fa-file-csv"></i> CSV</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
-                            <div id="importStatus" style="font-size:0.85rem; font-weight:700; color:var(--noorani-gold); background:rgba(0,0,0,0.3); padding:4px 12px; border-radius:8px; display:none; border:1px solid var(--border);"></div>
-                            <div class="search-box-wrapper" style="position:relative; width:100%;">
-                                <input type="text" id="searchDbInput" class="search-db" placeholder="Search Tracking, Name, Phone...">
-                                <i class="fa-solid fa-magnifying-glass" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); opacity:0.5;"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Advanced Filters -->
-                    <div class="filters-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:20px; background:rgba(255,255,255,0.02); padding:15px; border-radius:12px; border:1px solid var(--border);">
-                        <div class="filter-group">
-                            <label style="display:block; font-size:0.7rem; color:var(--noorani-muted); margin-bottom:5px;">Status</label>
-                            <select id="filterStatus" class="edit-input" onchange="window.loadDashboard()">
-                                <option value="">All Statuses</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Picked Up">Picked Up</option>
-                                <option value="In Transit">In Transit</option>
-                                <option value="Arrived">Arrived</option>
-                                <option value="Out for Delivery">Out for Delivery</option>
-                                <option value="Delivered">Delivered</option>
-                                <option value="Cancelled">Cancelled</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label style="display:block; font-size:0.7rem; color:var(--noorani-muted); margin-bottom:5px;">Payment</label>
-                            <select id="filterPayment" class="edit-input" onchange="window.loadDashboard()">
-                                <option value="">All Payments</option>
-                                <option value="Paid">Paid</option>
-                                <option value="Unpaid">Unpaid</option>
-                                <option value="Partial">Partial</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label style="display:block; font-size:0.7rem; color:var(--noorani-muted); margin-bottom:5px;">Origin</label>
-                            <input id="filterOrigin" class="edit-input" placeholder="Origin Hub" onkeyup="window.loadDashboard()">
-                        </div>
-                        <div class="filter-group">
-                            <label style="display:block; font-size:0.7rem; color:var(--noorani-muted); margin-bottom:5px;">Destination</label>
-                            <input id="filterDest" class="edit-input" placeholder="Dest Hub" onkeyup="window.loadDashboard()">
-                        </div>
-                        <div class="filter-group">
-                            <label style="display:block; font-size:0.7rem; color:var(--noorani-muted); margin-bottom:5px;">Sort By</label>
-                            <select id="filterSort" class="edit-input" onchange="window.loadDashboard()">
-                                <option value="newest">Newest First</option>
-                                <option value="oldest">Oldest First</option>
-                                <option value="tracking">Tracking #</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label style="display:block; font-size:0.7rem; color:var(--noorani-muted); margin-bottom:5px;">Per Page</label>
-                            <select id="filterPageSize" class="edit-input" onchange="window.loadDashboard()">
-                                <option value="10">10</option>
-                                <option value="25">25</option>
-                                <option value="50" selected>50</option>
-                                <option value="100">100</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Tracking / Shipping No</th>
-                                    <th>SWB Date</th>
-                                    <th>Branch</th>
-                                    <th>SWB Serial No</th>
-                                    <th>Customer Invoice No</th>
-                                    <th>Shipper Name</th>
-                                    <th>Consignee Name</th>
-                                    <th>Orig. Qty</th>
-                                    <th>Qty</th>
-                                    <th>Orig. Wgt</th>
-                                    <th>Weight</th>
-                                    <th>Consignee City</th>
-                                    <th>Consignee Address</th>
-                                    <th>Status</th>
-                                    <th style="text-align:right;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="dbTableBody"></tbody>
-                        </table>
-                    </div>
-
-                    <div class="pagination-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding:15px; background:rgba(255,255,255,0.02); border-radius:12px;">
-                        <div id="paginationInfo" style="font-size:0.85rem; color:var(--noorani-muted);">Showing 0 of 0 records</div>
-                        <div class="pagination-controls" style="display:flex; gap:10px;">
-                            <button class="btn-action sm" id="btnPrevPage" onclick="window.prevPage()"><i class="fa-solid fa-chevron-left"></i> Previous</button>
-                            <button class="btn-action sm" id="btnNextPage" onclick="window.nextPage()">Next <i class="fa-solid fa-chevron-right"></i></button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <footer class="app-footer">
-            <strong>NOORANI LOGISTICS ENTERPRISE</strong>
-            <span>Dubai HQ &bull; Global Operations &bull; 2026</span>
+        <footer class="drawer-footer">
+            <a href="?page=notifications" onclick="window.toggleNotificationDrawer()">View All Notifications</a>
         </footer>
     </div>
 
-    <!-- Data Import Modal -->
-    <div id="importDataModal" class="enterprise-modal-backdrop">
-        <div class="enterprise-modal workspace-modal">
-            <header class="workspace-modal-header">
-                <div>
-                    <span>Enterprise Utility</span>
-                    <h2>Import Shipment Data</h2>
-                </div>
-                <button class="close-btn" onclick="window.closeImportModal()">&times;</button>
-            </header>
-            <div class="workspace-modal-body">
-                <div id="importUploadZone" class="enterprise-data-port">
-                    <i class="fa-solid fa-cloud-arrow-up"></i>
-                    <h4>Select manifest or drop file</h4>
-                    <p>Supports CSV, Excel (.xlsx, .xls) and PDF manifests</p>
-                    <input type="file" id="importFileInput" accept=".csv, .xlsx, .xls, .pdf" hidden>
+    <!-- Main Workspace Area -->
+    <main class="admin-main" id="adminMainArea">
+        <div id="adminView" class="view-section active-view">
+            <!-- Dynamic Page Content Holders -->
+            <div id="dashboardMainContent"></div>
+
+            <!-- Shipment Registration Form -->
+            <div id="registerShipment" class="enterprise-card" hidden>
+                <div class="enterprise-card-heading">
+                    <h3><i class="fa-solid fa-pen-to-square"></i> New Shipment Registration</h3>
                 </div>
 
-                <div id="importFileDetails" style="display:none; margin-top:20px; padding:15px; background:rgba(255,255,255,0.03); border-radius:12px; border:1px solid var(--border);">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <strong id="importFileName" style="color:var(--noorani-gold);">filename.pdf</strong><br>
-                            <small id="importFileSize" style="color:var(--noorani-muted);">0 KB</small>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Tracking / Shipping No</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="inputTracking" placeholder="NM-100001">
+                            <button class="btn-action" onclick="window.generateTrackingNumber()"><i class="fa-solid fa-rotate"></i></button>
+                            <button class="btn-action" onclick="window.findShipmentInForm()"><i class="fa-solid fa-search"></i></button>
                         </div>
-                        <button class="btn-action sm delete" onclick="window.resetImportModal()"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="inputStatus">
+                            <option value="Pending">Pending</option>
+                            <option value="Picked Up">Picked Up</option>
+                            <option value="In Transit">In Transit</option>
+                            <option value="Arrived">Arrived</option>
+                            <option value="Out for Delivery">Out for Delivery</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
                     </div>
                 </div>
 
-                <div id="importProgress" style="display:none; margin-top:20px;">
-                    <div class="workspace-progress"><i id="importProgressBar" style="width:0%;"></i></div>
-                    <p id="importProgressStatus" style="text-align:center; font-size:0.8rem; margin-top:8px; color:var(--noorani-gold);">Analyzing file...</p>
+                <div class="form-grid">
+                    <div class="form-group"><label>Date</label><input type="date" id="inputDate"></div>
+                    <div class="form-group"><label>Branch</label><input type="text" id="inputBranchCode"></div>
                 </div>
 
-                <div id="importPreviewArea" style="display:none; margin-top:20px;">
-                    <h4 style="margin-bottom:10px;"><i class="fa-solid fa-table-list"></i> Data Preview</h4>
-                    <div class="table-responsive" style="max-height:300px;">
-                        <table class="table" style="min-width:1500px;">
-                            <thead>
-                                <tr>
-                                    <th>Status</th>
-                                    <th>Tracking / Shipping No</th>
-                                    <th>Branch</th>
-                                    <th>SWB Serial No</th>
-                                    <th>Customer Invoice No</th>
-                                    <th>SWB Date</th>
-                                    <th>Shipper Name</th>
-                                    <th>Consignee Name</th>
-                                    <th>Orig. Qty</th>
-                                    <th>Qty</th>
-                                    <th>Orig. Wgt</th>
-                                    <th>Weight</th>
-                                    <th>Consignee City</th>
-                                    <th>Consignee Address</th>
-                                </tr>
-                            </thead>
-                            <tbody id="importPreviewBody"></tbody>
-                        </table>
+                <div class="form-grid">
+                    <div class="form-group"><label>SWB Serial</label><input type="text" id="inputSwbSerial"></div>
+                    <div class="form-group"><label>Customer Invoice</label><input type="text" id="inputCustomerInvoice"></div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group"><label>Shipper Name</label><input type="text" id="inputSender"></div>
+                    <div class="form-group"><label>Consignee Name</label><input type="text" id="inputReceiver"></div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group"><label>City</label><input type="text" id="inputDestination"></div>
+                    <div class="form-group"><label>Address</label><input type="text" id="inputReceiverAddress"></div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group"><label>Qty</label><input type="number" id="inputQuantity"></div>
+                    <div class="form-group"><label>Weight (KG)</label><input type="number" id="inputWeight"></div>
+                </div>
+
+                <div class="form-group"><label>Notes</label><textarea id="inputNotes"></textarea></div>
+
+                <button class="btn-primary-action" id="btnRegisterShipment" onclick="window.saveShipment()">Register & Sync</button>
+            </div>
+
+            <!-- Database Table Section -->
+            <div id="databaseSection" class="enterprise-card" hidden>
+                <header class="enterprise-card-heading">
+                    <h3><i class="fa-solid fa-database"></i> Shipments Management</h3>
+                    <div class="header-actions">
+                        <button class="btn-action" id="btnOpenImportModal"><i class="fa-solid fa-file-import"></i> Import</button>
+                        <button class="btn-action" onclick="window.loadDashboard()"><i class="fa-solid fa-rotate"></i></button>
+                    </div>
+                </header>
+
+                <div class="enterprise-toolbar" style="margin-bottom: 20px;">
+                    <div style="position:relative; width:100%; max-width:400px;">
+                        <input type="text" id="searchDbInput" placeholder="Search tracking, names...">
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Tracking #</th>
+                                <th>Date</th>
+                                <th>Branch</th>
+                                <th>Serial</th>
+                                <th>Invoice</th>
+                                <th>Shipper</th>
+                                <th>Consignee</th>
+                                <th>O.Qty</th>
+                                <th>Qty</th>
+                                <th>O.Wgt</th>
+                                <th>Wgt</th>
+                                <th>City</th>
+                                <th>Address</th>
+                                <th>Status</th>
+                                <th style="text-align:right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dbTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+                    <div id="paginationInfo">Showing 0 of 0</div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-action" id="btnPrevPage">Prev</button>
+                        <button class="btn-action" id="btnNextPage">Next</button>
                     </div>
                 </div>
             </div>
-            <footer class="workspace-modal-footer">
-                <div class="enterprise-btn-row" style="justify-content:flex-end;">
-                    <button class="enterprise-btn" onclick="window.closeImportModal()">Cancel</button>
-                    <button id="btnExecuteImport" class="enterprise-btn primary" disabled onclick="window.executeDataImport()">Import Shipments</button>
-                </div>
-            </footer>
         </div>
-    </div>
+    </main>
 
-    <!-- System Logic -->
+    <footer class="app-footer">
+        <strong>NOORANI LOGISTICS</strong>
+        <span>Dubai HQ &bull; 2026</span>
+    </footer>
+
+    <!-- Scripts -->
     <script src="./ui-utils.js" defer></script>
     <script type="module" src="./firebase.js"></script>
     <script type="module" src="./admin-auth.js"></script>
