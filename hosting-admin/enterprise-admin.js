@@ -287,10 +287,10 @@ window.loadDashboard = async () => {
             return `
             <tr id="row_${i.trackingId}">
                 <td class="value-highlight"><strong>${i.trackingId}</strong></td>
+                <td>${s.date || ''}</td>
                 <td>${s.branchCode || ''}</td>
                 <td>${s.swbSerial || ''}</td>
                 <td>${s.customerInvoice || ''}</td>
-                <td>${s.date || ''}</td>
                 <td>${s.sender || ''}</td>
                 <td>${s.receiver || ''}</td>
                 <td>${s.originalQuantity || ''}</td>
