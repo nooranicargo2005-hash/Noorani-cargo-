@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Track your Noorani Cargo shipments in real-time. Global freight and logistics solutions with fast and secure delivery.">
-    <meta name="keywords" content="cargo tracking, noorani cargo, international shipping, air cargo, sea cargo">
     <title>Track Shipment | Noorani Cargo</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,235 +11,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./core.css">
-
-    <style>
-        :root {
-            --tracking-bg: #0b1220;
-            --tracking-card-bg: rgba(255, 255, 255, 0.03);
-            --tracking-accent: #f4b400;
-            --tracking-text: #f5f7fb;
-            --tracking-muted: #9dacc2;
-            --tracking-border: rgba(255, 255, 255, 0.08);
-        }
-
-        /* Timeline Styles */
-        .timeline-wrapper {
-            padding: 20px 0;
-            position: relative;
-        }
-        .timeline-item {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 25px;
-            position: relative;
-        }
-        .timeline-item:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            left: 11px;
-            top: 24px;
-            bottom: -25px;
-            width: 2px;
-            background: var(--tracking-border);
-        }
-        .timeline-item.active:not(:last-child)::after {
-            background: var(--tracking-accent);
-        }
-        .timeline-marker {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: var(--tracking-bg);
-            border: 2px solid var(--tracking-border);
-            display: flex;
-            align-items:center;
-            justify-content:center;
-            z-index: 1;
-            flex-shrink: 0;
-        }
-        .timeline-item.active .timeline-marker {
-            border-color: var(--tracking-accent);
-            background: var(--tracking-accent);
-            color: #000;
-        }
-        .timeline-content h4 {
-            margin: 0 0 4px;
-            font-size: 1rem;
-            color: var(--tracking-muted);
-        }
-        .timeline-item.active .timeline-content h4 {
-            color: #fff;
-        }
-        .timeline-content span {
-            font-size: 0.75rem;
-            color: var(--tracking-muted);
-        }
-
-        .tracking-header {
-            text-align: center;
-            padding: 60px 20px 40px;
-        }
-
-        .tracking-header h1 {
-            font-family: var(--font-display);
-            font-size: clamp(2rem, 5vw, 3rem);
-            margin-bottom: 12px;
-            color: #fff;
-        }
-
-        .search-container {
-            max-width: 600px;
-            margin: 0 auto 60px;
-            padding: 0 20px;
-        }
-
-        .tracking-input-group {
-            position: relative;
-            display: flex;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--tracking-border);
-            border-radius: 50px;
-            padding: 6px;
-            transition: all 0.3s ease;
-        }
-
-        .tracking-input-group:focus-within {
-            border-color: var(--tracking-accent);
-            box-shadow: 0 0 0 4px rgba(244, 180, 0, 0.1);
-        }
-
-        .tracking-input-group input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: #fff;
-            padding: 12px 24px;
-            font-size: 1.1rem;
-            outline: none;
-        }
-
-        .btn-track {
-            background: var(--tracking-accent);
-            color: #000;
-            border: none;
-            padding: 0 30px;
-            border-radius: 50px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        .btn-track:hover {
-            transform: scale(1.02);
-        }
-
-        .result-container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 0 20px 80px;
-        }
-
-        .status-banner {
-            background: linear-gradient(90deg, var(--tracking-accent), #ffd34e);
-            color: #000;
-            padding: 24px;
-            border-radius: 20px;
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 10px 30px rgba(244, 180, 0, 0.2);
-        }
-
-        .status-banner div span {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            opacity: 0.8;
-        }
-
-        .status-banner div strong {
-            font-size: 1.8rem;
-            font-weight: 800;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .info-card {
-            background: var(--tracking-card-bg);
-            border: 1px solid var(--tracking-border);
-            border-radius: 20px;
-            padding: 24px;
-            backdrop-filter: blur(10px);
-        }
-
-        .info-card h3 {
-            font-size: 0.9rem;
-            color: var(--tracking-accent);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .data-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .data-row:last-child {
-            border-bottom: none;
-        }
-
-        .data-label {
-            color: var(--tracking-muted);
-            font-size: 0.9rem;
-        }
-
-        .data-value {
-            color: #fff;
-            font-weight: 600;
-            text-align: right;
-            padding-left: 20px;
-        }
-
-        .not-found {
-            text-align: center;
-            padding: 40px;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            border-radius: 20px;
-            color: #fca5a5;
-        }
-
-        [hidden] { display: none !important; }
-
-        @media (max-width: 600px) {
-            .status-banner {
-                flex-direction: column;
-                text-align: center;
-                gap: 15px;
-            }
-            .data-row {
-                flex-direction: column;
-                gap: 4px;
-            }
-            .data-value {
-                text-align: left;
-                padding-left: 0;
-            }
-        }
-    </style>
 </head>
 <body class="public-website">
     <div class="container">
@@ -253,24 +23,26 @@
                 </div>
             </div>
             <nav class="header-actions">
-                <a class="mode-btn active" href="/"><i class="fa-solid fa-magnifying-glass-location"></i> Track Shipment</a>
+                <a class="btn-track" href="/" style="padding: 10px 20px; font-size: 0.85rem; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-magnifying-glass"></i> New Search
+                </a>
             </nav>
         </header>
 
         <section class="tracking-header">
             <h1>Track Your Shipment</h1>
-            <p style="color: var(--tracking-muted);">Enter your tracking number to get real-time delivery information.</p>
+            <p style="color: var(--tracking-muted);">Enter your tracking number for real-time delivery status updates.</p>
         </section>
 
         <section class="search-container">
             <div class="tracking-input-group">
-                <input id="trackingInput" type="text" placeholder="Enter Tracking Number (e.g. NC-12345678)" autocomplete="off">
-                <button id="trackButton" class="btn-track">Track</button>
+                <input id="trackingInput" type="text" placeholder="NC-12345678" autocomplete="off" autofocus>
+                <button id="trackButton" class="btn-track">Track Now</button>
             </div>
-            <p id="statusMsg" style="text-align: center; margin-top: 15px;"></p>
+            <p id="statusMsg" style="text-align: center; margin-top: 15px; font-weight: 600;"></p>
         </section>
 
-        <main id="resultArea" class="result-container" hidden>
+        <main id="resultArea" hidden>
             <div class="status-banner">
                 <div>
                     <span>Current Status</span>
@@ -283,7 +55,6 @@
             </div>
 
             <div class="info-grid">
-                <!-- Shipment Overview -->
                 <div class="info-card">
                     <h3><i class="fa-solid fa-box"></i> Shipment Overview</h3>
                     <div class="data-row" id="row-date">
@@ -298,99 +69,58 @@
                         <span class="data-label">Weight</span>
                         <span class="data-value" id="val-weight">—</span>
                     </div>
-                    <div class="data-row" id="row-quantity">
-                        <span class="data-label">Pieces</span>
-                        <span class="data-value" id="val-quantity">—</span>
-                    </div>
-                    <div class="data-row" id="row-cost">
-                        <span class="data-label">Shipping Cost</span>
-                        <span class="data-value" id="val-cost">—</span>
-                    </div>
                     <div class="data-row" id="row-payment">
                         <span class="data-label">Payment Status</span>
                         <span class="data-value" id="val-payment">—</span>
                     </div>
-                    <div class="data-row" id="row-updated">
-                        <span class="data-label">Last Updated</span>
-                        <span class="data-value" id="val-updated">—</span>
-                    </div>
                 </div>
 
-                <!-- Route Details -->
                 <div class="info-card">
                     <h3><i class="fa-solid fa-route"></i> Route Details</h3>
                     <div class="data-row" id="row-origin-country">
                         <span class="data-label">Origin Country</span>
                         <span class="data-value" id="val-origin-country">—</span>
                     </div>
-                    <div class="data-row" id="row-origin-city">
-                        <span class="data-label">Origin City</span>
-                        <span class="data-value" id="val-origin-city">—</span>
-                    </div>
                     <div class="data-row" id="row-dest-country">
                         <span class="data-label">Destination Country</span>
                         <span class="data-value" id="val-dest-country">—</span>
-                    </div>
-                    <div class="data-row" id="row-dest-city">
-                        <span class="data-label">Destination City</span>
-                        <span class="data-value" id="val-dest-city">—</span>
                     </div>
                     <div class="data-row" id="row-location">
                         <span class="data-label">Current Location</span>
                         <span class="data-value" id="val-location">—</span>
                     </div>
-                    <div class="data-row" id="row-expected">
-                        <span class="data-label">Expected Delivery</span>
-                        <span class="data-value" id="val-expected">—</span>
-                    </div>
                 </div>
 
-                <!-- Party Details -->
                 <div class="info-card">
                     <h3><i class="fa-solid fa-user-check"></i> Party Details</h3>
                     <div class="data-row" id="row-sender">
-                        <span class="data-label">Sender Name</span>
+                        <span class="data-label">Sender</span>
                         <span class="data-value" id="val-sender">—</span>
                     </div>
                     <div class="data-row" id="row-receiver">
-                        <span class="data-label">Receiver Name</span>
+                        <span class="data-label">Receiver</span>
                         <span class="data-value" id="val-receiver">—</span>
-                    </div>
-                    <div class="data-row" id="row-phone">
-                        <span class="data-label">Receiver Phone</span>
-                        <span class="data-value" id="val-phone">—</span>
-                    </div>
-                    <div class="data-row" id="row-branch">
-                        <span class="data-label">Branch Name</span>
-                        <span class="data-value" id="val-branch">—</span>
-                    </div>
-                    <div class="data-row" id="row-address">
-                        <span class="data-label">Delivery Address</span>
-                        <span class="data-value" id="val-address">—</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Tracking Timeline -->
-            <div class="info-card" style="margin-top: 20px;">
-                <h3><i class="fa-solid fa-timeline"></i> Tracking Timeline</h3>
-                <div id="timelineContainer" style="margin-top: 20px;">
-                    <!-- Timeline items will be injected here -->
-                </div>
+            <div class="info-card" style="margin-top: 24px;">
+                <h3><i class="fa-solid fa-timeline"></i> Journey Timeline</h3>
+                <div id="timelineContainer"></div>
             </div>
         </main>
 
-        <div id="notFoundArea" class="result-container" hidden>
-            <div class="not-found">
-                <i class="fa-solid fa-circle-exclamation" style="font-size: 2rem; margin-bottom: 15px;"></i>
-                <h2>Shipment Not Found</h2>
-                <p>We couldn't find any record for that tracking number. Please check the number and try again.</p>
+        <div id="notFoundArea" hidden>
+            <div class="info-card" style="text-align: center; border-color: var(--noorani-danger); background: rgba(239, 68, 68, 0.05);">
+                <i class="fa-solid fa-circle-exclamation" style="font-size: 2.5rem; color: var(--noorani-danger); margin-bottom: 20px;"></i>
+                <h2 style="color: #fff;">Shipment Not Found</h2>
+                <p style="color: var(--tracking-muted);">We couldn't find any record matching that tracking number. Please check the number and try again.</p>
             </div>
         </div>
 
-        <footer class="app-footer" style="text-align: center; padding: 60px 20px; border-top: 1px solid var(--tracking-border);">
-            <strong style="color: var(--tracking-accent); letter-spacing: 2px;">NOORANI LOGISTICS ENTERPRISE</strong>
-            <p style="font-size: 0.85rem; color: var(--tracking-muted); margin-top: 10px;">Dubai HQ &bull; Global Operations &bull; 2026</p>
+        <footer class="app-footer">
+            <strong style="display: block; margin-bottom: 8px;">NOORANI LOGISTICS ENTERPRISE</strong>
+            <p style="color: var(--tracking-muted); font-size: 0.8rem;">Global Freight & Supply Chain Solutions &bull; 2026</p>
         </footer>
     </div>
 
@@ -409,44 +139,23 @@
             { id: 'Delivered', label: 'Delivered' }
         ];
 
-        function formatTime(val) {
-            if (!val) return '—';
-            try {
-                const date = val.toDate ? val.toDate() : (val.seconds ? new Date(val.seconds * 1000) : new Date(val));
-                return date.toLocaleString();
-            } catch (e) { return String(val); }
-        }
-
         function renderTimeline(currentStatus) {
             const container = $id('timelineContainer');
             if (!container) return;
-
-            // Determine active index based on milestones
             const activeIndex = milestones.findIndex(m => m.id === currentStatus);
-
             container.innerHTML = `<div class="timeline-wrapper">
                 ${milestones.map((m, i) => {
                     const isActive = i <= activeIndex;
                     return `
                         <div class="timeline-item ${isActive ? 'active' : ''}">
-                            <div class="timeline-marker">
-                                ${isActive ? '<i class="fa-solid fa-check" style="font-size:0.7rem;"></i>' : ''}
-                            </div>
-                            <div class="timeline-content">
-                                <h4>${m.label}</h4>
-                                <span>${isActive ? 'Completed' : 'Pending'}</span>
-                            </div>
-                        </div>
-                    `;
+                            <div class="timeline-marker">${isActive ? '<i class="fa-solid fa-check" style="font-size:0.7rem;"></i>' : ''}</div>
+                            <div class="timeline-content"><h4>${m.label}</h4><span>${isActive ? 'Completed' : 'Pending'}</span></div>
+                        </div>`;
                 }).join('')}
             </div>`;
         }
 
         function updateUI(s) {
-            const resultArea = $id('resultArea');
-            resultArea.hidden = false;
-            $id('notFoundArea').hidden = true;
-
             $id('displayStatus').textContent = s.status || 'Active';
             $id('displayTracking').textContent = s.ref || s.trackingId;
 
@@ -454,23 +163,12 @@
                 { id: 'date', val: s.date },
                 { id: 'type', val: s.shipmentType },
                 { id: 'weight', val: s.weight ? s.weight + ' KG' : null },
-                { id: 'quantity', val: s.quantity },
-                { id: 'cost', val: s.shippingCost ? '$' + Number(s.shippingCost).toLocaleString() : null },
                 { id: 'payment', val: s.paymentStatus },
-                { id: 'updated', val: formatTime(s.updated_at || s.updatedAt) },
-
                 { id: 'origin-country', val: s.originCountry },
-                { id: 'origin-city', val: s.origin },
                 { id: 'dest-country', val: s.destinationCountry },
-                { id: 'dest-city', val: s.destination },
                 { id: 'location', val: s.currentLocation || s.origin },
-                { id: 'expected', val: s.expectedDelivery },
-
                 { id: 'sender', val: s.sender },
-                { id: 'receiver', val: s.receiver },
-                { id: 'phone', val: s.receiverPhone },
-                { id: 'branch', val: s.branchName || s.branchCode },
-                { id: 'address', val: s.address || s.receiverAddress }
+                { id: 'receiver', val: s.receiver }
             ];
 
             fields.forEach(f => {
@@ -489,50 +187,43 @@
             });
 
             renderTimeline(s.status);
-
-            // Force browser reflow to fix rendering glitches with backdrop-filter/hidden elements
-            void resultArea.offsetHeight;
-            window.dispatchEvent(new Event('resize'));
+            $id('notFoundArea').hidden = true;
+            $id('resultArea').hidden = false;
+            $id('resultArea').style.display = 'block';
         }
 
         async function performTrack() {
-            const input = $id('trackingInput');
-            const code = input.value.trim().toUpperCase();
-
+            const code = $id('trackingInput').value.trim().toUpperCase();
             stopListener();
             $id('statusMsg').textContent = '';
+            $id('statusMsg').style.color = 'var(--noorani-gold)';
             $id('resultArea').hidden = true;
+            $id('resultArea').style.display = 'none';
             $id('notFoundArea').hidden = true;
 
             if (!code) {
                 $id('statusMsg').textContent = 'Please enter a tracking number.';
-                $id('statusMsg').style.color = '#fca5a5';
+                $id('statusMsg').style.color = 'var(--noorani-danger)';
                 return;
             }
 
-            $id('statusMsg').textContent = 'Fetching shipment details...';
-            $id('statusMsg').style.color = 'var(--tracking-accent)';
+            $id('statusMsg').textContent = 'Locating shipment...';
 
             try {
                 const res = await getShipmentByTracking(code);
-                if (res && res.data && (res.data.public == 1 || res.data.public === true)) {
+                if (res && res.data && res.data.public) {
                     $id('statusMsg').textContent = '';
                     updateUI(res.data);
-
-                    // Start live listener
                     stopListener = watchPublicShipment(code, (snap) => {
-                        if (snap && snap.data && (snap.data.public == 1 || snap.data.public === true)) {
-                            updateUI(snap.data);
-                        }
+                        if (snap && snap.data && snap.data.public) updateUI(snap.data);
                     });
                 } else {
                     $id('statusMsg').textContent = '';
                     $id('notFoundArea').hidden = false;
                 }
             } catch (err) {
-                console.error(err);
-                $id('statusMsg').textContent = 'An error occurred while tracking. Please try again.';
-                $id('statusMsg').style.color = '#fca5a5';
+                $id('statusMsg').textContent = 'Could not connect to tracking service.';
+                $id('statusMsg').style.color = 'var(--noorani-danger)';
             }
         }
 
@@ -541,9 +232,8 @@
 
         // Handle URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const urlTracking = urlParams.get('tracking');
-        if (urlTracking) {
-            $id('trackingInput').value = urlTracking;
+        if (urlParams.has('tracking')) {
+            $id('trackingInput').value = urlParams.get('tracking');
             performTrack();
         }
     </script>

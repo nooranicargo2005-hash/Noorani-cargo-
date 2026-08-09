@@ -69,6 +69,12 @@ function initDbSchema() {
         db.run(`CREATE TABLE IF NOT EXISTS vehicles (id TEXT PRIMARY KEY, plateNumber TEXT UNIQUE NOT NULL, brand TEXT, model TEXT, year TEXT, vehicleType TEXT, registrationNumber TEXT, registrationExpiry TEXT, insuranceExpiry TEXT, chassisNumber TEXT, engineNumber TEXT, capacity TEXT, fuelType TEXT, assignedDriver TEXT, assignedBranch TEXT, currentMileage REAL DEFAULT 0, status TEXT DEFAULT 'Available', notes TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         db.run(`CREATE TABLE IF NOT EXISTS branches (id TEXT PRIMARY KEY, branchName TEXT NOT NULL, branchCode TEXT UNIQUE NOT NULL, managerName TEXT, phoneNumber TEXT, whatsAppNumber TEXT, email TEXT, address TEXT, city TEXT, state TEXT, country TEXT, postalCode TEXT, googleMaps TEXT, timeZone TEXT, workingHours TEXT, status TEXT DEFAULT 'active', notes TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         db.run(`CREATE TABLE IF NOT EXISTS shipments (trackingId TEXT PRIMARY KEY, ref TEXT, shippingNumber TEXT, date TEXT, sender TEXT, senderPhone TEXT, senderAddress TEXT, originCountry TEXT, origin TEXT, receiver TEXT, receiverPhone TEXT, receiverAddress TEXT, destination TEXT, destinationCountry TEXT, shipmentType TEXT, weight REAL, quantity INTEGER, shippingCost REAL, paymentStatus TEXT DEFAULT 'Unpaid', status TEXT DEFAULT 'Pending', author TEXT, driver TEXT, vehicle TEXT, branchCode TEXT, notes TEXT, public INTEGER DEFAULT 1, source TEXT DEFAULT 'manual', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+
+        // Add new columns for Excel format if they don't exist
+        const newCols = ['swbSerial TEXT', 'customerInvoice TEXT', 'originalWeight REAL', 'originalQuantity INTEGER'];
+        newCols.forEach(col => {
+            db.run(`ALTER TABLE shipments ADD COLUMN ${col}`, err => { /* ignore if already exists */ });
+        });
         db.run(`CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, invoiceNumber TEXT UNIQUE NOT NULL, trackingId TEXT, amount REAL, currency TEXT DEFAULT 'SAR', status TEXT DEFAULT 'issued', updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (trackingId) REFERENCES shipments (trackingId))`);
         db.run(`CREATE TABLE IF NOT EXISTS transactions (id TEXT PRIMARY KEY, type TEXT CHECK(type IN ('income', 'expense')), category TEXT, description TEXT, amount REAL, date TEXT, paymentMethod TEXT, status TEXT DEFAULT 'Paid', shipmentRef TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         db.run(`CREATE TABLE IF NOT EXISTS shipment_timeline (id INTEGER PRIMARY KEY AUTOINCREMENT, trackingNumber TEXT NOT NULL, eventType TEXT, title TEXT, description TEXT, actor TEXT, createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (trackingNumber) REFERENCES shipments (trackingId))`);
@@ -133,16 +139,27 @@ app.get('/api/stats/dashboard', async (req, res) => {
 // Shipments
 app.get('/api/shipments', async (req, res) => {
     try {
-        const { search, sortBy = 'updated_at', sortDir = 'DESC', limit = 1000 } = req.query;
-        let sql = "SELECT * FROM shipments";
+        const { search, status, paymentStatus, sortBy = 'updated_at', sortDir = 'DESC', limit = 1000 } = req.query;
+        let sql = "SELECT * FROM shipments WHERE 1=1";
         let params = [];
-        if (search) {
-            sql += " WHERE trackingId LIKE ? OR sender LIKE ? OR receiver LIKE ? OR senderPhone LIKE ? OR receiverPhone LIKE ?";
-            const p = `%${search}%`;
-            params = [p, p, p, p, p];
+
+        if (status) {
+            sql += " AND status = ?";
+            params.push(status);
         }
+        if (paymentStatus) {
+            sql += " AND paymentStatus = ?";
+            params.push(paymentStatus);
+        }
+        if (search) {
+            sql += " AND (trackingId LIKE ? OR sender LIKE ? OR receiver LIKE ? OR senderPhone LIKE ? OR receiverPhone LIKE ? OR swbSerial LIKE ?)";
+            const p = `%${search}%`;
+            params.push(p, p, p, p, p, p);
+        }
+
         sql += ` ORDER BY ${sortBy} ${sortDir} LIMIT ?`;
         params.push(parseInt(limit));
+
         const rows = await dbQuery(sql, params);
         res.json({ items: rows.map(r => ({ trackingId: r.trackingId, data: r })) });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -161,22 +178,33 @@ app.post('/api/shipments/:id', async (req, res) => {
         const id = req.params.id;
         const d = req.body;
         const sql = `INSERT OR REPLACE INTO shipments (
-            trackingId, ref, shippingNumber, date, sender, senderPhone, senderAddress, originCountry, origin,
-            receiver, receiverPhone, receiverAddress, destination, destinationCountry, shipmentType,
-            weight, quantity, shippingCost, paymentStatus, status, author, driver, vehicle, branchCode,
-            notes, public, source, updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP,
+            trackingId, swbSerial, customerInvoice, date, sender, receiver, receiverAddress, destination,
+            shipmentType, originalWeight, weight, originalQuantity, quantity, branchCode,
+            status, notes, author, public, source, updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP,
             COALESCE((SELECT created_at FROM shipments WHERE trackingId = ?), CURRENT_TIMESTAMP))`;
 
         const params = [
-            id, d.ref || id, d.shippingNumber || '',
+            id,
+            d.swbSerial || '',
+            d.customerInvoice || '',
             d.date || new Date().toISOString().split('T')[0],
-            d.sender || '', d.senderPhone || '', d.senderAddress || '', d.originCountry || '', d.origin || '',
-            d.receiver || '', d.receiverPhone || '', d.receiverAddress || '', d.destination || '', d.destinationCountry || '',
-            d.shipmentType || 'Air Freight', parseFloat(d.weight) || 0, parseInt(d.quantity) || 1,
-            parseFloat(d.shippingCost) || 0, d.paymentStatus || 'Unpaid', d.status || 'Pending',
-            d.author || 'System', d.driver || '', d.vehicle || '', d.branchCode || '', d.notes || '',
-            d.public === false ? 0 : 1, d.source || 'manual', id
+            d.sender || '',
+            d.receiver || '',
+            d.receiverAddress || '',
+            d.destination || '',
+            d.shipmentType || 'Air Freight',
+            parseFloat(d.originalWeight) || 0,
+            parseFloat(d.weight) || 0,
+            parseInt(d.originalQuantity) || 1,
+            parseInt(d.quantity) || 1,
+            d.branchCode || '',
+            d.status || 'Pending',
+            d.notes || '',
+            d.author || 'System',
+            d.public === false ? 0 : 1,
+            d.source || 'manual',
+            id
         ];
         await dbRun(sql, params);
         res.json({ success: true, id });

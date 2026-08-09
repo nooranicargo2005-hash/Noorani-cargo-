@@ -95,13 +95,13 @@
     <div id="notificationDrawer" class="notification-drawer">
         <header class="drawer-header">
             <h3>Notifications</h3>
-            <div style="display:flex; gap:10px;">
-                <button class="btn-action" onclick="window.clearNotifications()"><i class="fa-solid fa-trash"></i></button>
-                <button class="btn-action" onclick="window.toggleNotificationDrawer()">&times;</button>
+            <div class="enterprise-btn-row">
+                <button class="btn-action sm" onclick="window.clearNotifications()"><i class="fa-solid fa-trash"></i></button>
+                <button class="btn-action sm" onclick="window.toggleNotificationDrawer()">&times;</button>
             </div>
         </header>
         <div id="notif-list" class="drawer-body">
-            <p class="empty-state">No new alerts.</p>
+            <p class="text-center mt-20">No new alerts.</p>
         </div>
         <footer class="drawer-footer">
             <a href="?page=notifications" onclick="window.toggleNotificationDrawer()">View All Notifications</a>
@@ -111,11 +111,10 @@
     <!-- Main Workspace Area -->
     <main class="admin-main" id="adminMainArea">
         <div id="adminView" class="view-section active-view">
-            <!-- Dynamic Page Content Holders -->
             <div id="dashboardMainContent"></div>
 
             <!-- Shipment Registration Form -->
-            <div id="registerShipment" class="enterprise-card" hidden>
+            <div id="registerShipment" class="enterprise-card mb-20" hidden>
                 <div class="enterprise-card-heading">
                     <h3><i class="fa-solid fa-pen-to-square"></i> New Shipment Registration</h3>
                 </div>
@@ -153,6 +152,7 @@
                     <div class="form-group"><label>Customer Invoice</label><input type="text" id="inputCustomerInvoice"></div>
                 </div>
 
+                <div class="enterprise-form-divider">Parties</div>
                 <div class="form-grid">
                     <div class="form-group"><label>Shipper Name</label><input type="text" id="inputSender"></div>
                     <div class="form-group"><label>Consignee Name</label><input type="text" id="inputReceiver"></div>
@@ -163,30 +163,46 @@
                     <div class="form-group"><label>Address</label><input type="text" id="inputReceiverAddress"></div>
                 </div>
 
+                <div class="enterprise-form-divider">Details</div>
                 <div class="form-grid">
-                    <div class="form-group"><label>Qty</label><input type="number" id="inputQuantity"></div>
+                    <div class="form-group"><label>Quantity</label><input type="number" id="inputQuantity"></div>
                     <div class="form-group"><label>Weight (KG)</label><input type="number" id="inputWeight"></div>
                 </div>
 
-                <div class="form-group"><label>Notes</label><textarea id="inputNotes"></textarea></div>
+                <div class="form-group mb-20"><label>Notes</label><textarea id="inputNotes"></textarea></div>
 
-                <button class="btn-primary-action" id="btnRegisterShipment" onclick="window.saveShipment()">Register & Sync</button>
+                <button class="btn-primary-action" id="btnRegisterShipment" onclick="window.saveShipment()">Register & Sync Record</button>
             </div>
 
             <!-- Database Table Section -->
-            <div id="databaseSection" class="enterprise-card" hidden>
+            <div id="databaseSection" class="enterprise-card hidden" hidden>
                 <header class="enterprise-card-heading">
-                    <h3><i class="fa-solid fa-database"></i> Shipments Management</h3>
-                    <div class="header-actions">
-                        <button class="btn-action" id="btnOpenImportModal"><i class="fa-solid fa-file-import"></i> Import</button>
-                        <button class="btn-action" onclick="window.loadDashboard()"><i class="fa-solid fa-rotate"></i></button>
+                    <h3><i class="fa-solid fa-database"></i> Shipments Inventory</h3>
+                    <div class="enterprise-btn-row">
+                        <button class="btn-action sm" id="btnOpenImportModal"><i class="fa-solid fa-file-import"></i> Import</button>
+                        <button class="btn-action sm" onclick="window.loadDashboard()"><i class="fa-solid fa-rotate"></i></button>
                     </div>
                 </header>
 
-                <div class="enterprise-toolbar" style="margin-bottom: 20px;">
-                    <div style="position:relative; width:100%; max-width:400px;">
-                        <input type="text" id="searchDbInput" placeholder="Search tracking, names...">
+                <div class="mb-20 grid-4">
+                    <div style="position:relative; grid-column: span 2;">
+                        <input type="text" id="searchDbInput" placeholder="Search tracking, names, phone..." onkeyup="window.loadDashboard()">
                     </div>
+                    <select id="filterStatus" onchange="window.loadDashboard()">
+                        <option value="">All Statuses</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Picked Up">Picked Up</option>
+                        <option value="In Transit">In Transit</option>
+                        <option value="Arrived">Arrived</option>
+                        <option value="Out for Delivery">Out for Delivery</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                    <select id="filterPageSize" onchange="window.loadDashboard()">
+                        <option value="25">25 per page</option>
+                        <option value="50" selected>50 per page</option>
+                        <option value="100">100 per page</option>
+                    </select>
                 </div>
 
                 <div class="table-responsive">
@@ -200,25 +216,25 @@
                                 <th>Invoice</th>
                                 <th>Shipper</th>
                                 <th>Consignee</th>
-                                <th>O.Qty</th>
+                                <th>Orig. Qty</th>
                                 <th>Qty</th>
-                                <th>O.Wgt</th>
-                                <th>Wgt</th>
+                                <th>Orig. Wgt</th>
+                                <th>Weight</th>
                                 <th>City</th>
                                 <th>Address</th>
                                 <th>Status</th>
-                                <th style="text-align:right;">Actions</th>
+                                <th class="text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="dbTableBody"></tbody>
                     </table>
                 </div>
 
-                <div class="pagination-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
-                    <div id="paginationInfo">Showing 0 of 0</div>
-                    <div style="display:flex; gap:10px;">
-                        <button class="btn-action" id="btnPrevPage">Prev</button>
-                        <button class="btn-action" id="btnNextPage">Next</button>
+                <div class="pagination-footer mt-20" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div id="paginationInfo" style="font-size:0.8rem; color:var(--noorani-muted);">Showing 0 records</div>
+                    <div class="enterprise-btn-row">
+                        <button class="btn-action sm" id="btnPrevPage">Prev</button>
+                        <button class="btn-action sm" id="btnNextPage">Next</button>
                     </div>
                 </div>
             </div>
@@ -226,9 +242,84 @@
     </main>
 
     <footer class="app-footer">
-        <strong>NOORANI LOGISTICS</strong>
-        <span>Dubai HQ &bull; 2026</span>
+        <strong>NOORANI LOGISTICS ENTERPRISE</strong>
+        <span>Dubai HQ &bull; Global Operations &bull; 2026</span>
     </footer>
+
+    <!-- Data Import Modal -->
+    <div id="importDataModal" class="enterprise-modal-backdrop">
+        <div class="enterprise-modal workspace-modal">
+            <header class="workspace-modal-header">
+                <div>
+                    <span class="enterprise-kicker">Enterprise Utility</span>
+                    <h2>Import Shipment Data</h2>
+                </div>
+                <button class="close-btn" onclick="window.closeImportModal()">&times;</button>
+            </header>
+            <div class="workspace-modal-body">
+                <div id="importUploadZone" class="enterprise-data-port" style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:180px; border:2px dashed var(--border); border-radius:20px; cursor:pointer;">
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size:2.5rem; color:var(--noorani-gold); margin-bottom:15px;"></i>
+                    <h4>Select manifest or drop file</h4>
+                    <p>Supports CSV, Excel and PDF manifests</p>
+                    <input type="file" id="importFileInput" accept=".csv, .xlsx, .xls, .pdf" hidden>
+                </div>
+
+                <div id="importFileDetails" class="hidden mt-20" style="padding:15px; background:rgba(255,255,255,0.03); border-radius:12px; border:1px solid var(--border);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong id="importFileName" style="color:var(--noorani-gold);">filename.xlsx</strong><br>
+                            <small id="importFileSize" style="color:var(--noorani-muted);">0 KB</small>
+                        </div>
+                        <button class="btn-action sm" onclick="window.resetImportModal()"><i class="fa-solid fa-trash" style="color:var(--noorani-danger);"></i></button>
+                    </div>
+                </div>
+
+                <div id="importProgress" class="hidden mt-20">
+                    <div class="table-responsive" style="height:10px; border-radius:10px;"><div id="importProgressBar" style="height:100%; width:0%; background:var(--noorani-gold); transition:width 0.3s;"></div></div>
+                    <p id="importProgressStatus" class="text-center mt-20" style="font-size:0.8rem; color:var(--noorani-gold);">Processing...</p>
+                </div>
+
+                <div id="importPreviewArea" class="hidden mt-20">
+                    <h4 class="mb-20"><i class="fa-solid fa-table-list"></i> Data Preview</h4>
+                    <div class="table-responsive" style="max-height:350px;">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Tracking #</th>
+                                    <th>Date</th>
+                                    <th>Branch</th>
+                                    <th>Serial</th>
+                                    <th>Invoice</th>
+                                    <th>Shipper</th>
+                                    <th>Consignee</th>
+                                    <th>O.Qty</th>
+                                    <th>Qty</th>
+                                    <th>O.Wgt</th>
+                                    <th>Wgt</th>
+                                    <th>City</th>
+                                    <th>Address</th>
+                                </tr>
+                            </thead>
+                            <tbody id="importPreviewBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <footer class="workspace-modal-footer">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:15px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="checkbox" id="importUpdateToggle" style="width:18px; height:18px; cursor:pointer;">
+                        <label for="importUpdateToggle" style="cursor:pointer; font-weight:700; color:var(--noorani-gold); font-size:0.85rem;">Update existing records</label>
+                    </div>
+                    <div class="enterprise-btn-row">
+                        <button class="enterprise-btn" onclick="window.closeImportModal()">Cancel</button>
+                        <button id="btnExecuteImport" class="enterprise-btn primary" disabled onclick="window.executeDataImport()">Import Manifest</button>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script src="./ui-utils.js" defer></script>

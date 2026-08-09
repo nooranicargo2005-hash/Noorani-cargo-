@@ -63,32 +63,80 @@ import { nooraniDb } from './firebase.js';
   function cleanId(v) { return String(v || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, ''); }
 
   function cleanDate(v) {
-    if (!v) return null;
-    if (v instanceof Date) return v.toISOString().split('T')[0];
+    if (v === null || v === undefined || v === '') return null;
+
+    // 1. Handle Date objects (Avoid UTC offset shift)
+    if (v instanceof Date) {
+        const y = v.getFullYear();
+        const m = String(v.getMonth() + 1).padStart(2, '0');
+        const d = String(v.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    // 2. Handle Excel Numeric Dates
     if (typeof v === 'number') {
         try {
-            const date = new Date((v - 25569) * 86400 * 1000);
-            return date.toISOString().split('T')[0];
-        } catch (e) { return null; }
+            const date = new Date(Math.round((v - 25569) * 86400 * 1000));
+            if (!isNaN(date.getTime())) {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
+        } catch (e) {}
     }
+
     const str = String(v).trim();
-    // Support formats: D/M/YYYY, M/D/YYYY, YYYY-MM-DD, D-M-YYYY
-    const dateMatch = str.match(/\b\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}\b/);
-    if (!dateMatch) return null;
+    if (!str || str.length < 5) return null;
 
-    const parts = dateMatch[0].split(/[-/.]/).filter(x => x.length > 0);
-    if (parts.length < 3) return null;
+    // 3. Try common numeric patterns: YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY
+    const numericMatch = str.match(/(\d{1,4})[-/.](\d{1,2})[-/.](\d{1,4})/);
+    if (numericMatch) {
+        let p1 = numericMatch[1], p2 = numericMatch[2], p3 = numericMatch[3];
+        let y, m, d;
+        if (p1.length === 4) { // YYYY-MM-DD
+            y = p1; m = p2; d = p3;
+        } else { // DD-MM-YYYY or MM-DD-YYYY
+            y = p3.length === 2 ? "20" + p3 : p3;
+            let v1 = parseInt(p1), v2 = parseInt(p2);
+            if (v1 > 12) { d = v1; m = v2; }
+            else if (v2 > 12) { m = v1; d = v2; }
+            else { d = v1; m = v2; } // Default to D/M/Y (09/08/2026 -> Aug 9)
+        }
+        if (y && m && d && y.length === 4) {
+            return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        }
+    }
 
-    let m, d, y;
-    if (parts[0].length === 4) { y = parts[0]; m = parts[1]; d = parts[2]; }
-    else if (parts[2].length === 4 || parts[2].length === 2) {
-        // Handle D/M or M/D ambiguity
-        let p1 = parseInt(parts[0]), p2 = parseInt(parts[1]);
-        if (p1 > 12) { d = p1; m = p2; } else { m = p1; d = p2; }
-        y = parts[2].length === 2 ? "20" + parts[2] : parts[2];
-    } else return null;
+    // 4. Try month names: 09-Aug-2026, Aug 09 2026
+    const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+    const textMatch = str.match(/(\d{1,2})[-/\s,]+([a-z]{3,})[-/\s,]+(\d{2,4})/i) ||
+                      str.match(/([a-z]{3,})[-/\s,]+(\d{1,2})[-/\s,]+(\d{2,4})/i);
 
-    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    if (textMatch) {
+        let dStr, mStr, yStr;
+        if (isNaN(parseInt(textMatch[1]))) { mStr = textMatch[1]; dStr = textMatch[2]; yStr = textMatch[3]; }
+        else { dStr = textMatch[1]; mStr = textMatch[2]; yStr = textMatch[3]; }
+
+        const mIdx = monthNames.findIndex(m => mStr.toLowerCase().startsWith(m));
+        if (mIdx !== -1) {
+            const y = yStr.length === 2 ? "20" + yStr : yStr;
+            const m = String(mIdx + 1).padStart(2, '0');
+            const d = String(parseInt(dStr)).padStart(2, '0');
+            if (y.length === 4) return `${y}-${m}-${d}`;
+        }
+    }
+
+    // 5. Final fallback: JS native parse (use with caution)
+    const parsed = Date.parse(str);
+    if (!isNaN(parsed)) {
+        const date = new Date(parsed);
+        if (date.getFullYear() > 2000) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+    }
+
+    return null;
   }
 
   // --- Autonomous manifestation Parser ---
@@ -96,7 +144,7 @@ import { nooraniDb } from './firebase.js';
   function parseAutonomousExcel(rows) {
     if (!rows || rows.length === 0) return [];
 
-    console.log('[Import] Starting Autonomous Analysis...');
+    console.log('%c[Import] Starting Autonomous Parsing Engine...', 'color: #3b82f6;');
 
     const KEYWORDS = {
         trackingId: ['tracking', 'shipping no', 'awb', 'serial', 's.no', 'manifest no', 'ref', 'no.', 'no', 'consignment'],
@@ -117,47 +165,57 @@ import { nooraniDb } from './firebase.js';
     let metadata = { date: null, shippingNo: null };
     let headerCandidates = [];
 
-    // 1. Scan for Metadata and Header Rows
+    // 1. Initial Meta-Scan (Top 40 rows) for Global Values (Date, Manifest No)
+    for (let i = 0; i < Math.min(rows.length, 40); i++) {
+        const row = rows[i];
+        if (!Array.isArray(row)) continue;
+        for (let j = 0; j < row.length; j++) {
+            const cell = String(row[j] || '').trim();
+            if (!cell) continue;
+            const low = cell.toLowerCase();
+
+            // Auto-detect Date from any cell that looks like a date or has "date" label
+            if (low.includes('date') && !metadata.date) {
+                // Try cell itself, then right neighbors, then below
+                const candidates = [cell, String(row[j+1]||''), String(row[j+2]||''), (rows[i+1] ? String(rows[i+1][j]||'') : '')];
+                for (const cand of candidates) {
+                    const d = cleanDate(cand);
+                    if (d) { metadata.date = d; break; }
+                }
+            }
+
+            // Auto-detect Manifest/Shipping Number from label
+            if ((low.includes('shipping no') || low.includes('manifest no')) && !metadata.shippingNo) {
+                const candidates = [cell.replace(/(shipping|manifest) no[:\s]*/i, ''), String(row[j+1]||''), String(row[j+2]||'')];
+                for (const cand of candidates) {
+                    const id = cleanId(cand);
+                    if (id && id.length > 2 && !KEYWORDS.trackingId.some(k => cand.toLowerCase() === k)) {
+                        metadata.shippingNo = id; break;
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Scan for Main Header Row
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         if (!Array.isArray(row)) continue;
 
         let score = 0;
         let mapping = {};
-
         for (let j = 0; j < row.length; j++) {
-            const cell = String(row[j] || '').trim();
+            const cell = String(row[j] || '').trim().toLowerCase();
             if (!cell) continue;
-            const low = cell.toLowerCase();
 
-            // Metadata: Search for isolated labels or values
-            if (low.includes('date') && !metadata.date) {
-                // Check current cell or neighbors for a date value
-                const neighbors = [cell, String(row[j+1] || ''), String(row[j+2] || '')];
-                for (const n of neighbors) {
-                    const d = cleanDate(n);
-                    if (d) { metadata.date = d; break; }
-                }
-            }
-            if ((low.includes('shipping no') || low.includes('manifest no')) && !metadata.shippingNo) {
-                const neighbors = [cell, String(row[j+1] || ''), String(row[j+2] || '')];
-                for (const n of neighbors) {
-                    const id = cleanId(n.replace(/(shipping|manifest) no[:\s]*/i, ''));
-                    if (id && id.length > 2 && !KEYWORDS.trackingId.some(k => n.toLowerCase() === k)) {
-                        metadata.shippingNo = id; break;
-                    }
-                }
-            }
-
-            // Header Identification
             Object.keys(KEYWORDS).forEach(key => {
-                if (KEYWORDS[key].some(k => low.includes(k))) {
+                if (KEYWORDS[key].some(k => cell === k || cell.includes(k))) {
                     if (!mapping[key]) { mapping[key] = j; score++; }
                 }
             });
         }
 
-        if (score >= 2) { // Lowered threshold for better discovery
+        if (score >= 2) {
             headerCandidates.push({ index: i, score, mapping });
         }
     }
@@ -319,11 +377,26 @@ import { nooraniDb } from './firebase.js';
     const tbody = $id('importPreviewBody');
     if (!tbody) return;
 
+    const updateExisting = $id('importUpdateToggle')?.checked;
+
     tbody.innerHTML = importState.shipments.map(s => {
         const isDupe = importState.existingIds.includes(s.trackingId);
+        let statusText = 'NEW';
+        let statusCls = 'is-new-badge';
+
+        if (isDupe) {
+            if (updateExisting) {
+                statusText = 'UPDATE';
+                statusCls = 'is-duplicate-badge'; // Reusing existing style or could add a specific one
+            } else {
+                statusText = 'SKIP';
+                statusCls = 'is-duplicate-badge';
+            }
+        }
+
         return `
-            <tr class="${isDupe ? 'is-duplicate' : ''}">
-                <td class="${isDupe ? 'is-duplicate-badge' : 'is-new-badge'}">${isDupe ? 'DUPE' : 'NEW'}</td>
+            <tr class="${isDupe && !updateExisting ? 'is-duplicate' : ''}">
+                <td class="${statusCls}">${statusText}</td>
                 <td style="font-weight:800;">${s.trackingId}</td>
                 <td>${s.date || '—'}</td>
                 <td>${s.branchCode || '—'}</td>
@@ -349,18 +422,23 @@ import { nooraniDb } from './firebase.js';
     const btn = $id('btnExecuteImport');
     if (btn) { btn.disabled = true; btn.textContent = 'Syncing...'; }
 
-    let success = 0, failed = 0, duplicates = 0;
+    const updateExisting = $id('importUpdateToggle')?.checked;
+    let success = 0, failed = 0, duplicates = 0, updated = 0;
     const db = getDb();
 
     for (let i = 0; i < importState.shipments.length; i++) {
         const s = importState.shipments[i];
-        if (importState.existingIds.includes(s.trackingId)) {
+        const isDupe = importState.existingIds.includes(s.trackingId);
+
+        if (isDupe && !updateExisting) {
             duplicates++;
             continue;
         }
+
         try {
             await db.saveShipment(s.trackingId, { ...s, public: true });
-            success++;
+            if (isDupe) updated++;
+            else success++;
         } catch (e) {
             console.error('Import Sync failed:', s.trackingId, e);
             failed++;
@@ -368,7 +446,12 @@ import { nooraniDb } from './firebase.js';
         setProgress(10 + Math.round((i / importState.shipments.length) * 90), `Syncing: ${i+1}/${importState.shipments.length}`);
     }
 
-    alert(`Sync Result:\n✅ Success: ${success}\n⏭️ Skipped: ${duplicates}\n❌ Failed: ${failed}`);
+    let resultMsg = `Sync Result:\n✅ New: ${success}`;
+    if (updateExisting) resultMsg += `\n🔄 Updated: ${updated}`;
+    else resultMsg += `\n⏭️ Skipped: ${duplicates}`;
+    resultMsg += `\n❌ Failed: ${failed}`;
+
+    alert(resultMsg);
     window.closeImportModal();
     if (typeof window.loadDashboard === 'function') window.loadDashboard();
   };
@@ -389,6 +472,9 @@ import { nooraniDb } from './firebase.js';
             $id('importFileName').textContent = file.name;
             $id('importFileSize').textContent = `${(file.size / 1024).toFixed(1)} KB`;
             processFile(file);
+        }
+        if (e.target.id === 'importUpdateToggle') {
+            if (importState.shipments.length > 0) renderPreview();
         }
     });
 
