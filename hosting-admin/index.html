@@ -11,6 +11,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./core.css">
 
+    <style>
+        @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
+    </style>
+
     <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
@@ -126,7 +130,7 @@
 
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>Tracking / Shipping No</label>
+                        <label for="inputTracking">Tracking / Shipping No</label>
                         <div style="display: flex; gap: 8px;">
                             <input type="text" id="inputTracking" placeholder="NM-100001">
                             <button class="btn-action" onclick="window.generateTrackingNumber()" title="Generate"><i class="fa-solid fa-rotate"></i></button>
@@ -134,7 +138,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Status</label>
+                        <label for="inputStatus">Status</label>
                         <select id="inputStatus">
                             <option value="Pending">Pending</option>
                             <option value="Picked Up">Picked Up</option>
@@ -148,33 +152,33 @@
                 </div>
 
                 <div class="form-grid">
-                    <div class="form-group"><label>Date</label><input type="date" id="inputDate"></div>
-                    <div class="form-group"><label>Branch</label><input type="text" id="inputBranchCode" placeholder="DXB-HQ"></div>
+                    <div class="form-group"><label for="inputDate">Date</label><input type="date" id="inputDate"></div>
+                    <div class="form-group"><label for="inputBranchCode">Branch</label><input type="text" id="inputBranchCode" placeholder="DXB-HQ"></div>
                 </div>
 
                 <div class="form-grid">
-                    <div class="form-group"><label>SWB Serial</label><input type="text" id="inputSwbSerial" placeholder="SR-000"></div>
-                    <div class="form-group"><label>Customer Invoice</label><input type="text" id="inputCustomerInvoice" placeholder="INV-000"></div>
+                    <div class="form-group"><label for="inputSwbSerial">SWB Serial</label><input type="text" id="inputSwbSerial" placeholder="SR-000"></div>
+                    <div class="form-group"><label for="inputCustomerInvoice">Customer Invoice</label><input type="text" id="inputCustomerInvoice" placeholder="INV-000"></div>
                 </div>
 
                 <div class="enterprise-form-divider">Parties</div>
                 <div class="form-grid">
-                    <div class="form-group"><label>Shipper Name</label><input type="text" id="inputSender"></div>
-                    <div class="form-group"><label>Consignee Name</label><input type="text" id="inputReceiver"></div>
+                    <div class="form-group"><label for="inputSender">Shipper Name</label><input type="text" id="inputSender"></div>
+                    <div class="form-group"><label for="inputReceiver">Consignee Name</label><input type="text" id="inputReceiver"></div>
                 </div>
 
                 <div class="form-grid">
-                    <div class="form-group"><label>City</label><input type="text" id="inputDestination"></div>
-                    <div class="form-group"><label>Address</label><input type="text" id="inputReceiverAddress"></div>
+                    <div class="form-group"><label for="inputDestination">City</label><input type="text" id="inputDestination"></div>
+                    <div class="form-group"><label for="inputReceiverAddress">Address</label><input type="text" id="inputReceiverAddress"></div>
                 </div>
 
                 <div class="enterprise-form-divider">Details</div>
                 <div class="form-grid">
-                    <div class="form-group"><label>Quantity</label><input type="number" id="inputQuantity" value="1"></div>
-                    <div class="form-group"><label>Weight (KG)</label><input type="number" id="inputWeight" value="0.00"></div>
+                    <div class="form-group"><label for="inputQuantity">Quantity</label><input type="number" id="inputQuantity" value="1"></div>
+                    <div class="form-group"><label for="inputWeight">Weight (KG)</label><input type="number" id="inputWeight" value="0.00"></div>
                 </div>
 
-                <div class="form-group mb-20" style="margin-top:20px;"><label>Notes</label><textarea id="inputNotes" placeholder="Additional shipment details..."></textarea></div>
+                <div class="form-group mb-20" style="margin-top:20px;"><label for="inputNotes">Notes</label><textarea id="inputNotes" placeholder="Additional shipment details..."></textarea></div>
 
                 <button class="btn-primary-action" id="btnRegisterShipment" onclick="window.saveShipment()" style="width:100%; justify-content:center; margin-top:20px; padding:16px;">
                     <i class="fa-solid fa-cloud-arrow-up"></i> Register & Sync Record
@@ -193,10 +197,10 @@
 
                 <div class="mb-20" style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:16px; align-items:center; margin-bottom:24px;">
                     <div style="position:relative;">
-                        <input type="text" id="searchDbInput" placeholder="Search tracking, names, phone..." onkeyup="window.loadDashboard()" style="padding-left:44px;">
+                        <input type="text" id="searchDbInput" placeholder="Search tracking, names, phone..." onkeyup="window.loadDashboard()" style="padding-left:44px;" aria-label="Search shipments">
                         <i class="fa-solid fa-search" style="position:absolute; left:16px; top:50%; transform:translateY(-50%); opacity:0.4;"></i>
                     </div>
-                    <select id="filterStatus" onchange="window.loadDashboard()">
+                    <select id="filterStatus" onchange="window.loadDashboard()" aria-label="Filter by status">
                         <option value="">All Statuses</option>
                         <option value="Pending">Pending</option>
                         <option value="Picked Up">Picked Up</option>
@@ -206,7 +210,7 @@
                         <option value="Delivered">Delivered</option>
                         <option value="Cancelled">Cancelled</option>
                     </select>
-                    <select id="filterPageSize" onchange="window.loadDashboard()">
+                    <select id="filterPageSize" onchange="window.loadDashboard()" aria-label="Items per page">
                         <option value="25">25 per page</option>
                         <option value="50" selected>50 per page</option>
                         <option value="100">100 per page</option>
@@ -336,9 +340,5 @@
     <script type="module" src="./document-import.js"></script>
     <script type="module" src="./enterprise-admin.js"></script>
     <script type="module" src="./admin-multipage.js"></script>
-
-    <style>
-        @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
-    </style>
 </body>
 </html>

@@ -70,7 +70,7 @@ function createUI() {
       </header>
       <div class="enterprise-kpi-grid" style="margin-bottom:24px;">
         <article class="enterprise-kpi-card"><div style="flex:1;"><small>Profitability</small><strong id="rep-kpi-profit">$0</strong></div></article>
-        <article class="enterprise-kpi-card"><div style="flex:1;"><small>Success Rate</small><strong id="rep-kpi-rate">0%</strong></strong ></article>
+        <article class="enterprise-kpi-card"><div style="flex:1;"><small>Success Rate</small><strong id="rep-kpi-rate">0%</strong></div></article>
         <article class="enterprise-kpi-card"><div style="flex:1;"><small>Active Fleet</small><strong id="rep-kpi-fleet">0</strong></div></article>
         <article class="enterprise-kpi-card"><div style="flex:1;"><small>Due Balance</small><strong id="rep-kpi-due" style="color:var(--n-danger);">$0</strong></div></article>
       </div>
