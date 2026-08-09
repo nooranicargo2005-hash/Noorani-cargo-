@@ -1,3 +1,5 @@
+/* global XLSX, Papa */
+
 import { nooraniDb } from './firebase.js';
 
 /**
@@ -98,7 +100,7 @@ import { nooraniDb } from './firebase.js';
             y = p1; m = p2; d = p3;
         } else { // DD-MM-YYYY or MM-DD-YYYY
             y = p3.length === 2 ? "20" + p3 : p3;
-            let v1 = parseInt(p1), v2 = parseInt(p2);
+            let v1 = parseInt(p1, 10), v2 = parseInt(p2, 10);
             if (v1 > 12) { d = v1; m = v2; }
             else if (v2 > 12) { m = v1; d = v2; }
             else { d = v1; m = v2; } // Default to D/M/Y (09/08/2026 -> Aug 9)
@@ -115,14 +117,14 @@ import { nooraniDb } from './firebase.js';
 
     if (textMatch) {
         let dStr, mStr, yStr;
-        if (isNaN(parseInt(textMatch[1]))) { mStr = textMatch[1]; dStr = textMatch[2]; yStr = textMatch[3]; }
+        if (isNaN(parseInt(textMatch[1], 10))) { mStr = textMatch[1]; dStr = textMatch[2]; yStr = textMatch[3]; }
         else { dStr = textMatch[1]; mStr = textMatch[2]; yStr = textMatch[3]; }
 
         const mIdx = monthNames.findIndex(m => mStr.toLowerCase().startsWith(m));
         if (mIdx !== -1) {
             const y = yStr.length === 2 ? "20" + yStr : yStr;
             const m = String(mIdx + 1).padStart(2, '0');
-            const d = String(parseInt(dStr)).padStart(2, '0');
+            const d = String(parseInt(dStr, 10)).padStart(2, '0');
             if (y.length === 4) return `${y}-${m}-${d}`;
         }
     }
@@ -144,7 +146,7 @@ import { nooraniDb } from './firebase.js';
   function parseAutonomousExcel(rows) {
     if (!rows || rows.length === 0) return [];
 
-    console.log('%c[Import] Starting Autonomous Parsing Engine...', 'color: #3b82f6;');
+    console.log('%c[Import] Starting Dedicated Manifest Parser...', 'color: #3b82f6;');
 
     const KEYWORDS = {
         trackingId: ['tracking', 'shipping no', 'awb', 'serial', 's.no', 'manifest no', 'ref', 'no.', 'no', 'consignment'],
@@ -163,10 +165,9 @@ import { nooraniDb } from './firebase.js';
     };
 
     let metadata = { date: null, shippingNo: null };
-    let headerCandidates = [];
 
-    // 1. Initial Meta-Scan (Top 40 rows) for Global Values (Date, Manifest No)
-    for (let i = 0; i < Math.min(rows.length, 40); i++) {
+    // 1. Metadata Scan (First 12 rows)
+    for (let i = 0; i < Math.min(rows.length, 12); i++) {
         const row = rows[i];
         if (!Array.isArray(row)) continue;
         for (let j = 0; j < row.length; j++) {
@@ -174,17 +175,13 @@ import { nooraniDb } from './firebase.js';
             if (!cell) continue;
             const low = cell.toLowerCase();
 
-            // Auto-detect Date from any cell that looks like a date or has "date" label
             if (low.includes('date') && !metadata.date) {
-                // Try cell itself, then right neighbors, then below
-                const candidates = [cell, String(row[j+1]||''), String(row[j+2]||''), (rows[i+1] ? String(rows[i+1][j]||'') : '')];
+                const candidates = [cell.replace(/date[:\s]*/i, ''), String(row[j+1]||''), String(row[j+2]||''), (rows[i+1] ? String(rows[i+1][j]||'') : '')];
                 for (const cand of candidates) {
                     const d = cleanDate(cand);
                     if (d) { metadata.date = d; break; }
                 }
             }
-
-            // Auto-detect Manifest/Shipping Number from label
             if ((low.includes('shipping no') || low.includes('manifest no')) && !metadata.shippingNo) {
                 const candidates = [cell.replace(/(shipping|manifest) no[:\s]*/i, ''), String(row[j+1]||''), String(row[j+2]||'')];
                 for (const cand of candidates) {
@@ -197,130 +194,80 @@ import { nooraniDb } from './firebase.js';
         }
     }
 
-    // 2. Scan for Main Header Row
-    for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        if (!Array.isArray(row)) continue;
+    // 2. Header Mapping (Rows 13-14 - index 12-13)
+    let mapping = {};
+    const headerRows = [rows[12] || [], rows[13] || []];
 
-        let score = 0;
-        let mapping = {};
-        for (let j = 0; j < row.length; j++) {
-            const cell = String(row[j] || '').trim().toLowerCase();
+    headerRows.forEach(hRow => {
+        for (let j = 0; j < hRow.length; j++) {
+            const cell = String(hRow[j] || '').trim().toLowerCase();
             if (!cell) continue;
-
             Object.keys(KEYWORDS).forEach(key => {
                 if (KEYWORDS[key].some(k => cell === k || cell.includes(k))) {
-                    if (!mapping[key]) { mapping[key] = j; score++; }
+                    if (mapping[key] === undefined) mapping[key] = j;
                 }
             });
         }
+    });
 
-        if (score >= 2) {
-            headerCandidates.push({ index: i, score, mapping });
-        }
-    }
-
-    if (headerCandidates.length === 0) {
-        console.warn('[Import] Autonomous header detection failed. Searching for data markers.');
-        // Fallback: search for any row that looks like it has a tracking number
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            if (!Array.isArray(row)) continue;
-            const hasTracking = row.some(c => cleanId(c).match(/^(NC|NB|NM|NJ|NCS)/i));
-            if (hasTracking) {
-                console.log(`[Import] Found data marker at Row ${i + 1}`);
-                // Use a generic mapping based on index if no keywords found
-                const mapping = { trackingId: row.findIndex(c => cleanId(c).match(/^(NC|NB|NM|NJ|NCS)/i)) };
-                headerCandidates.push({ index: i - 1, score: 1, mapping });
-                break;
+    // Fallback if row 13 didn't work (scan up to row 20)
+    if (Object.keys(mapping).length < 3) {
+        for (let i = 12; i < Math.min(rows.length, 20); i++) {
+            const r = rows[i];
+            let score = 0;
+            let tempMapping = {};
+            r.forEach((c, j) => {
+                const val = String(c || '').trim().toLowerCase();
+                Object.keys(KEYWORDS).forEach(key => {
+                    if (KEYWORDS[key].some(k => val === k || val.includes(k))) {
+                        if (tempMapping[key] === undefined) { tempMapping[key] = j; score++; }
+                    }
+                });
+            });
+            if (score > Object.keys(mapping).length) {
+                mapping = tempMapping;
+                console.log(`[Import] Alternative Header found at Row ${i + 1}`);
             }
         }
     }
 
-    if (headerCandidates.length === 0) return [];
-
-    // Select the best header row (most matches)
-    headerCandidates.sort((a, b) => b.score - a.score);
-    const bestHeader = headerCandidates[0];
-    const headerRowIndex = bestHeader.index;
-    const mapping = bestHeader.mapping;
-
-    console.log(`[Import] Header Lock: Row ${headerRowIndex + 1}`, mapping);
-
-    // 2. Data Clustering & Extraction
     const shipments = [];
-    const get = (key, rowData) => {
-        const idx = mapping[key];
-        return (idx !== undefined && rowData) ? rowData[idx] : null;
-    };
+    const get = (key, rowData) => (mapping[key] !== undefined && rowData) ? rowData[mapping[key]] : null;
 
-    for (let i = headerRowIndex + 1; i < rows.length; i++) {
-        const r = rows[i];
-        if (!Array.isArray(r) || !r.some(c => String(c).trim())) continue;
+    // 3. Data Processing (Starts from Row 15 - index 14, in pairs)
+    for (let i = 14; i < rows.length; i += 2) {
+        const r1 = rows[i];
+        const r2 = rows[i+1];
+        if (!Array.isArray(r1) || !r1.some(c => String(c).trim())) continue;
 
-        let tracking = cleanId(get('trackingId', r));
+        let tracking = cleanId(get('trackingId', r1));
+        if (!tracking) continue;
 
-        // If tracking ID is missing but we have metadata at top, we might be in the first record
-        if (!tracking && shipments.length === 0) tracking = metadata.shippingNo;
+        const current = {
+            trackingId: tracking,
+            shippingNumber: metadata.shippingNo || '',
+            date: cleanDate(get('date', r1)) || metadata.date,
+            branchCode: String(get('branchCode', r1) || '').trim(),
+            swbSerial: String(get('swbSerial', r1) || '').trim(),
+            customerInvoice: String(get('customerInvoice', r1) || '').trim(),
+            sender: String(get('sender', r1) || '').trim(),
+            receiver: String(get('receiver', r1) || '').trim(),
+            destination: String(get('destination', r1) || '').trim(),
+            receiverAddress: String(get('receiverAddress', r1) || '').trim(),
+            // Measurements often on second row in these split formats
+            originalQuantity: parseInt(get('originalQuantity', r1) || get('originalQuantity', r2) || 0, 10),
+            quantity: parseInt(get('quantity', r1) || get('quantity', r2) || 0, 10),
+            originalWeight: parseFloat(get('originalWeight', r1) || get('originalWeight', r2) || 0),
+            weight: parseFloat(get('weight', r1) || get('weight', r2) || 0),
+            status: 'Pending',
+            source: 'import',
+            importedAt: new Date().toISOString()
+        };
 
-        // Skip potential secondary header rows
-        const rowText = r.join(' ').toLowerCase();
-        if (Object.keys(KEYWORDS).some(key => KEYWORDS[key].filter(k => k.length > 4).some(k => rowText.includes(k))) && !tracking) {
-            console.log(`[Import] Skipping probable header artifact at Row ${i + 1}`);
-            continue;
-        }
+        if (!current.quantity) current.quantity = 1;
+        if (!current.originalQuantity) current.originalQuantity = current.quantity;
 
-        const hasIdentity = ['sender', 'receiver', 'destination', 'trackingId'].some(k => get(k, r));
-
-        if (hasIdentity) {
-            const current = {
-                trackingId: tracking || (metadata.shippingNo ? `${metadata.shippingNo}-${shipments.length + 1}` : `AUTO-${Date.now()}-${shipments.length}`),
-                shippingNumber: metadata.shippingNo || '',
-                date: cleanDate(get('date', r)) || metadata.date,
-                branchCode: String(get('branchCode', r) || '').trim(),
-                swbSerial: String(get('swbSerial', r) || '').trim(),
-                customerInvoice: String(get('customerInvoice', r) || '').trim(),
-                sender: String(get('sender', r) || '').trim(),
-                receiver: String(get('receiver', r) || '').trim(),
-                destination: String(get('destination', r) || '').trim(),
-                receiverAddress: String(get('receiverAddress', r) || '').trim(),
-                originalQuantity: parseInt(get('originalQuantity', r) || 0),
-                quantity: parseInt(get('quantity', r) || 0),
-                originalWeight: parseFloat(get('originalWeight', r) || 0),
-                weight: parseFloat(get('weight', r) || 0),
-                status: 'Pending',
-                source: 'import',
-                importedAt: new Date().toISOString()
-            };
-
-            // Multi-row record consolidation
-            let lookAhead = i + 1;
-            while (lookAhead < rows.length) {
-                const next = rows[lookAhead];
-                if (!Array.isArray(next) || !next.some(c => String(c).trim())) { lookAhead++; continue; }
-
-                const nextId = cleanId(get('trackingId', next));
-                const nextIdentity = ['sender', 'receiver', 'destination'].some(k => get(k, next));
-
-                // If next row has no ID and no identity details, but has measurements, merge it
-                if (!nextId && !nextIdentity) {
-                    current.originalQuantity = current.originalQuantity || parseInt(get('originalQuantity', next) || 0);
-                    current.quantity = current.quantity || parseInt(get('quantity', next) || 0);
-                    current.originalWeight = current.originalWeight || parseFloat(get('originalWeight', next) || 0);
-                    current.weight = current.weight || parseFloat(get('weight', next) || 0);
-                    i = lookAhead;
-                    lookAhead++;
-                } else {
-                    break;
-                }
-            }
-
-            // Sanity check
-            if (!current.quantity) current.quantity = 1;
-            if (!current.originalQuantity) current.originalQuantity = current.quantity;
-
-            shipments.push(current);
-        }
+        shipments.push(current);
     }
 
     console.log(`[Import] Discovery Results: ${shipments.length} records.`);
@@ -347,7 +294,18 @@ import { nooraniDb } from './firebase.js';
         if (ext === 'xlsx' || ext === 'xls') {
             const buffer = await file.arrayBuffer();
             const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
-            const sheet = wb.Sheets[wb.SheetNames[0]];
+
+            if (!wb.SheetNames || wb.SheetNames.length === 0) {
+                throw new Error('Excel file appears to be empty or invalid (no sheets found).');
+            }
+
+            const sheetName = wb.SheetNames[0];
+            const sheet = wb.Sheets[sheetName];
+
+            if (!sheet) {
+                throw new Error(`Could not access sheet: ${sheetName}`);
+            }
+
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
             data = parseAutonomousExcel(rows);
 
@@ -461,16 +419,24 @@ import { nooraniDb } from './firebase.js';
   function setup() {
     document.addEventListener('click', (e) => {
         if (e.target.closest('#btnOpenImportModal')) window.openImportModal();
-        if (e.target.closest('#importUploadZone')) $id('importFileInput').click();
+        if (e.target.closest('#importUploadZone')) {
+            const input = $id('importFileInput');
+            if (input) input.click();
+        }
     }, true);
 
     document.addEventListener('change', (e) => {
         if (e.target.id === 'importFileInput' && e.target.files[0]) {
             const file = e.target.files[0];
-            $id('importUploadZone').style.display = 'none';
-            $id('importFileDetails').style.display = 'block';
-            $id('importFileName').textContent = file.name;
-            $id('importFileSize').textContent = `${(file.size / 1024).toFixed(1)} KB`;
+            const uz = $id('importUploadZone');
+            const fd = $id('importFileDetails');
+            const fn = $id('importFileName');
+            const fs = $id('importFileSize');
+
+            if (uz) uz.style.display = 'none';
+            if (fd) fd.style.display = 'block';
+            if (fn) fn.textContent = file.name;
+            if (fs) fs.textContent = `${(file.size / 1024).toFixed(1)} KB`;
             processFile(file);
         }
         if (e.target.id === 'importUpdateToggle') {
@@ -479,20 +445,26 @@ import { nooraniDb } from './firebase.js';
     });
 
     document.addEventListener('dragover', (e) => {
-        if (e.target.closest('#importUploadZone')) { e.preventDefault(); e.target.closest('#importUploadZone').classList.add('drag-over'); }
+        const uz = e.target.closest('#importUploadZone');
+        if (uz) { e.preventDefault(); uz.classList.add('drag-over'); }
     });
     document.addEventListener('dragleave', (e) => {
-        if (e.target.closest('#importUploadZone')) e.target.closest('#importUploadZone').classList.remove('drag-over');
+        const uz = e.target.closest('#importUploadZone');
+        if (uz) uz.classList.remove('drag-over');
     });
     document.addEventListener('drop', (e) => {
-        if (e.target.closest('#importUploadZone')) {
+        const uz = e.target.closest('#importUploadZone');
+        if (uz) {
             e.preventDefault();
-            e.target.closest('#importUploadZone').classList.remove('drag-over');
+            uz.classList.remove('drag-over');
             if (e.dataTransfer.files[0]) {
                 const dt = new DataTransfer();
                 dt.items.add(e.dataTransfer.files[0]);
-                $id('importFileInput').files = dt.files;
-                $id('importFileInput').dispatchEvent(new Event('change', { bubbles: true }));
+                const input = $id('importFileInput');
+                if (input) {
+                    input.files = dt.files;
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
             }
         }
     });
