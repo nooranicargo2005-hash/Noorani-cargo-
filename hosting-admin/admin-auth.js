@@ -21,30 +21,36 @@ const MIN_SPLASH_DURATION_MS = 1500;
 
 function createAuthOverlay() {
   if (authOverlay) return authOverlay;
-  authOverlay = document.createElement('div');
-  authOverlay.id = 'adminAuthOverlay';
-  authOverlay.className = 'admin-auth-overlay';
-  authOverlay.hidden = true;
-  authOverlay.style.display = 'none';
-  authOverlay.innerHTML = `<div class="admin-auth-card"><h2>Checking session...</h2><p id="adminAuthStatus" class="admin-auth-status">Please wait while we verify your access.</p></div>`;
-  document.body.appendChild(authOverlay);
+  authOverlay = document.getElementById('adminAuthOverlay');
+  if (!authOverlay) {
+    authOverlay = document.createElement('div');
+    authOverlay.id = 'adminAuthOverlay';
+    authOverlay.className = 'admin-auth-overlay';
+    authOverlay.hidden = true;
+    authOverlay.style.display = 'none';
+    authOverlay.innerHTML = `<div class="admin-auth-card"><h2>Checking session...</h2><p id="adminAuthStatus" class="admin-auth-status">Please wait while we verify your access.</p></div>`;
+    document.body.appendChild(authOverlay);
+  }
   return authOverlay;
 }
 
 function createSplashOverlay() {
   if (splashOverlay) return splashOverlay;
-  splashOverlay = document.createElement('div');
-  splashOverlay.id = 'nooraniSplashOverlay';
-  splashOverlay.className = 'noorani-splash-screen';
-  splashOverlay.innerHTML = `
-    <div class="noorani-splash-card">
-      <div class="splash-logo"><div class="splash-icon"><i class="fa-solid fa-shipping-fast"></i></div></div>
-      <h1 class="splash-title">Noorani Cargo Admin</h1>
-      <p class="splash-tagline">Loading secure management console...</p>
-      <div class="splash-status">Establishing connection...</div>
-    </div>
-  `;
-  document.body.appendChild(splashOverlay);
+  splashOverlay = document.getElementById('nooraniSplashOverlay');
+  if (!splashOverlay) {
+    splashOverlay = document.createElement('div');
+    splashOverlay.id = 'nooraniSplashOverlay';
+    splashOverlay.className = 'noorani-splash-screen';
+    splashOverlay.innerHTML = `
+      <div class="noorani-splash-card">
+        <div class="splash-logo"><div class="splash-icon"><i class="fa-solid fa-shipping-fast"></i></div></div>
+        <h1 class="splash-title">Noorani Cargo Admin</h1>
+        <p class="splash-tagline">Loading secure management console...</p>
+        <div class="splash-status">Establishing connection...</div>
+      </div>
+    `;
+    document.body.appendChild(splashOverlay);
+  }
   return splashOverlay;
 }
 
@@ -152,15 +158,21 @@ async function init() {
     }
   }, AUTH_CHECK_TIMEOUT_MS);
 
-  watchAdminAuth(async (user) => {
-    const elapsed = Date.now() - splashStartTime;
-    const delay = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
+  try {
+    watchAdminAuth(async (user) => {
+      const elapsed = Date.now() - splashStartTime;
+      const delay = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
 
-    setTimeout(() => {
-        hideSplash();
-        notifyAuthState(user);
-    }, delay);
-  });
+      setTimeout(() => {
+          hideSplash();
+          notifyAuthState(user);
+      }, delay);
+    });
+  } catch (err) {
+    console.error('[Auth] Watch failed:', err);
+    hideSplash();
+    showLogin();
+  }
 }
 
 init();

@@ -88,8 +88,16 @@ export const nooraniDb = {
     waitForReady: () => new Promise(resolve => {
         if (authInitialized) resolve(true);
         else {
-            getAuthInstance().catch(console.error);
-            authReadyQueue.push(() => resolve(true));
+            getAuthInstance()
+                .then(() => {
+                    // Success case: resolve is handled by onAuthStateChanged draining the queue
+                    authReadyQueue.push(() => resolve(true));
+                })
+                .catch(err => {
+                    console.error('[Firebase] waitForReady FAILED:', err);
+                    authInitialized = true; // Mark as done to prevent hangs
+                    resolve(false);
+                });
         }
     }),
 
@@ -105,11 +113,17 @@ export const nooraniDb = {
         return signOut(auth);
     },
     watchAdminAuth: async (cb) => {
-        const auth = await getAuthInstance();
-        const { onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
-        onAuthStateChanged(auth, cb);
-        // If already initialized, call back immediately with current state
-        if (authInitialized) cb(window.nooraniAdminUser);
+        try {
+            const auth = await getAuthInstance();
+            const { onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            onAuthStateChanged(auth, cb);
+            // If already initialized, call back immediately with current state
+            if (authInitialized) cb(window.nooraniAdminUser);
+        } catch (err) {
+            console.error('[Firebase] watchAdminAuth FAILED:', err);
+            // Fallback: Notify with null user if auth system fails
+            cb(null);
+        }
     },
 
     // --- Profile & Access Control ---
