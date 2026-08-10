@@ -172,6 +172,10 @@ db.serialize(() => {
         notes TEXT,
         public INTEGER DEFAULT 1,
         source TEXT DEFAULT 'manual',
+        swbSerial TEXT,
+        customerInvoice TEXT,
+        originalWeight REAL,
+        originalQuantity INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);

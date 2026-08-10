@@ -26,6 +26,7 @@ app.use(cors({
         if (!origin) return callback(null, true);
         if (allowedOrigins.indexOf(origin) === -1) {
             console.warn('[CORS] Origin Check:', origin);
+            // In production, we should probably be stricter, but keeping it open for now to ensure connectivity
             return callback(null, true);
         }
         return callback(null, true);
@@ -192,7 +193,7 @@ app.post('/api/shipments/:id', async (req, res) => {
             originalWeight, weight, originalQuantity, quantity, shippingCost, paymentStatus,
             branchCode, status, notes, author, driver, vehicle, public, source,
             swbSerial, customerInvoice, updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`;
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`;
 
         const params = [
             id,
