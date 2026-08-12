@@ -19,19 +19,7 @@ const enterpriseAdminState = {
 const $id = id => document.getElementById(id);
 const createElement = (tag, cls, html = '') => { const el = document.createElement(tag); if (cls) el.className = cls; if (html) el.innerHTML = html; return el; };
 const formatTime = (v) => { if (!v) return '—'; try { const d = v.toDate ? v.toDate() : (v.seconds ? new Date(v.seconds * 1000) : new Date(v)); return d.toLocaleString(); } catch (e) { return String(v); } };
-const formatDateForInput = (v) => {
-    if (!v || v === 'undefined' || v === 'null') return '';
-    try {
-        const d = new Date(v);
-        if (isNaN(d.getTime())) {
-             if (/^\d{4}-\d{2}-\d{2}$/.test(String(v).substring(0, 10))) {
-                return String(v).substring(0, 10);
-            }
-            return '';
-        }
-        return d.toISOString().split('T')[0];
-    } catch (e) { return ''; }
-};
+const formatDateForInput = (v) => (window.cleanDate ? window.cleanDate(v) : '');
 
 const getDb = () => nooraniDb || window.nooraniDb;
 
@@ -170,7 +158,7 @@ function createUI() {
       </header>
       <div class="p-40 text-center">
         <p class="text-muted">Cloud synchronization and local export utilities.</p>
-        <button class="n-btn mt-20" onclick="alert('Local database backup initialized.')"><i class="fa-solid fa-download"></i> Download SQLite DB</button>
+        <button class="n-btn mt-20" onclick="alert('Cloud database backup initialized.')"><i class="fa-solid fa-download"></i> Download Master JSON</button>
       </div>
     </div>
   `;

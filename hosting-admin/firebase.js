@@ -3,7 +3,7 @@ import * as perms from './permissions.js';
 
 /**
  * Noorani Cargo Enterprise | Unified API Bridge & Firebase Controller
- * Environment-aware connector for SQLite REST Backend.
+ * Environment-aware connector for Supabase REST Backend.
  * Version: 2026-08-08 v10 (Production Resilience)
  */
 

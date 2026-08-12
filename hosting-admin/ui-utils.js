@@ -8,7 +8,55 @@
     return String(value || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
   }
 
-  const container = document.createElement('div'); container.id = 'noorani-toast-container'; document.addEventListener('DOMContentLoaded', () => document.body.appendChild(container));
+  function cleanDate(v) {
+    if (v === null || v === undefined || v === '') return null;
+    if (v instanceof Date) {
+        const y = v.getFullYear();
+        const m = String(v.getMonth() + 1).padStart(2, '0');
+        const d = String(v.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    if (typeof v === 'number') {
+        try {
+            const date = new Date(Math.round((v - 25569) * 86400 * 1000));
+            if (!isNaN(date.getTime())) {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
+        } catch (e) {}
+    }
+    const str = String(v).trim();
+    if (!str || str.length < 5) return null;
+    const numericMatch = str.match(/(\d{1,4})[-/.](\d{1,2})[-/.](\d{1,4})/);
+    if (numericMatch) {
+        let p1 = numericMatch[1], p2 = numericMatch[2], p3 = numericMatch[3];
+        let y, m, d;
+        if (p1.length === 4) { y = p1; m = p2; d = p3; }
+        else {
+            y = p3.length === 2 ? "20" + p3 : p3;
+            let v1 = parseInt(p1, 10), v2 = parseInt(p2, 10);
+            if (v1 > 12) { d = v1; m = v2; }
+            else if (v2 > 12) { m = v1; d = v2; }
+            else { d = v1; m = v2; }
+        }
+        if (y && m && d && y.length === 4) {
+            return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        }
+    }
+    const parsed = Date.parse(str);
+    if (!isNaN(parsed)) {
+        const date = new Date(parsed);
+        if (date.getFullYear() > 2000) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+    }
+    return null;
+  }
+
+  const container = document.createElement('div');
+ container.id = 'noorani-toast-container'; document.addEventListener('DOMContentLoaded', () => document.body.appendChild(container));
 
   function showToast(message, opts){
     opts = opts || {};

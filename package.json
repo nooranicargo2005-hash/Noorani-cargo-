@@ -5,9 +5,15 @@
   "scripts": {
     "start": "node server/index.js",
     "install-server": "cd server && npm install",
-    "build": "npm run install-server"
+    "build": "npm run install-server",
+    "serve-admin": "firebase serve --only hosting:admin",
+    "serve-tracking": "firebase serve --only hosting:tracking"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
+    "dotenv": "^17.4.2"
   }
 }

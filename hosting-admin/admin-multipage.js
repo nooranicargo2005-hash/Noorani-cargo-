@@ -1,6 +1,6 @@
 /**
  * Noorani Cargo Enterprise | Multi-Page Engine
- * Optimized for strict execution order and SQLite sync.
+ * Optimized for strict execution order and Supabase sync.
  */
 
 (function () {

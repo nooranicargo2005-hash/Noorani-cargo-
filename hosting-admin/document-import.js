@@ -71,85 +71,8 @@ import { nooraniDb } from './firebase.js';
   };
 
   // --- Normalizers ---
-
-  function cleanId(v) { return String(v || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, ''); }
-
-  function cleanDate(v) {
-    if (v === null || v === undefined || v === '') return null;
-
-    // 1. Handle Date objects (Avoid UTC offset shift)
-    if (v instanceof Date) {
-        const y = v.getFullYear();
-        const m = String(v.getMonth() + 1).padStart(2, '0');
-        const d = String(v.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-    }
-
-    // 2. Handle Excel Numeric Dates
-    if (typeof v === 'number') {
-        try {
-            const date = new Date(Math.round((v - 25569) * 86400 * 1000));
-            if (!isNaN(date.getTime())) {
-                const y = date.getFullYear();
-                const m = String(date.getMonth() + 1).padStart(2, '0');
-                const d = String(date.getDate()).padStart(2, '0');
-                return `${y}-${m}-${d}`;
-            }
-        } catch (e) {}
-    }
-
-    const str = String(v).trim();
-    if (!str || str.length < 5) return null;
-
-    // 3. Try common numeric patterns: YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY
-    const numericMatch = str.match(/(\d{1,4})[-/.](\d{1,2})[-/.](\d{1,4})/);
-    if (numericMatch) {
-        let p1 = numericMatch[1], p2 = numericMatch[2], p3 = numericMatch[3];
-        let y, m, d;
-        if (p1.length === 4) { // YYYY-MM-DD
-            y = p1; m = p2; d = p3;
-        } else { // DD-MM-YYYY or MM-DD-YYYY
-            y = p3.length === 2 ? "20" + p3 : p3;
-            let v1 = parseInt(p1, 10), v2 = parseInt(p2, 10);
-            if (v1 > 12) { d = v1; m = v2; }
-            else if (v2 > 12) { m = v1; d = v2; }
-            else { d = v1; m = v2; } // Default to D/M/Y (09/08/2026 -> Aug 9)
-        }
-        if (y && m && d && y.length === 4) {
-            return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        }
-    }
-
-    // 4. Try month names: 09-Aug-2026, Aug 09 2026
-    const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-    const textMatch = str.match(/(\d{1,2})[-/\s,]+([a-z]{3,})[-/\s,]+(\d{2,4})/i) ||
-                      str.match(/([a-z]{3,})[-/\s,]+(\d{1,2})[-/\s,]+(\d{2,4})/i);
-
-    if (textMatch) {
-        let dStr, mStr, yStr;
-        if (isNaN(parseInt(textMatch[1], 10))) { mStr = textMatch[1]; dStr = textMatch[2]; yStr = textMatch[3]; }
-        else { dStr = textMatch[1]; mStr = textMatch[2]; yStr = textMatch[3]; }
-
-        const mIdx = monthNames.findIndex(m => mStr.toLowerCase().startsWith(m));
-        if (mIdx !== -1) {
-            const y = yStr.length === 2 ? "20" + yStr : yStr;
-            const m = String(mIdx + 1).padStart(2, '0');
-            const d = String(parseInt(dStr, 10)).padStart(2, '0');
-            if (y.length === 4) return `${y}-${m}-${d}`;
-        }
-    }
-
-    // 5. Final fallback: JS native parse (use with caution)
-    const parsed = Date.parse(str);
-    if (!isNaN(parsed)) {
-        const date = new Date(parsed);
-        if (date.getFullYear() > 2000) {
-            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        }
-    }
-
-    return null;
-  }
+  const cleanId = v => (window.normalizeTrackingCode ? window.normalizeTrackingCode(v) : String(v || '').trim().toUpperCase());
+  const cleanDate = v => (window.cleanDate ? window.cleanDate(v) : null);
 
   // --- Autonomous manifestation Parser ---
 

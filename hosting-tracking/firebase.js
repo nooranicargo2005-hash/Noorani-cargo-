@@ -1,6 +1,6 @@
 /**
  * Noorani Cargo | Public Tracking API Bridge
- * Environment-aware connector for SQLite REST Backend.
+ * Environment-aware connector for Supabase REST Backend.
  * Version: 2026-08-08 v8 (Production Resilience)
  */
 
