@@ -179,7 +179,15 @@ import { nooraniDb } from './firebase.js';
         receiverPhone: ['consignee phone', 'receiver phone', 'consignee tel', 'receiver tel', 'consignee mobile', 'receiver mobile'],
         originCountry: ['origin country', 'from country', 'origin nation', 'org country'],
         destinationCountry: ['destination country', 'to country', 'final country', 'dest country'],
-        shipmentType: ['shipment type', 'freight type', 'cargo type', 'type of shipment', 'mode']
+        shipmentType: ['shipment type', 'freight type', 'cargo type', 'type of shipment', 'mode'],
+        route: ['route'],
+        milestone1: ['1. loaded in saudi'],
+        milestone2: ['2. jeddah port transit'],
+        milestone3: ['3. sea voyage'],
+        milestone4: ['4. karachi port arrival'],
+        milestone5: ['5. transfer to lahore'],
+        milestone6: ['6. final delivery'],
+        status: ['overall status', 'status']
     };
 
     let headerRowIndex = -1;
@@ -264,11 +272,18 @@ import { nooraniDb } from './firebase.js';
             originCountry: String(getVal('originCountry', r) || '').trim(),
             destinationCountry: String(getVal('destinationCountry', r) || '').trim(),
             shipmentType: String(getVal('shipmentType', r) || 'Air Freight').trim(),
+            route: String(getVal('route', r) || '').trim(),
+            milestone1: cleanDate(getVal('milestone1', r)) || '',
+            milestone2: cleanDate(getVal('milestone2', r)) || '',
+            milestone3: cleanDate(getVal('milestone3', r)) || '',
+            milestone4: cleanDate(getVal('milestone4', r)) || '',
+            milestone5: cleanDate(getVal('milestone5', r)) || '',
+            milestone6: cleanDate(getVal('milestone6', r)) || '',
             originalQuantity: parseInt(getVal('originalQuantity', r) || 0, 10),
             quantity: parseInt(getVal('quantity', r) || 1, 10),
             originalWeight: parseFloat(getVal('originalWeight', r) || 0),
             weight: parseFloat(getVal('weight', r) || 0),
-            status: 'Pending',
+            status: String(getVal('status', r) || 'Pending').trim(),
             source: 'import',
             importedAt: new Date().toISOString()
         };

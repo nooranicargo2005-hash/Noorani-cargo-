@@ -68,7 +68,7 @@
                 <div class="info-card">
                     <h3><i class="fa-solid fa-box-open"></i> Shipment Parameters</h3>
                     <div class="data-row" id="row-date"><span class="data-label">Booking Date</span><span class="data-value" id="val-date">—</span></div>
-                    <div class="data-row" id="row-swbDate"><span class="data-label">SWB Date</span><span class="data-value" id="val-swbDate">—</span></div>
+                    <div class="data-row" id="row-route"><span class="data-label">Route</span><span class="data-value" id="val-route">—</span></div>
                     <div class="data-row" id="row-type"><span class="data-label">Freight Type</span><span class="data-value" id="val-type">—</span></div>
                     <div class="data-row" id="row-invoice"><span class="data-label">Customer Inv. No.</span><span class="data-value" id="val-invoice">—</span></div>
                     <div class="data-row" id="row-quantity"><span class="data-label">Total Quantity</span><span class="data-value" id="val-quantity">—</span></div>
@@ -153,21 +153,17 @@
         const $id = id => document.getElementById(id);
 
         const milestones = [
-            { id: 'Pending', label: 'Order Registered' },
-            { id: 'Container Loading', label: 'Container Loading' },
-            { id: 'Loaded at Sea Port', label: 'Loaded at Sea Port' },
-            { id: 'Arrived at Sea Port — Unloading', label: 'Arrived at Sea Port — Unloading' },
-            { id: 'Loaded at Office', label: 'Loaded at Office' },
-            { id: 'Unloaded at Office', label: 'Unloaded at Office' },
-            { id: 'Out for Delivery', label: 'For Delivery' },
-            { id: 'Delivered to Customer', label: 'Oslo Customer' }
+            { id: 'milestone1', label: '1. Loaded in Saudi' },
+            { id: 'milestone2', label: '2. Jeddah Port Transit' },
+            { id: 'milestone3', label: '3. Sea Voyage' },
+            { id: 'milestone4', label: '4. Karachi Port Arrival' },
+            { id: 'milestone5', label: '5. Transfer to Lahore' },
+            { id: 'milestone6', label: '6. Final Delivery' }
         ];
 
         function renderTimeline(currentStatus, timelineData, shipment) {
             const container = $id('timelineContainer');
             if (!container) return;
-
-            const activeIndex = milestones.findIndex(m => m.id === currentStatus);
 
             const formatDateStr = (v) => {
                 if (!v || v === 'Pending') return 'PENDING';
@@ -180,32 +176,17 @@
 
             container.innerHTML = `<div class="timeline-wrapper">
                 ${milestones.map((m, i) => {
-                    const isActive = i <= activeIndex;
-
-                    // Find actual date for this specific milestone
-                    let rawDate = null;
-
-                    if (m.id === 'Pending') {
-                        // "Order Registered" date is hidden on public tracking per requirement
-                        rawDate = null;
-                    } else if (m.id === currentStatus) {
-                        // The current milestone uses the saved statusDate
-                        rawDate = shipment.statusDate;
-                    } else if (timelineData && timelineData.length > 0) {
-                        // Past milestones are searched in the history
-                        const entry = timelineData.find(t => t.eventType === m.id || t.title === m.id || t.title === m.label);
-                        if (entry) rawDate = entry.createdAt;
-                    }
-
-                    const mDate = formatDateStr(rawDate);
-                    const dateDisplay = (mDate === 'PENDING' || m.id === 'Pending') ? (m.id === 'Pending' ? '' : 'PENDING') : `DATE: ${mDate}`;
+                    const mDateVal = shipment[m.id];
+                    const isActive = !!mDateVal;
+                    const mDate = formatDateStr(mDateVal);
+                    const dateDisplay = (mDate === 'PENDING') ? 'PENDING' : `DATE: ${mDate}`;
 
                     return `
                         <div class="timeline-item ${isActive ? 'active' : ''}">
                             <div class="timeline-marker">${isActive ? '<i class="fa-solid fa-check" style="font-size:0.8rem;"></i>' : ''}</div>
                             <div class="timeline-content">
                                 <h4>${m.label}</h4>
-                                ${dateDisplay ? `<p style="color:var(--n-gold); font-weight:800; font-size:0.9rem; margin-top:4px; letter-spacing:1px;">${dateDisplay}</p>` : ''}
+                                <p style="color:var(--n-gold); font-weight:800; font-size:0.9rem; margin-top:4px; letter-spacing:1px;">${dateDisplay}</p>
                             </div>
                         </div>`;
                 }).join('')}
@@ -218,7 +199,7 @@
 
             const fields = [
                 { id: 'date', val: s.date },
-                { id: 'swbDate', val: s.swbDate },
+                { id: 'route', val: s.route },
                 { id: 'type', val: s.shipmentType },
                 { id: 'invoice', val: s.customerInvoice },
                 { id: 'quantity', val: s.quantity ? s.quantity + ' PCS' : null },

@@ -376,14 +376,15 @@ window.loadDashboard = async () => {
                             html += `
                                 <tr id="row_${i.trackingId}" class="shipment-data-row">
                                     <td style="font-weight:800; color:var(--n-gold);">${i.trackingId}</td>
-                                    <td>${s.branchCode || ''}</td>
-                                    <td>${s.swbSerial || ''}</td>
-                                    <td>${s.shippingNumber || ''}</td>
-                                    <td>${s.date || ''}</td>
+                                    <td>${s.route || ''}</td>
                                     <td>${s.sender || ''}</td>
                                     <td>${s.receiver || ''}</td>
-                                    <td>${s.quantity || ''}</td>
-                                    <td>${s.weight || ''}</td>
+                                    <td>${s.milestone1 || ''}</td>
+                                    <td>${s.milestone2 || ''}</td>
+                                    <td>${s.milestone3 || ''}</td>
+                                    <td>${s.milestone4 || ''}</td>
+                                    <td>${s.milestone5 || ''}</td>
+                                    <td>${s.milestone6 || ''}</td>
                                     <td><span class="status-badge ${statusCls}">${s.status || 'Pending'}</span></td>
                                     <td class="text-right">
                                         <div style="display:flex; justify-content:flex-end; gap:8px;">
@@ -430,6 +431,13 @@ window.findShipmentInForm = async () => {
             $id('inputCustomerInvoice').value = d.customerInvoice || '';
             $id('inputSwbDate').value = d.swbDate || '';
             $id('inputShipmentType').value = d.shipmentType || 'Air Freight';
+            $id('inputRoute').value = d.route || '';
+            $id('inputM1').value = d.milestone1 || '';
+            $id('inputM2').value = d.milestone2 || '';
+            $id('inputM3').value = d.milestone3 || '';
+            $id('inputM4').value = d.milestone4 || '';
+            $id('inputM5').value = d.milestone5 || '';
+            $id('inputM6').value = d.milestone6 || '';
             $id('inputSender').value = d.sender || '';
             $id('inputSenderPhone').value = d.senderPhone || '';
             $id('inputReceiver').value = d.receiver || '';
@@ -458,7 +466,8 @@ window.resetShipmentForm = (clearTracking = true) => {
     if (clearTracking) $id('inputTracking').value = '';
     const fields = [
         'inputStatus', 'inputDate', 'inputBranchCode', 'inputSwbSerial', 'inputShippingNo', 'inputCustomerInvoice',
-        'inputSwbDate', 'inputShipmentType', 'inputSender', 'inputSenderPhone', 'inputReceiver',
+        'inputSwbDate', 'inputShipmentType', 'inputRoute', 'inputM1', 'inputM2', 'inputM3', 'inputM4', 'inputM5', 'inputM6',
+        'inputSender', 'inputSenderPhone', 'inputReceiver',
         'inputReceiverPhone', 'inputDestination', 'inputReceiverAddress', 'inputOriginCountry',
         'inputDestinationCountry', 'inputOriginalQuantity', 'inputQuantity', 'inputOriginalWeight',
         'inputWeight', 'inputNotes'
@@ -480,6 +489,13 @@ window.saveShipment = async () => {
         customerInvoice: $id('inputCustomerInvoice').value,
         swbDate: $id('inputSwbDate').value,
         shipmentType: $id('inputShipmentType').value,
+        route: $id('inputRoute').value,
+        milestone1: $id('inputM1').value,
+        milestone2: $id('inputM2').value,
+        milestone3: $id('inputM3').value,
+        milestone4: $id('inputM4').value,
+        milestone5: $id('inputM5').value,
+        milestone6: $id('inputM6').value,
         sender: $id('inputSender').value,
         senderPhone: $id('inputSenderPhone').value,
         receiver: $id('inputReceiver').value,
@@ -828,7 +844,17 @@ window.openShipmentWorkspace = async id => {
                 <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Branch Hub</label><input id="wsBranch" class="n-input" value="${d.branchCode||''}"></div>
                 <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">SWB Serial</label><input id="wsSwbSerial" class="n-input" value="${d.swbSerial||''}"></div>
                 <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Invoice #</label><input id="wsInvoice" class="n-input" value="${d.customerInvoice||''}"></div>
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Route</label><input id="wsRoute" class="n-input" value="${d.route||''}"></div>
                 <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Shipment Type</label><select id="wsShipmentType" class="n-input"><option value="Air Freight">Air Freight</option><option value="Sea Freight">Sea Freight</option><option value="Land Freight">Land Freight</option></select></div>
+            </div>
+            <!-- Milestone Row -->
+            <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:16px; margin-top:20px; background:rgba(255,255,255,0.02); padding:16px; border-radius:12px;">
+                <div style="display:grid; gap:4px;"><label style="font-size:0.6rem; font-weight:800; color:var(--n-low);">1. Loaded SA</label><input type="date" id="wsM1" class="n-input" value="${d.milestone1||''}"></div>
+                <div style="display:grid; gap:4px;"><label style="font-size:0.6rem; font-weight:800; color:var(--n-low);">2. Jeddah Port</label><input type="date" id="wsM2" class="n-input" value="${d.milestone2||''}"></div>
+                <div style="display:grid; gap:4px;"><label style="font-size:0.6rem; font-weight:800; color:var(--n-low);">3. Sea Voyage</label><input type="date" id="wsM3" class="n-input" value="${d.milestone3||''}"></div>
+                <div style="display:grid; gap:4px;"><label style="font-size:0.6rem; font-weight:800; color:var(--n-low);">4. Karachi Arrival</label><input type="date" id="wsM4" class="n-input" value="${d.milestone4||''}"></div>
+                <div style="display:grid; gap:4px;"><label style="font-size:0.6rem; font-weight:800; color:var(--n-low);">5. Transfer LHR</label><input type="date" id="wsM5" class="n-input" value="${d.milestone5||''}"></div>
+                <div style="display:grid; gap:4px;"><label style="font-size:0.6rem; font-weight:800; color:var(--n-low);">6. Final Deliv</label><input type="date" id="wsM6" class="n-input" value="${d.milestone6||''}"></div>
             </div>
             <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:24px; margin-top:20px;">
                 <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Shipper Name</label><input id="wsSender" class="n-input" value="${d.sender||''}"></div>
@@ -869,6 +895,13 @@ window.saveWS = async () => {
             branchCode: $id('wsBranch').value,
             swbSerial: $id('wsSwbSerial').value,
             customerInvoice: $id('wsInvoice').value,
+            route: $id('wsRoute').value,
+            milestone1: $id('wsM1').value,
+            milestone2: $id('wsM2').value,
+            milestone3: $id('wsM3').value,
+            milestone4: $id('wsM4').value,
+            milestone5: $id('wsM5').value,
+            milestone6: $id('wsM6').value,
             shipmentType: $id('wsShipmentType').value,
             sender: $id('wsSender').value,
             senderPhone: $id('wsSenderPhone').value,
@@ -910,28 +943,26 @@ window.exportShipmentTable = (format) => {
     if (!items.length) return alert('No data identified for export');
 
     const headers = [
-        'Date', 'SWB Serial No.', 'Cust Inv No.', 'SWB Date', 'Customer',
-        'Customer Inv. No.', 'Shipper Name', 'Consignee Name', 'Orig. Qty', 'Qty',
-        'Orig. Wt.', 'Wt.', 'Consignee City', 'Consingee Address'
+        'Tracking No', 'Sender Name', 'Receiver Name', 'Route',
+        '1. Loaded in Saudi', '2. Jeddah Port Transit', '3. Sea Voyage',
+        '4. Karachi Port Arrival', '5. Transfer to Lahore', '6. Final Delivery',
+        'Overall Status'
     ];
 
     const data = items.map(i => {
         const d = i.data;
         return [
-            d.date || '',
-            d.swbSerial || '',
-            d.shippingNumber || '',
-            d.swbDate || '',
-            d.branchCode || '',
-            d.customerInvoice || '',
+            i.trackingId || '',
             d.sender || '',
             d.receiver || '',
-            d.originalQuantity || '',
-            d.quantity || '',
-            d.originalWeight || '',
-            d.weight || '',
-            d.destination || '',
-            d.receiverAddress || ''
+            d.route || '',
+            d.milestone1 || '',
+            d.milestone2 || '',
+            d.milestone3 || '',
+            d.milestone4 || '',
+            d.milestone5 || '',
+            d.milestone6 || '',
+            d.status || ''
         ];
     });
 

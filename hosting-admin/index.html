@@ -157,6 +157,10 @@
 
                 <div class="form-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:32px; margin-top:32px;">
                     <div style="display:flex; flex-direction:column; gap:12px;">
+                        <label for="inputRoute" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Route (e.g. KSA to PK)</label>
+                        <input type="text" id="inputRoute" class="n-input" placeholder="Origin to Destination">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:12px;">
                         <label for="inputShipmentType" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Shipment Type</label>
                         <select id="inputShipmentType" class="n-input">
                             <option value="Air Freight">Air Freight</option>
@@ -164,6 +168,19 @@
                             <option value="Land Freight">Land Freight</option>
                         </select>
                     </div>
+                </div>
+
+                <div style="height:1px; background:var(--n-border); margin:40px 0;"></div>
+
+                <!-- Section: Master Excel Milestones -->
+                <h3 style="font-size:1.1rem; color:var(--n-gold); margin-bottom:24px;"><i class="fa-solid fa-list-check"></i> Master logistics Milestones</h3>
+                <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:24px;">
+                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">1. Loaded in Saudi</label><input type="date" id="inputM1" class="n-input"></div>
+                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">2. Jeddah Port Transit</label><input type="date" id="inputM2" class="n-input"></div>
+                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">3. Sea Voyage</label><input type="date" id="inputM3" class="n-input"></div>
+                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">4. Karachi Port Arrival</label><input type="date" id="inputM4" class="n-input"></div>
+                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">5. Transfer to Lahore</label><input type="date" id="inputM5" class="n-input"></div>
+                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">6. Final Delivery</label><input type="date" id="inputM6" class="n-input"></div>
                 </div>
 
                 <div style="height:1px; background:var(--n-border); margin:40px 0;"></div>
@@ -210,13 +227,13 @@
                         <label for="inputStatus" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--n-low);">Operational Status</label>
                         <select id="inputStatus" class="n-input">
                             <option value="Pending">Pending</option>
-                            <option value="Container Loading">Container Loading</option>
-                            <option value="Loaded at Sea Port">Loaded at Sea Port</option>
-                            <option value="Arrived at Sea Port — Unloading">Arrived at Sea Port — Unloading</option>
-                            <option value="Loaded at Office">Loaded at Office</option>
-                            <option value="Unloaded at Office">Unloaded at Office</option>
-                            <option value="Out for Delivery">Out for Delivery</option>
-                            <option value="Delivered to Customer">Delivered to Customer</option>
+                            <option value="Loaded in Saudi">1. Loaded in Saudi</option>
+                            <option value="Jeddah Port Transit">2. Jeddah Port Transit</option>
+                            <option value="Sea Voyage">3. Sea Voyage</option>
+                            <option value="Karachi Port Arrival">4. Karachi Port Arrival</option>
+                            <option value="Transfer to Lahore">5. Transfer to Lahore</option>
+                            <option value="Final Delivery">6. Final Delivery</option>
+                            <option value="Cancelled">Cancelled</option>
                         </select>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:12px;">
@@ -277,14 +294,15 @@
                         <thead>
                             <tr>
                                 <th>Tracking ID</th>
-                                <th>Customer</th>
-                                <th>SWB Serial No.</th>
-                                <th>Cust Inv No.</th>
-                                <th>Date</th>
+                                <th>Route</th>
                                 <th>Shipper</th>
                                 <th>Consignee</th>
-                                <th>Qty</th>
-                                <th>Wt.</th>
+                                <th>M1</th>
+                                <th>M2</th>
+                                <th>M3</th>
+                                <th>M4</th>
+                                <th>M5</th>
+                                <th>M6</th>
                                 <th>Status</th>
                                 <th class="text-right">Actions</th>
                             </tr>

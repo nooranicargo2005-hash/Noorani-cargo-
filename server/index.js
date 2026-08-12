@@ -246,6 +246,13 @@ app.post('/api/shipments/:id', async (req, res) => {
             swbDate: d.swbDate !== undefined ? d.swbDate : (existing ? existing.swbDate : ''),
             driver: d.driver !== undefined ? d.driver : (existing ? existing.driver : ''),
             vehicle: d.vehicle !== undefined ? d.vehicle : (existing ? existing.vehicle : ''),
+            route: d.route !== undefined ? d.route : (existing ? existing.route : ''),
+            milestone1: d.milestone1 !== undefined ? d.milestone1 : (existing ? existing.milestone1 : ''),
+            milestone2: d.milestone2 !== undefined ? d.milestone2 : (existing ? existing.milestone2 : ''),
+            milestone3: d.milestone3 !== undefined ? d.milestone3 : (existing ? existing.milestone3 : ''),
+            milestone4: d.milestone4 !== undefined ? d.milestone4 : (existing ? existing.milestone4 : ''),
+            milestone5: d.milestone5 !== undefined ? d.milestone5 : (existing ? existing.milestone5 : ''),
+            milestone6: d.milestone6 !== undefined ? d.milestone6 : (existing ? existing.milestone6 : ''),
             updated_at: new Date().toISOString(),
             created_at: existing ? existing.created_at : new Date().toISOString()
         };
