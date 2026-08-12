@@ -1,17 +1,17 @@
 {
   "name": "noorani-cargo-server",
   "version": "1.0.0",
-  "description": "Noorani Cargo Enterprise Server - Node.js + Express + SQLite",
+  "description": "NOORANI CARGO SERVICES API Server - Node.js + Express + Supabase",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "init-db": "node init-db.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
+    "@supabase/supabase-js": "^2.112.3",
+    "body-parser": "^1.20.2",
     "cors": "^2.8.5",
-    "sqlite3": "^5.1.6",
-    "multer": "^1.4.5-lts.1",
-    "body-parser": "^1.20.2"
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1"
   }
 }

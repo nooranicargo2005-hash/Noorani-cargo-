@@ -1,12 +1,10 @@
-import { firebaseConfig } from './shared-firebase-config.js';
-
 /**
  * Noorani Cargo | Public Tracking API Bridge
  * Environment-aware connector for SQLite REST Backend.
  * Version: 2026-08-08 v8 (Production Resilience)
  */
 
-const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const isLocal = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 const PROD_API_URL = 'https://noorani-cargo-api.onrender.com/api';
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -39,11 +37,25 @@ export async function getShipmentByTracking(id) {
     }
 }
 
+export async function getTimelineForShipment(id) {
+    try {
+        return await apiFetch(`/shipments/${id}/timeline`);
+    } catch (e) {
+        console.error('[Timeline] Fetch Error:', e);
+        return [];
+    }
+}
+
 export function watchPublicShipment(id, callback) {
     const poll = async () => {
         try {
             const res = await apiFetch(`/shipments/${id}`);
-            if (res && res.data) callback(res);
+            if (res && res.data) {
+                // Fetch timeline and attach it to the result
+                const timeline = await apiFetch(`/shipments/${id}/timeline`).catch(() => []);
+                res.timeline = timeline;
+                callback(res);
+            }
         } catch (e) {}
     };
     poll();

@@ -12,12 +12,26 @@ const enterpriseAdminState = {
   currentItems: [],
   charts: {},
   profile: null,
-  editMode: { id: null, module: null }
+  editMode: { id: null, module: null },
+  openFolders: new Set()
 };
 
 const $id = id => document.getElementById(id);
 const createElement = (tag, cls, html = '') => { const el = document.createElement(tag); if (cls) el.className = cls; if (html) el.innerHTML = html; return el; };
 const formatTime = (v) => { if (!v) return '—'; try { const d = v.toDate ? v.toDate() : (v.seconds ? new Date(v.seconds * 1000) : new Date(v)); return d.toLocaleString(); } catch (e) { return String(v); } };
+const formatDateForInput = (v) => {
+    if (!v || v === 'undefined' || v === 'null') return '';
+    try {
+        const d = new Date(v);
+        if (isNaN(d.getTime())) {
+             if (/^\d{4}-\d{2}-\d{2}$/.test(String(v).substring(0, 10))) {
+                return String(v).substring(0, 10);
+            }
+            return '';
+        }
+        return d.toISOString().split('T')[0];
+    } catch (e) { return ''; }
+};
 
 const getDb = () => nooraniDb || window.nooraniDb;
 
@@ -30,114 +44,134 @@ function createUI() {
   const panel = createElement('div', 'enterprise-panel');
   panel.id = 'enterprise-admin-panel';
   panel.innerHTML = `
-    <div class="form-grid">
-      <div id="enterpriseProfileCard" class="enterprise-card">
-        <header class="enterprise-card-heading"><h3><i class="fa-solid fa-user-shield"></i> Access Profile</h3></header>
-        <div id="enterpriseRoleSummary" style="margin-bottom:16px;"></div>
-        <div id="enterprisePermSummary" style="display:grid; gap:8px;"></div>
-      </div>
-
-      <div id="enterpriseAnalyticsCard" class="enterprise-card">
-        <header class="enterprise-card-heading"><h3><i class="fa-solid fa-chart-line"></i> Logistics Insights</h3></header>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px; align-items:center;">
-          <div style="height:180px; position:relative;"><canvas id="statusChart"></canvas></div>
-          <div id="enterpriseAnalyticsContent" style="display:grid; gap:12px;"></div>
-        </div>
-        <button class="enterprise-btn primary sm" style="margin-top:20px; width:100%;" onclick="window.refreshDashboard()">Sync Live Stats</button>
+    <div class="form-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:32px;">
+      <div id="enterpriseProfileCard" class="n-card">
+        <header style="margin-bottom:32px; display:flex; align-items:center; gap:16px;">
+            <div class="kpi-icon" style="width:48px; height:48px; border-radius:12px;"><i class="fa-solid fa-user-shield"></i></div>
+            <h3>Access Profile</h3>
+        </header>
+        <div id="enterpriseRoleSummary" style="margin-bottom:24px;"></div>
+        <div id="enterprisePermSummary" style="display:grid; gap:12px;"></div>
       </div>
     </div>
 
-    <div id="enterpriseActivityCard" class="enterprise-card hidden" style="margin-top:24px;">
-      <header class="enterprise-card-heading">
-          <h3><i class="fa-solid fa-list-check"></i> System Audit Trail</h3>
-          <button class="enterprise-btn primary sm" onclick="window.exportAudit('xlsx')"><i class="fa-solid fa-file-excel"></i> Export</button>
+    <div id="enterpriseActivityCard" class="n-card hidden" style="margin-top:32px;">
+      <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+          <h3><i class="fa-solid fa-list-check" style="color:var(--n-gold); margin-right:16px;"></i>System Audit Trail</h3>
+          <button class="n-btn" onclick="window.exportAudit('xlsx')"><i class="fa-solid fa-file-excel"></i> Export Log</button>
       </header>
       <div class="mb-20">
-          <input id="auditSearchInput" placeholder="Search logs..." onkeyup="window.renderAuditLogs()">
+          <input id="auditSearchInput" class="n-input" placeholder="Search system logs..." onkeyup="window.renderAuditLogs()">
       </div>
-      <div class="table-responsive">
+      <div class="table-container">
           <table class="table">
-              <thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th class="text-right">Module</th></tr></thead>
+              <thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>Module</th><th class="text-right">Actions</th></tr></thead>
               <tbody id="auditTableBody"></tbody>
           </table>
       </div>
     </div>
 
-    <div id="enterpriseReportsCard" class="enterprise-card hidden" style="margin-top:24px;">
-      <header class="enterprise-card-heading">
-        <h3><i class="fa-solid fa-chart-pie"></i> Business Intelligence</h3>
-        <button class="enterprise-btn sm" onclick="window.refreshAnalytics()"><i class="fa-solid fa-sync"></i></button>
+    <div id="enterpriseReportsCard" class="n-card hidden" style="margin-top:32px;">
+      <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:40px;">
+        <div>
+            <h2 style="font-size:2rem;">Intelligence Studio</h2>
+            <p class="text-muted">High-level operational analysis.</p>
+        </div>
+        <button class="n-btn" onclick="window.refreshAnalytics()"><i class="fa-solid fa-sync"></i> Refresh</button>
       </header>
-      <div class="enterprise-kpi-grid" style="margin-bottom:24px;">
-        <article class="enterprise-kpi-card"><div style="flex:1;"><small>Profitability</small><strong id="rep-kpi-profit">$0</strong></div></article>
-        <article class="enterprise-kpi-card"><div style="flex:1;"><small>Success Rate</small><strong id="rep-kpi-rate">0%</strong></div></article>
-        <article class="enterprise-kpi-card"><div style="flex:1;"><small>Active Fleet</small><strong id="rep-kpi-fleet">0</strong></div></article>
-        <article class="enterprise-kpi-card"><div style="flex:1;"><small>Due Balance</small><strong id="rep-kpi-due" style="color:var(--n-danger);">$0</strong></div></article>
+      <div class="kpi-grid" style="margin-bottom:40px;">
+        <article class="kpi-card"><div class="kpi-data"><span>Profitability</span><strong id="rep-kpi-profit">$0</strong></div></article>
+        <article class="kpi-card"><div class="kpi-data"><span>Success Rate</span><strong id="rep-kpi-rate">0%</strong></div></article>
+        <article class="kpi-card"><div class="kpi-data"><span>Due Balance</span><strong id="rep-kpi-due" style="color:var(--n-danger);">$0</strong></div></article>
       </div>
-      <nav class="workspace-modal-tabs" style="margin-bottom:24px;">
-        <button class="ws-tab-btn active" onclick="window.switchReportTab(this, 'visuals')">Analytics</button>
-        <button class="ws-tab-btn" onclick="window.switchReportTab(this, 'shipments')">Shipment Logs</button>
-        <button class="ws-tab-btn" onclick="window.switchReportTab(this, 'financial')">Financials</button>
+      <nav style="display:flex; gap:16px; margin-bottom:40px; border-bottom:1px solid var(--n-border); padding-bottom:16px;">
+        <button class="n-btn active" onclick="window.switchReportTab(this, 'visuals')">Data Visualization</button>
+        <button class="n-btn" onclick="window.switchReportTab(this, 'shipments')">Inventory Logs</button>
+        <button class="n-btn" onclick="window.switchReportTab(this, 'financial')">Financial Ledger</button>
       </nav>
       <div id="rep-visuals" class="report-tab-content">
-        <div class="form-grid">
-            <div class="panel-card"><h5>Volume Trends</h5><div class="chart-container"><canvas id="chart-shipment-trend"></canvas></div></div>
-            <div class="panel-card"><h5>Revenue Flow</h5><div class="chart-container"><canvas id="chart-finance-trend"></canvas></div></div>
+        <div class="form-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:32px;">
+            <div class="n-card" style="background:var(--n-surface);"><h5>Volume Trends</h5><div style="height:280px;"><canvas id="chart-shipment-trend"></canvas></div></div>
+            <div class="n-card" style="background:var(--n-surface);"><h5>Revenue Flow</h5><div style="height:280px;"><canvas id="chart-finance-trend"></canvas></div></div>
         </div>
       </div>
-      <div id="rep-shipments" class="report-tab-content hidden"><div id="rep-ship-content" class="table-responsive"></div></div>
+      <div id="rep-shipments" class="report-tab-content hidden"><div class="table-container"><table class="table"><thead><tr><th>Cargo ID</th><th>Hub</th><th>Status</th></tr></thead><tbody id="rep-ship-content"></tbody></table></div></div>
+      <div id="rep-financial" class="report-tab-content hidden"><div class="table-container"><table class="table"><thead><tr><th>TXN ID</th><th>Amount</th><th>Category</th></tr></thead><tbody id="rep-fin-content"></tbody></table></div></div>
     </div>
 
-    <div id="enterpriseCustomersCard" class="enterprise-card hidden" style="margin-top:24px;">
-      <header class="enterprise-card-heading">
-        <h3><i class="fa-solid fa-address-book"></i> Customer Registry</h3>
-        <button class="enterprise-btn primary sm" onclick="window.showCustomerForm()"><i class="fa-solid fa-plus"></i> Add Client</button>
+    <div id="enterpriseFinanceCard" class="n-card hidden" style="margin-top:32px;">
+      <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+        <h3><i class="fa-solid fa-wallet" style="color:var(--n-gold); margin-right:16px;"></i>Financial Ledger</h3>
+        <div style="display:flex; gap:12px;">
+            <button class="n-btn primary" onclick="window.showTransactionForm('income')">Add Income</button>
+            <button class="n-btn" onclick="window.showTransactionForm('expense')" style="border-color:var(--n-danger); color:var(--n-danger);">Add Expense</button>
+        </div>
       </header>
-      <div class="mb-20">
-        <input id="custSearchInput" placeholder="Search customers..." onkeyup="window.renderCustomers()">
+      <div class="kpi-grid mb-20">
+        <article class="kpi-card"><div class="kpi-data"><span>Revenue</span><strong id="fin-revenue">$0</strong></div></article>
+        <article class="kpi-card"><div class="kpi-data"><span>Expenses</span><strong id="fin-expenses">$0</strong></div></article>
+        <article class="kpi-card"><div class="kpi-data"><span>Net Profit</span><strong id="fin-profit">$0</strong></div></article>
       </div>
-      <div class="table-responsive"><table class="table"><thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Contact</th><th>City</th><th class="text-right">Actions</th></tr></thead><tbody id="custTableBody"></tbody></table></div>
+      <div class="table-container"><table class="table"><thead><tr><th>TXN ID</th><th>Date</th><th>Category</th><th>Method</th><th>Amount</th><th>Status</th><th class="text-right">Actions</th></tr></thead><tbody id="finTableBody"></tbody></table></div>
     </div>
 
-    <div id="enterpriseDriversCard" class="enterprise-card mt-20 hidden">
-      <header class="enterprise-card-header"><h4><i class="fa-solid fa-id-card"></i> Fleet Operators</h4><button class="enterprise-btn primary sm" onclick="window.showDriverForm()">Add Driver</button></header>
-      <div class="table-responsive mt-20"><table class="table"><thead><tr><th>ID</th><th>Full Name</th><th>License</th><th>Mobile</th><th>Hub</th><th>Status</th><th class="text-right">Actions</th></tr></thead><tbody id="drvTableBody"></tbody></table></div>
+    <div id="enterpriseInvoicesCard" class="n-card hidden" style="margin-top:32px;">
+      <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+        <h3><i class="fa-solid fa-file-invoice-dollar" style="color:var(--n-gold); margin-right:16px;"></i>Billing Center</h3>
+        <button class="n-btn primary" onclick="window.refreshFinance()"><i class="fa-solid fa-sync"></i> Refresh</button>
+      </header>
+      <div class="table-container"><table class="table"><thead><tr><th>Invoice #</th><th>Cargo ID</th><th>Amount</th><th>Status</th><th class="text-right">Actions</th></tr></thead><tbody id="invTableBody"><tr><td colspan="5" class="text-center text-muted">No invoices identified.</td></tr></tbody></table></div>
     </div>
 
-    <div id="enterpriseFleetCard" class="enterprise-card mt-20 hidden">
-      <header class="enterprise-card-header"><h4><i class="fa-solid fa-truck"></i> Vehicle Fleet</h4><button class="enterprise-btn primary sm" onclick="window.showVehicleForm()">Register Vehicle</button></header>
-      <div class="table-responsive mt-20"><table class="table"><thead><tr><th>ID</th><th>Plate</th><th>Type</th><th>Driver</th><th>Mileage</th><th>Status</th><th class="text-right">Actions</th></tr></thead><tbody id="vehTableBody"></tbody></table></div>
+    <div id="enterpriseUsersCard" class="n-card hidden" style="margin-top:32px;">
+      <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+        <h3><i class="fa-solid fa-users-gear" style="color:var(--n-gold); margin-right:16px;"></i>User Access Control</h3>
+        <button class="n-btn primary" onclick="window.showUserForm()"><i class="fa-solid fa-user-plus"></i> Provision User</button>
+      </header>
+      <div class="table-container"><table class="table"><thead><tr><th>User</th><th>Role</th><th>Hub</th><th>Status</th><th class="text-right">Actions</th></tr></thead><tbody id="userTableBody"></tbody></table></div>
     </div>
 
-    <div id="enterpriseBranchesCard" class="enterprise-card mt-20 hidden">
-      <header class="enterprise-card-header"><h4><i class="fa-solid fa-code-branch"></i> Global Hubs</h4><button class="enterprise-btn primary sm" onclick="window.showBranchForm()">New Hub</button></header>
-      <div class="table-responsive mt-20"><table class="table"><thead><tr><th>ID</th><th>Hub Name</th><th>Code</th><th>Manager</th><th>Location</th><th>Status</th><th class="text-right">Actions</th></tr></thead><tbody id="brTableBody"></tbody></table></div>
+    <div id="enterpriseNotificationsCard" class="n-card hidden" style="margin-top:32px;">
+      <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+        <h3><i class="fa-solid fa-bell" style="color:var(--n-gold); margin-right:16px;"></i>Full History</h3>
+        <button class="n-btn" onclick="window.clearNotifications()"><i class="fa-solid fa-trash"></i> Clear All</button>
+      </header>
+      <div id="enterpriseNotifFullList" style="display:grid; gap:16px;"></div>
     </div>
 
-    <div id="enterpriseEmployeesCard" class="enterprise-card mt-20 hidden">
-      <header class="enterprise-card-header"><h4><i class="fa-solid fa-user-tie"></i> Staff Workforce</h4><button class="enterprise-btn primary sm" onclick="window.showEmployeeForm()">New Staff</button></header>
-      <div class="table-responsive mt-20"><table class="table"><thead><tr><th>Email</th><th>Role</th><th>Hub</th><th>Status</th><th class="text-right">Actions</th></tr></thead><tbody id="empTableBody"></tbody></table></div>
-    </div>
-
-    <div id="enterpriseFinanceCard" class="enterprise-card mt-20 hidden">
-      <header class="enterprise-card-header"><h4><i class="fa-solid fa-wallet"></i> Financial Ledger</h4><div class="enterprise-btn-row"><button class="enterprise-btn primary sm" onclick="window.showTransactionForm('income')">Add Income</button><button class="enterprise-btn danger sm" onclick="window.showTransactionForm('expense')">Add Expense</button></div></header>
-      <div class="grid-4 mb-20"><article class="enterprise-kpi-card"><small>Revenue</small><strong id="fin-revenue">$0</strong></article><article class="enterprise-kpi-card"><small>Expenses</small><strong id="fin-expenses">$0</strong></article><article class="enterprise-kpi-card"><small>Net Profit</small><strong id="fin-profit">$0</strong></article><article class="enterprise-kpi-card"><small>Dues</small><strong id="fin-due" style="color:var(--noorani-danger);">$0</strong></article></div>
-      <div class="table-responsive"><table class="table"><thead><tr><th>TXN ID</th><th>Date</th><th>Category</th><th>Method</th><th>Amount</th><th>Status</th><th class="text-right">Actions</th></tr></thead><tbody id="finTableBody"></tbody></table></div>
-    </div>
-
-    <div id="enterpriseUsersCard" class="enterprise-card mt-20 hidden">
-      <header class="enterprise-card-header"><h4><i class="fa-solid fa-users-gear"></i> User Accounts</h4><button class="enterprise-btn primary sm" onclick="window.showUserForm()">Provision User</button></header>
-      <div class="table-responsive mt-20"><table class="table"><thead><tr><th>Email</th><th>Role</th><th>Hub</th><th>Status</th><th class="text-right">Actions</th></tr></thead><tbody id="userTableBody"></tbody></table></div>
-    </div>
-
-    <div id="enterpriseSettingsCard" class="enterprise-card mt-20 hidden">
-      <header class="enterprise-card-header"><h4><i class="fa-solid fa-sliders"></i> Global Settings</h4><button class="enterprise-btn primary sm" onclick="window.saveAllSettings()">Save Changes</button></header>
-      <nav class="workspace-modal-tabs"><button class="ws-tab-btn active" onclick="window.switchSettingsTab(this, 'company')">Company</button><button class="ws-tab-btn" onclick="window.switchSettingsTab(this, 'shipment')">Shipments</button><button class="ws-tab-btn" onclick="window.switchSettingsTab(this, 'appearance')">Theme</button></nav>
+    <div id="enterpriseSettingsCard" class="n-card hidden" style="margin-top:32px;">
+      <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+        <h3><i class="fa-solid fa-sliders" style="color:var(--n-gold); margin-right:16px;"></i>Global Settings</h3>
+        <button class="n-btn primary" onclick="window.saveAllSettings()">Sync Changes</button>
+      </header>
+      <nav style="display:flex; gap:16px; margin-bottom:32px; border-bottom:1px solid var(--n-border); padding-bottom:16px;">
+        <button class="n-btn active" onclick="window.switchSettingsTab(this, 'company')">Company Profile</button>
+        <button class="n-btn" onclick="window.switchSettingsTab(this, 'shipment')">Cargo Config</button>
+      </nav>
       <div id="set-company" class="settings-tab-content">
-          <form class="enterprise-form mt-20"><div class="form-grid"><div class="form-group"><label>Name</label><input id="set-comp-name"></div><div class="form-group"><label>Email</label><input id="set-comp-email"></div></div></form>
+          <div class="form-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:32px;">
+            <div style="display:grid; gap:12px;"><label>Organization Name</label><input id="set-comp-name" class="n-input"></div>
+            <div style="display:grid; gap:12px;"><label>Primary Email</label><input id="set-comp-email" class="n-input"></div>
+            <div style="display:grid; gap:12px;"><label>System Theme</label><select id="set-app-theme" class="n-input"><option value="dark">Elite Dark</option><option value="light">Classic Light</option></select></div>
+            <div style="display:grid; gap:12px;"><label>Accent Color</label><input id="set-app-color" type="color" class="n-input" style="height:44px; padding:4px;"></div>
+          </div>
       </div>
-      <div id="set-shipment" class="settings-tab-content hidden"><form class="enterprise-form mt-20"><div class="form-grid"><div class="form-group"><label>Prefix</label><input id="set-ship-prefix"></div><div class="form-group"><label>Serial</label><input id="set-ship-start" type="number"></div></div></form></div>
-      <div id="set-appearance" class="settings-tab-content hidden"><div class="enterprise-form mt-20"><div class="grid-2"><div class="form-group"><label>Mode</label><select id="set-app-theme"><option value="dark">Dark</option><option value="light">Light</option></select></div><div class="form-group"><label>Accent</label><input type="color" id="set-app-color"></div></div></div></div>
+      <div id="set-shipment" class="settings-tab-content hidden">
+          <div class="form-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:32px;">
+            <div style="display:grid; gap:12px;"><label>Tracking Prefix</label><input id="set-ship-prefix" class="n-input"></div>
+            <div style="display:grid; gap:12px;"><label>Serial Initializer</label><input id="set-ship-start" type="number" class="n-input"></div>
+          </div>
+      </div>
+    </div>
+
+    <div id="enterpriseBackupCard" class="n-card hidden" style="margin-top:32px;">
+      <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+        <h3><i class="fa-solid fa-cloud-arrow-down" style="color:var(--n-gold); margin-right:16px;"></i>Database Backup</h3>
+      </header>
+      <div class="p-40 text-center">
+        <p class="text-muted">Cloud synchronization and local export utilities.</p>
+        <button class="n-btn mt-20" onclick="alert('Local database backup initialized.')"><i class="fa-solid fa-download"></i> Download SQLite DB</button>
+      </div>
     </div>
   `;
   view.appendChild(panel);
@@ -145,72 +179,92 @@ function createUI() {
 }
 
 function initModals() {
-    if ($id('shipmentWorkspaceModal')) return;
-
     // Shipment Workspace
-    const ws = createElement('div', 'enterprise-modal-backdrop');
-    ws.id = 'shipmentWorkspaceModal';
-    ws.innerHTML = `
-      <div class="enterprise-modal workspace-modal">
-        <header class="workspace-modal-header"><div><span id="wsTrack">ID</span><h2 id="wsTitle">Shipment File</h2></div><button class="close-btn" onclick="window.closeWorkspace()">&times;</button></header>
-        <nav class="workspace-modal-tabs"><button class="ws-tab-btn active" data-tab="general">General</button><button class="ws-tab-btn" data-tab="notes">Notes</button><button class="ws-tab-btn" data-tab="files">Files</button></nav>
-        <div class="workspace-modal-body">
-            <section id="wsGeneral" class="ws-tab-content active"><div id="wsForm"></div></section>
-            <section id="wsNotes" class="ws-tab-content hidden"><textarea id="wsNewNote" placeholder="Add note..."></textarea><button class="enterprise-btn primary mt-20" onclick="window.addWSNote()">Post Note</button><div id="wsNoteList" class="enterprise-list mt-20"></div></section>
-            <section id="wsFiles" class="ws-tab-content hidden"><div id="wsAssetList" class="enterprise-list"></div><input type="file" id="wsAssetInput" class="mt-20" onchange="window.uploadWSAsset()"></section>
-        </div>
-        <footer class="workspace-modal-footer"><div class="enterprise-btn-row" style="justify-content:flex-end; gap:10px;"><button class="enterprise-btn danger" onclick="window.deleteRow(enterpriseAdminState.activeTracking)">Delete Record</button><button class="enterprise-btn primary" onclick="window.saveWS()">Sync Changes</button></div></footer>
-      </div>`;
-    document.body.appendChild(ws);
-    ws.querySelectorAll('.ws-tab-btn').forEach(btn => btn.onclick = () => {
-        ws.querySelectorAll('.ws-tab-btn, .ws-tab-content').forEach(el => el.classList.remove('active', 'hidden'));
-        ws.querySelectorAll('.ws-tab-content').forEach(el => { if (el.id !== 'ws' + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)) el.classList.add('hidden'); });
-        btn.classList.add('active'); $id('ws' + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add('active');
-    });
+    if (!$id('shipmentWorkspaceModal')) {
+        const ws = createElement('div', 'enterprise-modal-backdrop');
+        ws.id = 'shipmentWorkspaceModal';
+        ws.style.cssText = 'position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.85); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:0.3s;';
+        ws.innerHTML = `
+          <div class="n-card" style="width:100%; max-width:900px; max-height:90vh; overflow-y:auto; border-color:var(--n-border-accent);">
+            <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+                <div><span id="wsTrack" class="text-muted" style="font-size:0.75rem; font-weight:800; letter-spacing:2px;">ID</span><h2 id="wsTitle" style="margin-top:4px;">Shipment File</h2></div>
+                <button class="n-btn" onclick="window.closeWorkspace()" style="border-radius:50%; width:44px; height:44px; padding:0; justify-content:center; font-size:1.5rem;">&times;</button>
+            </header>
+            <nav style="display:flex; gap:12px; margin-bottom:32px; border-bottom:1px solid var(--n-border); padding-bottom:12px;">
+                <button class="n-btn active" onclick="window.switchWSTab(this, 'general')">Overview</button>
+                <button class="n-btn" onclick="window.switchWSTab(this, 'notes')">Notes</button>
+                <button class="n-btn" onclick="window.switchWSTab(this, 'files')">Assets</button>
+            </nav>
+            <div class="workspace-body">
+                <section id="wsGeneral" class="ws-tab-content">
+                    <div id="wsForm"></div>
+                    <div class="enterprise-btn-row" style="margin-top:40px; display:flex; justify-content:flex-end; gap:16px;">
+                        <button class="n-btn" onclick="window.deleteRow(enterpriseAdminState.activeTracking)" style="border-color:var(--n-danger); color:var(--n-danger);">Delete Record</button>
+                        <button class="n-btn primary" onclick="window.saveWS()">Sync Changes</button>
+                    </div>
+                </section>
+                <section id="wsNotes" class="ws-tab-content hidden">
+                    <textarea id="wsNewNote" class="n-input" placeholder="Enter administrative note..." style="height:120px;"></textarea>
+                    <button class="n-btn primary mt-20" onclick="window.addWSNote()" style="width:100%;">Post Note</button>
+                    <div id="wsNoteList" style="margin-top:32px;"></div>
+                </section>
+                <section id="wsFiles" class="ws-tab-content hidden">
+                    <div id="wsAssetList"></div>
+                    <div class="mt-20" style="border:2px dashed var(--n-border); padding:32px; border-radius:12px; text-align:center;">
+                        <input type="file" id="wsAssetInput" hidden onchange="window.uploadWSAsset()">
+                        <button class="n-btn" onclick="$id('wsAssetInput').click()"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Attachment</button>
+                        <p class="text-muted" style="margin-top:12px; font-size:0.8rem;">Supports Documents & Images</p>
+                    </div>
+                </section>
+            </div>
+          </div>`;
+        document.body.appendChild(ws);
+
+        window.switchWSTab = (btn, tab) => {
+            const parent = btn.closest('.n-card');
+            parent.querySelectorAll('nav .n-btn').forEach(b => b.classList.remove('active', 'primary'));
+            btn.classList.add('active');
+            parent.querySelectorAll('.ws-tab-content').forEach(c => c.classList.add('hidden'));
+            $id('ws' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('hidden');
+        };
+    }
 
     // CRUD Modal Templates
     const createModal = (id, title, content, footer) => {
-        const m = createElement('div', 'enterprise-modal-backdrop'); m.id = id;
-        m.innerHTML = `<div class="enterprise-modal workspace-modal"><header class="workspace-modal-header"><h2>${title}</h2><button class="close-btn" onclick="$id('${id}').classList.remove('is-open')">&times;</button></header><div class="workspace-modal-body">${content}</div><footer class="workspace-modal-footer text-right">${footer}</footer></div>`;
+        if ($id(id)) return;
+        const m = createElement('div', 'enterprise-modal-backdrop');
+        m.id = id;
+        m.style.cssText = 'position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.85); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:0.3s;';
+        m.innerHTML = `
+          <div class="n-card" style="width:100%; max-width:800px; max-height:90vh; overflow-y:auto;">
+            <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+                <h2 style="font-size:1.5rem;">${title}</h2>
+                <button class="n-btn" onclick="$id('${id}').style.opacity='0'; $id('${id}').style.pointerEvents='none';" style="border-radius:50%; width:44px; height:44px; padding:0; justify-content:center; font-size:1.5rem;">&times;</button>
+            </header>
+            <div class="modal-body">${content}</div>
+            <footer style="margin-top:40px; padding-top:24px; border-top:1px solid var(--n-border); display:flex; justify-content:flex-end;">${footer}</footer>
+          </div>`;
         document.body.appendChild(m);
+
+        m.open = () => { m.style.opacity='1'; m.style.pointerEvents='auto'; };
+        m.close = () => { m.style.opacity='0'; m.style.pointerEvents='none'; };
     };
 
-    createModal('customerFormModal', 'Customer Management',
-        `<form id="customerEntryForm" class="enterprise-form"><input type="hidden" id="cust-id"><div class="form-grid"><div class="form-group"><label>Full Name *</label><input id="cust-name" required></div><div class="form-group"><label>Mobile *</label><input id="cust-mobile" required></div></div><div class="form-grid"><div class="form-group"><label>Email</label><input id="cust-email"></div><div class="form-group"><label>Type</label><select id="cust-type"><option value="Individual">Individual</option><option value="Business">Business</option></select></div></div></form>`,
-        `<button class="enterprise-btn primary" onclick="window.submitCustomerForm()">Save Customer</button>`
+    createModal('transactionFormModal', 'Ledger Entry',
+        `<form id="transactionEntryForm" class="enterprise-form"><input type="hidden" id="txn-id"><div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:24px;"><div class="form-group"><label>Type</label><select id="txn-type" class="n-input"><option value="income">Income</option><option value="expense">Expense</option></select></div><div class="form-group"><label>Date</label><input type="date" id="txn-date" class="n-input"></div></div><div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:24px; margin-top:24px;"><div class="form-group"><label>Category</label><input id="txn-category" class="n-input"></div><div class="form-group"><label>Amount</label><input type="number" id="txn-amount" step="0.01" class="n-input"></div></div><div class="form-group" style="margin-top:24px;"><label>Description</label><textarea id="txn-desc" class="n-input" style="height:100px;"></textarea></div></form>`,
+        `<button class="n-btn primary" onclick="window.submitTransactionForm()">Sync Transaction</button>`
     );
 
-    createModal('customerProfileModal', 'Client Profile', `<div id="prof-name-title" style="font-size:1.5rem; margin-bottom:10px;">—</div>`, '');
-
-    createModal('driverFormModal', 'Driver Assignment',
-        `<form id="driverEntryForm" class="enterprise-form"><input type="hidden" id="drv-id"><div class="form-grid"><div class="form-group"><label>Name</label><input id="drv-name"></div><div class="form-group"><label>Mobile</label><input id="drv-mobile"></div></div><div class="form-grid"><div class="form-group"><label>License</label><input id="drv-license"></div><div class="form-group"><label>Hub</label><input id="drv-branch"></div></div></form>`,
-        `<button class="enterprise-btn primary" onclick="window.submitDriverForm()">Save Driver</button>`
+    createModal('userFormModal', 'Security Access',
+        `<form id="userEntryForm" class="enterprise-form"><input type="hidden" id="user-id"><div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:24px;"><div class="form-group"><label>Login Email</label><input id="user-email" class="n-input"></div><div class="form-group"><label>Role</label><select id="user-role" class="n-input"><option value="admin">Admin</option><option value="employee">Employee</option></select></div></div><div id="userPassGroup" class="form-group" style="margin-top:24px;"><label>Password</label><input id="user-pass" type="password" class="n-input"></div></form>`,
+        `<button class="n-btn primary" onclick="window.submitUserForm()">Authorize Account</button>`
     );
 
-    createModal('vehicleFormModal', 'Fleet Registration',
-        `<form id="vehicleEntryForm" class="enterprise-form"><input type="hidden" id="veh-id"><div class="form-grid"><div class="form-group"><label>Plate Number</label><input id="veh-plate"></div><div class="form-group"><label>Brand/Model</label><input id="veh-brand"></div></div></form>`,
-        `<button class="enterprise-btn primary" onclick="window.submitVehicleForm()">Register Vehicle</button>`
+    createModal('manifestsModal', 'Archived Manifests',
+        `<div id="manifestsList" style="display:grid; gap:16px; margin-top:10px;"></div>`,
+        `<button class="n-btn" onclick="$id('manifestsModal').style.opacity='0'; $id('manifestsModal').style.pointerEvents='none';">Close</button>`
     );
-
-    createModal('branchFormModal', 'Global Hub Setup',
-        `<form id="branchEntryForm" class="enterprise-form"><input type="hidden" id="br-id"><div class="form-grid"><div class="form-group"><label>Hub Name *</label><input id="br-name" required></div><div class="form-group"><label>Code *</label><input id="br-code" required></div></div><div class="form-group"><label>Manager</label><input id="br-manager"></div></form>`,
-        `<button class="enterprise-btn primary" onclick="window.submitBranchForm()">Save Hub</button>`
-    );
-
-    createModal('employeeFormModal', 'Staff Provisioning',
-        `<form id="employeeEntryForm" class="enterprise-form"><input type="hidden" id="emp-id"><div class="form-grid"><div class="form-group"><label>Full Name *</label><input id="emp-name" required></div><div class="form-group"><label>Corporate Email *</label><input id="emp-email" required></div></div><div class="grid-2"><div class="form-group"><label>Role/Title</label><input id="emp-desig"></div><div class="form-group"><label>Status</label><select id="emp-status"><option value="Active">Active</option><option value="Inactive">Inactive</option></select></div></div></form>`,
-        `<button class="enterprise-btn primary" onclick="window.submitEmployeeForm()">Sync Staff</button>`
-    );
-
-    createModal('userFormModal', 'Access Control',
-        `<form id="userEntryForm" class="enterprise-form"><input type="hidden" id="user-id"><div class="form-grid"><div class="form-group"><label>Login Email</label><input id="user-email"></div><div class="form-group"><label>Role</label><select id="user-role"><option value="admin">Admin</option><option value="employee">Employee</option></select></div></div><div id="userPassGroup" class="form-group"><label>Password</label><input id="user-pass" type="password"></div></form>`,
-        `<button class="enterprise-btn primary" onclick="window.submitUserForm()">Provision Account</button>`
-    );
-
-    createModal('transactionFormModal', 'Financial Transaction',
-        `<form id="transactionEntryForm" class="enterprise-form"><input type="hidden" id="txn-id"><div class="form-grid"><div class="form-group"><label>Type</label><select id="txn-type"><option value="income">Income</option><option value="expense">Expense</option></select></div><div class="form-group"><label>Date</label><input type="date" id="txn-date"></div></div><div class="form-grid"><div class="form-group"><label>Category</label><input id="txn-category"></div><div class="form-group"><label>Amount</label><input type="number" id="txn-amount" step="0.01"></div></div><div class="form-group"><label>Description</label><textarea id="txn-desc"></textarea></div></form>`,
-        `<button class="enterprise-btn primary" onclick="window.submitTransactionForm()">Sync Ledger</button>`
-    );
+    console.log('[Init] Modals initialized successfully.');
 }
 
 // --- Logistics Handlers ---
@@ -224,50 +278,26 @@ window.refreshDashboard = async () => {
 
         setVal('stat-total-shipments', s.totalShipments);
         setVal('stat-delivered', s.delivered);
-        setVal('stat-revenue', `$${(s.totalRevenue || 0).toLocaleString()}`);
         setVal('stat-transit', s.inTransit);
         setVal('stat-pending', s.pending);
         setVal('stat-cancelled', s.cancelled);
-        setVal('stat-customers', s.totalCustomers);
-        setVal('stat-drivers', s.totalDrivers);
-        setVal('stat-vehicles', s.totalVehicles);
-        setVal('stat-employees', s.totalEmployees);
-        setVal('stat-branches', s.totalBranches);
-
-        if (window.Chart) {
-            const ctx = $id('statusChart')?.getContext('2d');
-            if (ctx) {
-                if (enterpriseAdminState.charts.status) enterpriseAdminState.charts.status.destroy();
-                enterpriseAdminState.charts.status = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Delivered', 'Transit', 'Pending', 'Cancelled'],
-                        datasets: [{
-                            data: [s.delivered || 0, s.inTransit || 0, s.pending || 0, s.cancelled || 0],
-                            backgroundColor: ['#10b981', '#f4b400', '#f59e0b', '#ef4444'],
-                            borderWidth: 0,
-                            hoverOffset: 10
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '78%',
-                        plugins: {
-                            legend: { display: false }
-                        }
-                    }
-                });
-            }
-        }
     } catch (e) { console.error('[Dashboard] Stats Refresh FAILED', e); }
+};
+
+window.toggleFolder = (folderId) => {
+    if (enterpriseAdminState.openFolders.has(folderId)) {
+        enterpriseAdminState.openFolders.delete(folderId);
+    } else {
+        enterpriseAdminState.openFolders.add(folderId);
+    }
+    window.loadDashboard();
 };
 
 window.loadDashboard = async () => {
     const db = getDb(); if (!db) return;
     const tbody = $id('dbTableBody'); if (!tbody) return;
     try {
-        console.log('[Table] Loading shipments...');
+        console.log('[Table] Loading grouped shipments...');
         const params = {
             search: $id('searchDbInput')?.value || '',
             status: $id('filterStatus')?.value || '',
@@ -277,7 +307,7 @@ window.loadDashboard = async () => {
         const res = await db.queryShipments(params);
 
         if (!res || !res.items || res.items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="15" class="text-center mt-20">No shipments found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" class="text-center mt-20"><div class="n-card" style="display:inline-block; padding:40px;">No shipments identified.</div></td></tr>';
             const pi = $id('paginationInfo'); if (pi) pi.textContent = 'Showing 0 records';
             return;
         }
@@ -285,31 +315,95 @@ window.loadDashboard = async () => {
         enterpriseAdminState.currentItems = res.items;
         const pi = $id('paginationInfo'); if (pi) pi.textContent = `Showing ${res.items.length} records`;
 
-        tbody.innerHTML = res.items.map(i => {
-            const s = i.data;
-            const statusCls = String(s.status).includes('Deliv') ? 'status-delivered' : 'status-transit';
-            return `
-            <tr id="row_${i.trackingId}">
-                <td style="font-weight:800; color:var(--n-gold);">${i.trackingId}</td>
-                <td>${s.branchCode || ''}</td>
-                <td>${s.swbSerial || ''}</td>
-                <td>${s.customerInvoice || ''}</td>
-                <td>${s.date || ''}</td>
-                <td>${s.sender || ''}</td>
-                <td>${s.receiver || ''}</td>
-                <td>${s.originalQuantity || ''}</td>
-                <td>${s.quantity || ''}</td>
-                <td>${s.originalWeight || ''}</td>
-                <td>${s.weight || ''}</td>
-                <td>${s.destination || ''}</td>
-                <td>${s.receiverAddress || ''}</td>
-                <td><span class="status-badge ${statusCls}">${s.status || 'Pending'}</span></td>
-                <td class="text-right"><div class="actions-cell"><button class="btn-action sm" onclick="window.openShipmentWorkspace('${i.trackingId}')"><i class="fa-solid fa-eye"></i></button><button class="btn-action sm" onclick="window.editRow('${i.trackingId}')"><i class="fa-solid fa-pen"></i></button><button class="btn-action sm" onclick="window.deleteRow('${i.trackingId}')"><i class="fa-solid fa-trash" style="color:var(--n-danger);"></i></button></div></td>
-            </tr>`;
-        }).join('');
+        // 1. Grouping Logic
+        const groups = {};
+        res.items.forEach(item => {
+            const s = item.data;
+            const date = new Date(s.date || Date.now());
+            const monthKey = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+            const statusKey = s.status || 'Pending';
+
+            if (!groups[monthKey]) groups[monthKey] = { count: 0, statuses: {} };
+            if (!groups[monthKey].statuses[statusKey]) groups[monthKey].statuses[statusKey] = [];
+
+            groups[monthKey].statuses[statusKey].push(item);
+            groups[monthKey].count++;
+        });
+
+        // 2. Rendering Logic
+        let html = '';
+        Object.keys(groups).sort((a, b) => new Date(b) - new Date(a)).forEach(month => {
+            const mFolderId = `folder_${month}`;
+            const mIsOpen = enterpriseAdminState.openFolders.has(mFolderId);
+
+            html += `
+                <tr class="folder-row folder-month ${mIsOpen ? 'is-open' : ''}" onclick="window.toggleFolder('${mFolderId}')">
+                    <td colspan="12">
+                        <div class="folder-content">
+                            <i class="fa-solid fa-chevron-right folder-arrow"></i>
+                            <i class="fa-solid fa-folder folder-icon"></i>
+                            <span>${month}</span>
+                            <span class="folder-badge">${groups[month].count} Shipments</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+
+            if (mIsOpen) {
+                const statuses = groups[month].statuses;
+                Object.keys(statuses).sort().forEach(status => {
+                    const sFolderId = `${mFolderId}_${status}`;
+                    const sIsOpen = enterpriseAdminState.openFolders.has(sFolderId);
+
+                    html += `
+                        <tr class="folder-row folder-status ${sIsOpen ? 'is-open' : ''}" onclick="window.toggleFolder('${sFolderId}')">
+                            <td colspan="12">
+                                <div class="folder-content">
+                                    <i class="fa-solid fa-chevron-right folder-arrow"></i>
+                                    <i class="fa-solid fa-folder-open folder-icon" style="color:var(--n-low);"></i>
+                                    <span>${status}</span>
+                                    <span class="folder-badge" style="background:rgba(255,255,255,0.05); color:var(--n-muted);">${statuses[status].length}</span>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+
+                    if (sIsOpen) {
+                        statuses[status].forEach(item => {
+                            const i = item;
+                            const s = i.data;
+                            const statusCls = String(s.status).includes('Deliv') ? 'status-delivered' : 'status-transit';
+                            html += `
+                                <tr id="row_${i.trackingId}" class="shipment-data-row">
+                                    <td style="font-weight:800; color:var(--n-gold);">${i.trackingId}</td>
+                                    <td>${s.branchCode || ''}</td>
+                                    <td>${s.swbSerial || ''}</td>
+                                    <td>${s.shippingNumber || ''}</td>
+                                    <td>${s.date || ''}</td>
+                                    <td>${s.sender || ''}</td>
+                                    <td>${s.receiver || ''}</td>
+                                    <td>${s.quantity || ''}</td>
+                                    <td>${s.weight || ''}</td>
+                                    <td><span class="status-badge ${statusCls}">${s.status || 'Pending'}</span></td>
+                                    <td class="text-right">
+                                        <div style="display:flex; justify-content:flex-end; gap:8px;">
+                                            <button class="n-btn" style="padding:8px 12px;" onclick="window.openShipmentWorkspace('${i.trackingId}')"><i class="fa-solid fa-eye"></i></button>
+                                            <button class="n-btn" style="padding:8px 12px;" onclick="window.editRow('${i.trackingId}')"><i class="fa-solid fa-pen"></i></button>
+                                            <button class="n-btn" style="padding:8px 12px; color:var(--n-danger); border-color:rgba(239,68,68,0.2);" onclick="window.deleteRow('${i.trackingId}')"><i class="fa-solid fa-trash"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                    }
+                });
+            }
+        });
+
+        tbody.innerHTML = html;
     } catch (e) {
-        console.error('[Table] Load FAILED', e);
-        tbody.innerHTML = '<tr><td colspan="15" class="text-center" style="color:var(--noorani-danger);">Sync Error: API Unreachable.</td></tr>';
+        console.error('[Table] Grouped Load FAILED', e);
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center" style="color:var(--n-danger);">Sync Error: API Unreachable.</td></tr>';
     }
 };
 
@@ -317,7 +411,7 @@ window.generateTrackingNumber = () => { $id('inputTracking').value = 'NM-' + (Ma
 
 window.findShipmentInForm = async () => {
     const id = $id('inputTracking').value.toUpperCase();
-    if (!id) return alert('Enter Tracking Number first');
+    if (!id) return alert('Enter Tracking or Invoice Number first');
 
     const db = getDb(); if (!db) return;
     try {
@@ -326,34 +420,51 @@ window.findShipmentInForm = async () => {
 
         if (res && res.data) {
             const d = res.data;
+            // Always set inputTracking to the actual trackingId for the form
+            $id('inputTracking').value = d.trackingId;
             $id('inputStatus').value = d.status || 'Pending';
             $id('inputDate').value = d.date || '';
             $id('inputBranchCode').value = d.branchCode || '';
             $id('inputSwbSerial').value = d.swbSerial || '';
+            $id('inputShippingNo').value = d.shippingNumber || '';
             $id('inputCustomerInvoice').value = d.customerInvoice || '';
+            $id('inputSwbDate').value = d.swbDate || '';
+            $id('inputShipmentType').value = d.shipmentType || 'Air Freight';
             $id('inputSender').value = d.sender || '';
+            $id('inputSenderPhone').value = d.senderPhone || '';
             $id('inputReceiver').value = d.receiver || '';
+            $id('inputReceiverPhone').value = d.receiverPhone || '';
             $id('inputDestination').value = d.destination || '';
             $id('inputReceiverAddress').value = d.receiverAddress || '';
+            $id('inputOriginCountry').value = d.originCountry || '';
+            $id('inputDestinationCountry').value = d.destinationCountry || '';
+            $id('inputOriginalQuantity').value = d.originalQuantity || '';
             $id('inputQuantity').value = d.quantity || '';
+            $id('inputOriginalWeight').value = d.originalWeight || '';
             $id('inputWeight').value = d.weight || '';
             $id('inputNotes').value = d.notes || '';
 
-            if (btn) btn.textContent = 'Update Record';
-            alert(`Shipment ${id} loaded.`);
+            if (btn) btn.textContent = 'Update Shipment Record';
+            alert(`Shipment ${d.trackingId} loaded successfully.`);
         } else {
-            alert('New tracking number identified.');
+            alert('No matching record identified.');
             window.resetShipmentForm(false);
             $id('inputTracking').value = id;
         }
-    } catch (e) { alert('Shipment Not Found.'); }
+    } catch (e) { alert('Search failed.'); }
 };
 
 window.resetShipmentForm = (clearTracking = true) => {
     if (clearTracking) $id('inputTracking').value = '';
-    const fields = ['inputStatus', 'inputDate', 'inputBranchCode', 'inputSwbSerial', 'inputCustomerInvoice', 'inputSender', 'inputReceiver', 'inputDestination', 'inputReceiverAddress', 'inputQuantity', 'inputWeight', 'inputNotes'];
+    const fields = [
+        'inputStatus', 'inputDate', 'inputBranchCode', 'inputSwbSerial', 'inputShippingNo', 'inputCustomerInvoice',
+        'inputSwbDate', 'inputShipmentType', 'inputSender', 'inputSenderPhone', 'inputReceiver',
+        'inputReceiverPhone', 'inputDestination', 'inputReceiverAddress', 'inputOriginCountry',
+        'inputDestinationCountry', 'inputOriginalQuantity', 'inputQuantity', 'inputOriginalWeight',
+        'inputWeight', 'inputNotes'
+    ];
     fields.forEach(f => { const el = $id(f); if (el) { if (el.tagName === 'SELECT') el.selectedIndex = 0; else el.value = ''; } });
-    const btn = $id('btnRegisterShipment'); if (btn) btn.textContent = 'Register & Sync';
+    const btn = $id('btnRegisterShipment'); if (btn) btn.textContent = 'Sync Shipment Record';
 };
 
 window.saveShipment = async () => {
@@ -365,12 +476,21 @@ window.saveShipment = async () => {
         date: $id('inputDate').value || new Date().toISOString().split('T')[0],
         branchCode: $id('inputBranchCode').value,
         swbSerial: $id('inputSwbSerial').value,
+        shippingNumber: $id('inputShippingNo').value,
         customerInvoice: $id('inputCustomerInvoice').value,
+        swbDate: $id('inputSwbDate').value,
+        shipmentType: $id('inputShipmentType').value,
         sender: $id('inputSender').value,
+        senderPhone: $id('inputSenderPhone').value,
         receiver: $id('inputReceiver').value,
+        receiverPhone: $id('inputReceiverPhone').value,
         destination: $id('inputDestination').value,
         receiverAddress: $id('inputReceiverAddress').value,
+        originCountry: $id('inputOriginCountry').value,
+        destinationCountry: $id('inputDestinationCountry').value,
+        originalQuantity: $id('inputOriginalQuantity').value,
         quantity: $id('inputQuantity').value,
+        originalWeight: $id('inputOriginalWeight').value,
         weight: $id('inputWeight').value,
         notes: $id('inputNotes').value,
         public: true, source: 'manual'
@@ -387,15 +507,50 @@ window.editRow = id => {
     const row = $id('row_'+id);
     if (!row) return;
     const item = enterpriseAdminState.currentItems.find(x => x.trackingId === id);
-    const currentStatus = item?.data?.status || 'Pending';
-    row.innerHTML = `<td colspan="15"><div class="grid-2 mt-20 mb-20" style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px;"><input id="edit_status_${id}" value="${currentStatus}"> <div class="enterprise-btn-row"><button class="enterprise-btn primary sm" onclick="window.saveRow('${id}')">Save</button><button class="enterprise-btn sm" onclick="window.loadDashboard()">Cancel</button></div></div></td>`;
+    if (!item) return;
+
+    const currentStatus = item.data.status || 'Pending';
+    const currentStatusDate = item.data.statusDate || item.data.date || new Date().toISOString();
+    const currentPaidDate = formatDateForInput(item.data.paidDate);
+
+    console.log(`[Edit] Loading record: ${id}`, {
+        rawPaidDate: item.data.paidDate,
+        formattedPaidDate: currentPaidDate
+    });
+
+    row.innerHTML = `<td colspan="12">
+        <div class="n-card" style="margin:20px; background:rgba(255,255,255,0.03); display:flex; flex-wrap:wrap; align-items:center; gap:24px;">
+            <div style="display:grid; gap:8px; flex:1; min-width:240px;">
+                <label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Update Operational Status</label>
+                <select id="edit_status_${id}" class="n-input" onchange="$id('edit_status_date_${id}').value = new Date().toISOString()">${$id('inputStatus').innerHTML}</select>
+            </div>
+            <div style="display:grid; gap:8px; flex:1; min-width:240px;">
+                <label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Status Date</label>
+                <input id="edit_status_date_${id}" class="n-input" value="${currentStatusDate}" readonly style="background:rgba(255,255,255,0.02);">
+            </div>
+            <div style="display:grid; gap:8px; flex:1; min-width:240px;">
+                <label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Paid Date</label>
+                <input type="date" id="edit_paid_date_${id}" class="n-input" value="${currentPaidDate}">
+            </div>
+            <div style="display:grid; gap:8px; flex:1; min-width:240px;">
+                <label style="font-size:0.7rem; opacity:0;" class="hidden-mobile">&nbsp;</label>
+                <div style="display:flex; gap:12px;">
+                    <button class="n-btn primary" style="flex:1;" onclick="window.saveRow('${id}')">Save</button>
+                    <button class="n-btn" style="flex:1;" onclick="window.loadDashboard()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </td>`;
+    $id('edit_status_'+id).value = currentStatus;
 };
 
 window.saveRow = async id => {
     const db = getDb(); if (!db) return;
     try {
         const status = $id('edit_status_'+id).value;
-        await db.saveShipment(id, { status });
+        const statusDate = $id('edit_status_date_'+id).value;
+        const paidDate = $id('edit_paid_date_'+id).value;
+        await db.saveShipment(id, { status, statusDate, paidDate });
         window.loadDashboard();
     } catch (e) { alert('Update failed: ' + e.message); }
 };
@@ -412,96 +567,43 @@ window.deleteRow = async id => {
     }
 };
 
-// --- Operational Modules ---
+window.openManifestsModal = async () => {
+    const db = getDb(); if (!db) return;
+    try {
+        console.log('[Manifests] Fetching archive list...');
+        const res = await db.queryManifests();
+        const list = $id('manifestsList');
+        if (!list) {
+            console.error('[Manifests] ERROR: manifestsList container not found in DOM.');
+            return;
+        }
 
-window.renderCustomers = async () => {
-    const db = getDb(); if (!db) return;
-    try {
-        const res = await db.queryCustomers({ search: $id('custSearchInput')?.value });
-        $id('custTableBody').innerHTML = (res.items || []).map(c => `<tr><td>${c.id}</td><td>${c.fullName}</td><td>${c.customerType}</td><td>${c.mobileNumber}</td><td>${c.city || ''}</td><td class="text-right"><div class="actions-cell" style="display:flex; justify-content:flex-end; gap:8px;"><button class="btn-action sm" onclick="window.viewCustomerProfile('${c.id}')"><i class="fa-solid fa-eye"></i></button><button class="btn-action sm" onclick="window.showCustomerForm('${c.id}')"><i class="fa-solid fa-pen"></i></button><button class="btn-action sm" onclick="window.deleteCustomer('${c.id}')"><i class="fa-solid fa-trash" style="color:var(--noorani-danger);"></i></button></div></td></tr>`).join('') || '<tr><td colspan="6" class="text-center">No customers.</td></tr>';
-    } catch (e) {}
-};
-window.showCustomerForm = async (id = null) => {
-    $id('customerEntryForm').reset(); $id('cust-id').value = id || '';
-    if (id) { try { const db = getDb(); const res = await db.getCustomerDetails(id); $id('cust-name').value = res.customer.fullName; $id('cust-mobile').value = res.customer.mobileNumber; } catch(e){} }
-    $id('customerFormModal').classList.add('is-open');
-};
-window.closeCustomerForm = () => $id('customerFormModal').classList.remove('is-open');
-window.submitCustomerForm = async () => {
-    const db = getDb(); if (!db) return;
-    try {
-        const d = { id: $id('cust-id').value, fullName: $id('cust-name').value, mobileNumber: $id('cust-mobile').value, customerType: $id('cust-type').value };
-        await db.saveCustomer(d); window.closeCustomerForm(); window.renderCustomers();
-    } catch (e) { alert(e.message); }
-};
-window.viewCustomerProfile = async id => { const db = getDb(); if (!db) return; try { const res = await db.getCustomerDetails(id); $id('prof-name-title').textContent = res.customer.fullName; $id('customerProfileModal').classList.add('is-open'); } catch(e){} };
-window.deleteCustomer = async id => { if (confirm('Delete client?')) { const db = getDb(); if (!db) return; try { await db.deleteCustomer(id); window.renderCustomers(); } catch(e){} } };
+        list.innerHTML = (res.items || []).map(m => `
+            <div class="n-card" style="padding:20px; background:var(--n-surface); display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div style="flex:1;">
+                    <h4 style="font-size:0.95rem; color:var(--n-gold);">${m.fileName}</h4>
+                    <p class="text-muted" style="font-size:0.75rem; margin-top:4px;">Uploaded: ${new Date(m.uploadDate).toLocaleString()} &bull; ${(m.size / 1024).toFixed(1)} KB</p>
+                </div>
+                <div style="display:flex; gap:12px;">
+                    <a href="${db.getManifestViewUrl(m.fileName)}" target="_blank" class="n-btn" style="padding:8px 16px;"><i class="fa-solid fa-eye"></i> Open</a>
+                    <a href="${db.getManifestDownloadUrl(m.fileName)}" download class="n-btn primary" style="padding:8px 16px;"><i class="fa-solid fa-download"></i></a>
+                </div>
+            </div>
+        `).join('') || '<div class="text-center p-40 text-muted">No manifest files identified in archives.</div>';
 
-window.renderDrivers = async () => {
-    const db = getDb(); if (!db) return;
-    try {
-        const res = await db.queryDrivers();
-        $id('drvTableBody').innerHTML = (res.items || []).map(d => `<tr><td>${d.id}</td><td>${d.fullName}</td><td>${d.licenseNumber || ''}</td><td>${d.mobileNumber}</td><td>${d.branchCode || ''}</td><td>${d.status}</td><td class="text-right"><div class="actions-cell" style="display:flex; justify-content:flex-end; gap:8px;"><button class="btn-action sm" onclick="window.showDriverForm('${d.id}')"><i class="fa-solid fa-pen"></i></button><button class="btn-action sm" onclick="window.deleteDriver('${d.id}')"><i class="fa-solid fa-trash" style="color:var(--noorani-danger);"></i></button></div></td></tr>`).join('') || '<tr><td colspan="7" class="text-center">No drivers.</td></tr>';
-    } catch (e) {}
+        const m = $id('manifestsModal');
+        if (m) {
+            console.log('[Manifests] Opening modal...');
+            m.style.opacity = '1';
+            m.style.pointerEvents = 'auto';
+        } else {
+            console.error('[Manifests] ERROR: manifestsModal element not found.');
+        }
+    } catch (e) {
+        console.error('[Manifests] Fetch Failed:', e);
+        alert('Failed to fetch manifests: ' + e.message);
+    }
 };
-window.showDriverForm = async (id = null) => {
-    $id('driverEntryForm').reset(); $id('drv-id').value = id || '';
-    if (id) { try { const db = getDb(); const res = await db.getDriverDetails(id); $id('drv-name').value = res.driver.fullName; $id('drv-mobile').value = res.driver.mobileNumber; } catch(e){} }
-    $id('driverFormModal').classList.add('is-open');
-};
-window.closeDriverForm = () => $id('driverFormModal').classList.remove('is-open');
-window.submitDriverForm = async () => {
-    const db = getDb(); if (!db) return;
-    try {
-        const d = { id: $id('drv-id').value, fullName: $id('drv-name').value, mobileNumber: $id('drv-mobile').value, licenseNumber: $id('drv-license').value, branchCode: $id('drv-branch').value };
-        await db.saveDriver(d); window.closeDriverForm(); window.renderDrivers();
-    } catch (e) { alert(e.message); }
-};
-window.deleteDriver = async id => { if (confirm('Delete driver?')) { const db = getDb(); if (!db) return; try { await db.deleteDriver(id); window.renderDrivers(); } catch(e){} } };
-
-window.renderVehicles = async () => {
-    const db = getDb(); if (!db) return;
-    try {
-        const res = await db.queryVehicles();
-        $id('vehTableBody').innerHTML = (res.items || []).map(v => `<tr><td>${v.id}</td><td>${v.plateNumber}</td><td>${v.vehicleType}</td><td>${v.assignedDriver || ''}</td><td>${v.currentMileage || 0}</td><td>${v.status}</td><td class="text-right"><div class="actions-cell" style="display:flex; justify-content:flex-end; gap:8px;"><button class="btn-action sm" onclick="window.showVehicleForm('${v.id}')"><i class="fa-solid fa-pen"></i></button><button class="btn-action sm" onclick="window.deleteVehicle('${v.id}')"><i class="fa-solid fa-trash" style="color:var(--noorani-danger);"></i></button></div></td></tr>`).join('') || '<tr><td colspan="7" class="text-center">No vehicles.</td></tr>';
-    } catch (e) {}
-};
-window.showVehicleForm = async (id = null) => {
-    $id('vehicleEntryForm').reset(); $id('veh-id').value = id || '';
-    if (id) { try { const db = getDb(); const res = await db.getVehicleDetails(id); $id('veh-plate').value = res.vehicle.plateNumber; $id('veh-brand').value = res.vehicle.brand; } catch(e){} }
-    $id('vehicleFormModal').classList.add('is-open');
-};
-window.closeVehicleForm = () => $id('vehicleFormModal').classList.remove('is-open');
-window.submitVehicleForm = async () => {
-    const db = getDb(); if (!db) return;
-    try {
-        const d = { id: $id('veh-id').value, plateNumber: $id('veh-plate').value, brand: $id('veh-brand').value };
-        await db.saveVehicle(d); window.closeVehicleForm(); window.renderVehicles();
-    } catch (e) { alert(e.message); }
-};
-window.deleteVehicle = async id => { if (confirm('Delete vehicle?')) { const db = getDb(); if (!db) return; try { await db.deleteVehicle(id); window.renderVehicles(); } catch(e){} } };
-
-window.renderBranches = async () => {
-    const db = getDb(); if (!db) return;
-    try {
-        const res = await db.queryBranches();
-        $id('brTableBody').innerHTML = (res.items || []).map(b => `<tr><td>${b.id}</td><td>${b.branchName}</td><td>${b.branchCode}</td><td>${b.managerName || ''}</td><td>${b.city || ''}</td><td>${b.status}</td><td class="text-right"><div class="actions-cell" style="display:flex; justify-content:flex-end; gap:8px;"><button class="btn-action sm" onclick="window.showBranchForm('${b.id}')"><i class="fa-solid fa-pen"></i></button><button class="btn-action sm" onclick="window.deleteBranch('${b.id}')"><i class="fa-solid fa-trash" style="color:var(--noorani-danger);"></i></button></div></td></tr>`).join('') || '<tr><td colspan="7" class="text-center">No branches.</td></tr>';
-    } catch (e) {}
-};
-window.showBranchForm = async (id = null) => {
-    $id('branchEntryForm').reset(); $id('br-id').value = id || '';
-    if (id) { try { const db = getDb(); const res = await db.getBranchDetails(id); $id('br-name').value = res.branch.branchName; $id('br-code').value = res.branch.branchCode; } catch(e){} }
-    $id('branchFormModal').classList.add('is-open');
-};
-window.closeBranchForm = () => $id('branchFormModal').classList.remove('is-open');
-window.submitBranchForm = async () => {
-    const db = getDb(); if (!db) return;
-    try {
-        const d = { id: $id('br-id').value, branchName: $id('br-name').value, branchCode: $id('br-code').value };
-        await db.saveBranch(d); window.closeBranchForm(); window.renderBranches();
-    } catch (e) { alert(e.message); }
-};
-window.deleteBranch = async id => { if (confirm('Delete branch?')) { const db = getDb(); if (!db) return; try { await db.deleteBranch(id); window.renderBranches(); } catch(e){} } };
 
 // --- Navigation & UI Handlers ---
 
@@ -514,14 +616,17 @@ window.clearNotifications = async () => {
     if (confirm('Clear all notifications?')) {
         const db = getDb(); if (!db) return;
         try {
-            await db.clearNotifications();
+            const p = window.nooraniAdminProfile || await db.getCurrentAdminProfile();
+            await db.clearNotifications(p.uid);
             window.renderNotifications([]);
         } catch (e) { alert('Failed to clear: ' + e.message); }
     }
 };
 
 window.closeWorkspace = () => {
-    $id('shipmentWorkspaceModal').classList.remove('is-open');
+    const ws = $id('shipmentWorkspaceModal');
+    ws.style.opacity = '0';
+    ws.style.pointerEvents = 'none';
     enterpriseAdminState.activeTracking = null;
 };
 
@@ -532,8 +637,8 @@ window.refreshAnalytics = async () => {
     try {
         console.log('[Reports] Refreshing analytics...');
         const s = await db.getFinanceStats();
-        $id('rep-kpi-profit').textContent = `$${(s.totalRevenue - s.totalExpenses).toLocaleString()}`;
-        $id('rep-kpi-fleet').textContent = (await db.getDashboardStats()).totalVehicles;
+        const profitEl = $id('rep-kpi-profit');
+        if (profitEl) profitEl.textContent = `$${(s.totalRevenue - s.totalExpenses).toLocaleString()}`;
         // Further analytics implementation...
     } catch (e) { console.error('[Reports] Refresh Failed', e); }
 };
@@ -541,7 +646,7 @@ window.refreshAnalytics = async () => {
 window.switchReportTab = (btn, tabId) => {
     const parent = btn.closest('#enterpriseReportsCard');
     if (!parent) return;
-    parent.querySelectorAll('.ws-tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+    parent.querySelectorAll('nav .n-btn').forEach(b => b.classList.toggle('active', b === btn));
     parent.querySelectorAll('.report-tab-content').forEach(c => c.classList.toggle('hidden', c.id !== 'rep-' + tabId));
 };
 
@@ -550,7 +655,7 @@ window.switchReportTab = (btn, tabId) => {
 window.switchSettingsTab = (btn, tabId) => {
     const parent = btn.closest('#enterpriseSettingsCard');
     if (!parent) return;
-    parent.querySelectorAll('.ws-tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+    parent.querySelectorAll('nav .n-btn').forEach(b => b.classList.toggle('active', b === btn));
     parent.querySelectorAll('.settings-tab-content').forEach(c => c.classList.toggle('hidden', c.id !== 'set-' + tabId));
 };
 
@@ -579,7 +684,7 @@ window.addWSNote = async () => {
     const db = getDb(); if (!db) return;
     try {
         const p = window.nooraniAdminProfile || await db.getCurrentAdminProfile();
-        await db.saveShipmentNote(id, content);
+        await db.saveShipmentNote(id, { content, author: p?.email || 'System' });
         $id('wsNewNote').value = '';
         window.openShipmentWorkspace(id);
     } catch (e) { alert('Failed to add note: ' + e.message); }
@@ -596,40 +701,18 @@ window.uploadWSAsset = async () => {
     } catch (e) { alert('Upload failed: ' + e.message); }
 };
 
-window.renderEmployees = async () => {
-    const db = getDb(); if (!db) return;
-    try {
-        const res = await db.queryEmployees();
-        $id('empTableBody').innerHTML = (res.items || []).map(e => `<tr><td>${e.fullName}</td><td>${e.designation || ''}</td><td>${e.assignedBranch || ''}</td><td>${e.employmentStatus || 'Active'}</td><td class="text-right"><div class="actions-cell" style="display:flex; justify-content:flex-end; gap:8px;"><button class="btn-action sm" onclick="window.showEmployeeForm('${e.id}')"><i class="fa-solid fa-pen"></i></button><button class="btn-action sm" onclick="window.deleteEmployee('${e.id}')"><i class="fa-solid fa-trash" style="color:var(--noorani-danger);"></i></button></div></td></tr>`).join('') || '<tr><td colspan="5" class="text-center">No staff.</td></tr>';
-    } catch (e) {}
-};
-window.showEmployeeForm = async (id = null) => {
-    $id('employeeEntryForm').reset(); $id('emp-id').value = id || '';
-    if (id) { try { const db = getDb(); const res = await db.getEmployeeDetails(id); $id('emp-name').value = res.employee.fullName; $id('emp-email').value = res.employee.email; } catch(e){} }
-    $id('employeeFormModal').classList.add('is-open');
-};
-window.closeEmployeeForm = () => $id('employeeFormModal').classList.remove('is-open');
-window.submitEmployeeForm = async () => {
-    const db = getDb(); if (!db) return;
-    try {
-        const d = { id: $id('emp-id').value, fullName: $id('emp-name').value, email: $id('emp-email').value };
-        await db.saveEmployee(d); window.closeEmployeeForm(); window.renderEmployees();
-    } catch (e) { alert(e.message); }
-};
-window.deleteEmployee = async id => { if (confirm('Delete employee?')) { const db = getDb(); if (!db) return; try { await db.deleteEmployee(id); window.renderEmployees(); } catch(e){} } };
-
 window.renderUsers = async () => {
     const db = getDb(); if (!db) return;
     try {
         const users = await db.getUserAccounts();
-        $id('userTableBody').innerHTML = (users || []).map(u => `<tr><td>${u.email}</td><td>${u.role.toUpperCase()}</td><td>${u.branchCode || 'HQ'}</td><td>${u.status.toUpperCase()}</td><td class="text-right"><button class="btn-action sm" onclick="window.deleteUser('${u.uid}')"><i class="fa-solid fa-user-xmark" style="color:var(--noorani-danger);"></i></button></td></tr>`).join('') || '<tr><td colspan="5" class="text-center">No user accounts.</td></tr>';
+        $id('userTableBody').innerHTML = (users || []).map(u => `<tr><td><div style="display:flex; align-items:center; gap:12px;"><div style="width:36px; height:36px; background:var(--n-gold-glow); border-radius:50%; display:grid; place-items:center; font-size:0.75rem; color:var(--n-gold); font-weight:900; border:1px solid var(--n-border-accent);">${u.email.charAt(0).toUpperCase()}</div><strong>${u.email}</strong></div></td><td><span class="status-badge status-transit">${u.role.toUpperCase()}</span></td><td>${u.branchCode || 'HQ'}</td><td><span class="status-badge status-delivered">${u.status.toUpperCase()}</span></td><td class="text-right"><button class="n-btn" style="padding:8px 12px; color:var(--n-danger); border-color:rgba(239,68,68,0.2);" onclick="window.deleteUser('${u.uid}')"><i class="fa-solid fa-user-xmark"></i></button></td></tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted">No authorized accounts identified.</td></tr>';
     } catch (e) {}
 };
 window.showUserForm = async (id = null) => {
     $id('userEntryForm').reset(); $id('user-id').value = id || '';
-    $id('userFormModal').classList.add('is-open');
+    const m = $id('userFormModal'); m.style.opacity='1'; m.style.pointerEvents='auto';
 };
-window.closeUserForm = () => $id('userFormModal').classList.remove('is-open');
+window.closeUserForm = () => { const m = $id('userFormModal'); m.style.opacity='0'; m.style.pointerEvents='none'; };
 window.submitUserForm = async () => {
     const db = getDb(); if (!db) return;
     const d = { displayName: $id('user-email').value.split('@')[0], email: $id('user-email').value, password: $id('user-pass').value, role: $id('user-role').value };
@@ -645,7 +728,7 @@ window.renderFinance = async () => {
         $id('fin-revenue').textContent = `$${(s.totalRevenue || 0).toLocaleString()}`;
         $id('fin-expenses').textContent = `$${(s.totalExpenses || 0).toLocaleString()}`;
         $id('fin-profit').textContent = `$${(s.netProfit || 0).toLocaleString()}`;
-        $id('finTableBody').innerHTML = (res.items || []).map(t => `<tr><td>${t.id}</td><td>${t.date}</td><td>${t.category}</td><td>${t.paymentMethod || ''}</td><td>$${t.amount}</td><td>${t.status}</td><td class="text-right"><button class="btn-action sm" onclick="window.deleteTransaction('${t.id}')"><i class="fa-solid fa-trash" style="color:var(--noorani-danger);"></i></button></td></tr>`).join('') || '<tr><td colspan="7" class="text-center">No records.</td></tr>';
+        $id('finTableBody').innerHTML = (res.items || []).map(t => `<tr><td><span style="font-family:monospace; color:var(--n-gold); font-weight:800;">${t.id}</span></td><td>${t.date}</td><td>${t.category}</td><td>${t.paymentMethod || ''}</td><td><strong>$${t.amount}</strong></td><td><span class="status-badge status-delivered">${t.status}</span></td><td class="text-right"><button class="n-btn" style="padding:8px 12px; color:var(--n-danger); border-color:rgba(239,68,68,0.2);" onclick="window.deleteTransaction('${t.id}')"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || '<tr><td colspan="7" class="text-center text-muted">No financial records identified.</td></tr>';
     } catch (e) {}
 };
 
@@ -653,13 +736,14 @@ window.showTransactionForm = (type = 'income') => {
     $id('transactionEntryForm').reset();
     $id('txn-type').value = type;
     $id('txn-date').value = new Date().toISOString().split('T')[0];
-    $id('transactionFormModal').classList.add('is-open');
+    const m = $id('transactionFormModal'); m.style.opacity='1'; m.style.pointerEvents='auto';
 };
 
 window.submitTransactionForm = async () => {
     const db = getDb(); if (!db) return;
     try {
         const d = {
+            id: $id('txn-id').value,
             type: $id('txn-type').value,
             date: $id('txn-date').value,
             category: $id('txn-category').value,
@@ -667,7 +751,7 @@ window.submitTransactionForm = async () => {
             description: $id('txn-desc').value
         };
         await db.saveTransaction(d);
-        $id('transactionFormModal').classList.remove('is-open');
+        const m = $id('transactionFormModal'); m.style.opacity='0'; m.style.pointerEvents='none';
         window.renderFinance();
     } catch (e) { alert(e.message); }
 };
@@ -686,52 +770,119 @@ window.renderAuditLogs = async () => {
     const db = getDb(); if (!db) return;
     try {
         const res = await db.queryAuditLogs({ pageSize: 50 });
-        $id('auditTableBody').innerHTML = (res.items || []).map(l => `<tr><td>${formatTime(l.created_at || l.createdAt)}</td><td>${l.actorEmail}</td><td>${l.action}</td><td>${l.module}</td><td class="text-right"><button class="btn-action sm" onclick="window.viewAuditDetails('${l.id}')"><i class="fa-solid fa-info-circle"></i></button></td></tr>`).join('') || '<tr><td colspan="5" class="text-center">No logs.</td></tr>';
+        const search = $id('auditSearchInput')?.value.toLowerCase() || '';
+        const rows = (res.items || [])
+            .filter(l => !search || l.actorEmail?.toLowerCase().includes(search) || l.action?.toLowerCase().includes(search) || l.module?.toLowerCase().includes(search))
+            .map(l => {
+                const email = l.actorEmail || 'System';
+                const initial = email.charAt(0).toUpperCase();
+                return `<tr><td>${formatTime(l.created_at || l.createdAt)}</td><td><div style="display:flex; align-items:center; gap:12px;"><div style="width:32px; height:32px; background:var(--n-gold-glow); border-radius:50%; display:grid; place-items:center; font-size:0.7rem; color:var(--n-gold); font-weight:800; border:1px solid var(--n-border-accent);">${initial}</div>${email}</div></td><td>${l.action}</td><td>${l.module}</td><td class="text-right"><button class="n-btn" style="padding:8px 12px;" onclick="window.viewAuditDetails('${l.id}')"><i class="fa-solid fa-info-circle"></i></button></td></tr>`;
+            }).join('');
+
+        const tbody = $id('auditTableBody');
+        if (tbody) tbody.innerHTML = rows || '<tr><td colspan="5" class="text-center text-muted">No security logs identified.</td></tr>';
     } catch (e) {}
 };
 window.viewAuditDetails = async (id) => alert('Audit entry details would be displayed here.');
 
 window.renderNotifications = (l) => {
     const list = Array.isArray(l) ? l : [];
-    const c = $id('notif-count'); if (c) { c.textContent = list.filter(x => !x.read).length; c.style.display = list.length ? 'block' : 'none'; }
-    $id('notif-list').innerHTML = list.map(n => `<div class="notif-item"><h5>${n.title}</h5><p>${n.message}</p></div>`).join('') || '<p class="text-center mt-20">No new alerts.</p>';
+    const c = $id('notif-count');
+    if (c) {
+        const unread = list.filter(x => !x.read).length;
+        c.textContent = unread;
+        c.style.display = unread > 0 ? 'block' : 'none';
+    }
+    const drawerList = $id('notif-list');
+    if (drawerList) drawerList.innerHTML = list.map(n => `<div class="n-card" style="padding:20px; margin-bottom:16px; background:var(--n-surface); border-radius:12px;"><h5 style="font-size:0.9rem; color:var(--n-gold); margin-bottom:4px;">${n.title}</h5><p style="font-size:0.85rem; color:var(--n-muted);">${n.message}</p></div>`).join('') || '<p class="text-center mt-20 text-muted">No alerts identified.</p>';
+
+    const fullList = $id('enterpriseNotifFullList');
+    if (fullList) fullList.innerHTML = list.map(n => `<div class="n-card" style="padding:24px; background:var(--n-surface);"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><h4 style="color:var(--n-gold);">${n.title}</h4><p class="mt-10">${n.message}</p><small class="text-muted mt-20" style="display:block;">${formatTime(n.createdAt)}</small></div><span class="status-badge ${n.read ? 'status-delivered' : 'status-transit'}">${n.read ? 'READ' : 'NEW'}</span></div></div>`).join('') || '<div class="text-center p-40 text-muted">No notification history identified.</div>';
 };
 
 window.openShipmentWorkspace = async id => {
     const db = getDb(); if (!db) return;
     try {
-        enterpriseAdminState.activeTracking = id; $id('shipmentWorkspaceModal').classList.add('is-open'); $id('wsTrack').textContent = id;
+        const ws = $id('shipmentWorkspaceModal');
+        ws.style.opacity = '1';
+        ws.style.pointerEvents = 'auto';
+        enterpriseAdminState.activeTracking = id; $id('wsTrack').textContent = id;
         const res = await db.getShipmentByTracking(id);
         const d = res.data;
-        $id('wsTitle').textContent = d.receiver || 'Manifest File';
+        $id('wsTitle').textContent = d.receiver || 'Shipment File';
+        const currentStatusDate = d.statusDate || d.date || new Date().toISOString();
+        const currentPaidDate = formatDateForInput(d.paidDate);
+
+        console.log(`[Workspace] Loading record: ${id}`, {
+            rawPaidDate: d.paidDate,
+            formattedPaidDate: currentPaidDate
+        });
+
         $id('wsForm').innerHTML = `
-            <div class="form-grid">
-                <div class="form-group"><label>Status</label><select id="wsStatus">${$id('inputStatus').innerHTML}</select></div>
-                <div class="form-group"><label>Branch</label><input id="wsBranch" value="${d.branchCode||''}"></div>
+            <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:24px;">
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Operational Status</label><select id="wsStatus" class="n-input" onchange="$id('wsStatusDate').value = new Date().toISOString()">${$id('inputStatus').innerHTML}</select></div>
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Status Date</label><input id="wsStatusDate" class="n-input" value="${currentStatusDate}" readonly style="background:rgba(255,255,255,0.02);"></div>
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Paid Date</label><input type="date" id="wsPaidDate" class="n-input" value="${currentPaidDate}"></div>
             </div>
-            <div class="form-grid">
-                <div class="form-group"><label>Shipper</label><input id="wsSender" value="${d.sender||''}"></div>
-                <div class="form-group"><label>Consignee</label><input id="wsReceiver" value="${d.receiver||''}"></div>
+            <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:24px; margin-top:20px;">
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Branch Hub</label><input id="wsBranch" class="n-input" value="${d.branchCode||''}"></div>
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">SWB Serial</label><input id="wsSwbSerial" class="n-input" value="${d.swbSerial||''}"></div>
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Invoice #</label><input id="wsInvoice" class="n-input" value="${d.customerInvoice||''}"></div>
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Shipment Type</label><select id="wsShipmentType" class="n-input"><option value="Air Freight">Air Freight</option><option value="Sea Freight">Sea Freight</option><option value="Land Freight">Land Freight</option></select></div>
             </div>
-            <div class="grid-2">
-                <div class="form-group"><label>Weight</label><input id="wsWeight" value="${d.weight||0}"></div>
-                <div class="form-group"><label>Quantity</label><input id="wsQty" value="${d.quantity||1}"></div>
+            <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:24px; margin-top:20px;">
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Shipper Name</label><input id="wsSender" class="n-input" value="${d.sender||''}"></div>
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Shipper Phone</label><input id="wsSenderPhone" class="n-input" value="${d.senderPhone||''}"></div>
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Receiver Name</label><input id="wsReceiver" class="n-input" value="${d.receiver||''}"></div>
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Receiver Phone</label><input id="wsReceiverPhone" class="n-input" value="${d.receiverPhone||''}"></div>
+            </div>
+            <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:24px; margin-top:20px;">
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Origin Country</label><input id="wsOriginCountry" class="n-input" value="${d.originCountry||''}"></div>
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Dest Country</label><input id="wsDestinationCountry" class="n-input" value="${d.destinationCountry||''}"></div>
+            </div>
+            <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:24px; margin-top:20px;">
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Original Qty</label><input id="wsOriginalQty" class="n-input" value="${d.originalQuantity||0}"></div>
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Current Qty</label><input id="wsQty" class="n-input" value="${d.quantity||1}"></div>
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Original Weight</label><input id="wsOriginalWeight" class="n-input" value="${d.originalWeight||0}"></div>
+                <div style="display:grid; gap:8px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Current Weight</label><input id="wsWeight" class="n-input" value="${d.weight||0}"></div>
             </div>`;
+
         $id('wsStatus').value = d.status;
+        if ($id('wsShipmentType')) $id('wsShipmentType').value = d.shipmentType || 'Air Freight';
 
         const notes = await db.getShipmentNotesForShipment(id);
-        $id('wsNoteList').innerHTML = notes.map(x => `<div class="enterprise-list-item"><strong>${x.author}</strong><p>${x.content}</p></div>`).join('') || '<p>No notes for this file.</p>';
+        $id('wsNoteList').innerHTML = notes.map(x => `<div class="n-card" style="padding:20px; margin-bottom:16px; background:var(--n-surface); border-radius:12px;"><strong>${x.author}</strong><p style="margin-top:8px; font-size:0.9rem;">${x.content}</p></div>`).join('') || '<p class="text-muted">No notes identified for this file.</p>';
 
         const assets = await db.getShipmentAssetsForShipment(id);
-        $id('wsAssetList').innerHTML = assets.map(x => `<div class="enterprise-list-item"><a href="${x.downloadURL}" target="_blank">${x.fileName}</a></div>`).join('') || '<p>No attachments.</p>';
+        $id('wsAssetList').innerHTML = assets.map(x => `<div class="n-card" style="padding:16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; background:var(--n-surface); border-radius:12px;"><a href="${x.downloadURL}" target="_blank" style="color:var(--n-gold); font-weight:700;">${x.fileName}</a> <i class="fa-solid fa-file-arrow-down"></i></div>`).join('') || '<p class="text-muted">No attachments identified.</p>';
     } catch (e) { console.error('Workspace load failed', e); }
 };
 
 window.saveWS = async () => {
     const db = getDb(); if (!db) return;
     try {
-        await db.saveShipment(enterpriseAdminState.activeTracking, { status: $id('wsStatus').value, branchCode: $id('wsBranch').value, sender: $id('wsSender').value, receiver: $id('wsReceiver').value, weight: $id('wsWeight').value, quantity: $id('wsQty').value });
-        alert('Record Synced.'); window.loadDashboard();
+        const p = window.nooraniAdminProfile || await db.getCurrentAdminProfile();
+        await db.saveShipment(enterpriseAdminState.activeTracking, {
+            status: $id('wsStatus').value,
+            statusDate: $id('wsStatusDate').value,
+            paidDate: $id('wsPaidDate').value,
+            branchCode: $id('wsBranch').value,
+            swbSerial: $id('wsSwbSerial').value,
+            customerInvoice: $id('wsInvoice').value,
+            shipmentType: $id('wsShipmentType').value,
+            sender: $id('wsSender').value,
+            senderPhone: $id('wsSenderPhone').value,
+            receiver: $id('wsReceiver').value,
+            receiverPhone: $id('wsReceiverPhone').value,
+            originCountry: $id('wsOriginCountry').value,
+            destinationCountry: $id('wsDestinationCountry').value,
+            originalQuantity: $id('wsOriginalQty').value,
+            quantity: $id('wsQty').value,
+            originalWeight: $id('wsOriginalWeight').value,
+            weight: $id('wsWeight').value,
+            author: p?.email || 'System'
+        });
+        alert('Record Synced.'); window.loadDashboard(); window.closeWorkspace();
     } catch (e) { alert('Sync failed: ' + e.message); }
 };
 
@@ -740,8 +891,15 @@ window.renderOps = async () => {
     try {
         const p = await db.getCurrentAdminProfile();
         if (!p) return;
-        $id('enterpriseRoleSummary').innerHTML = `<span class="status-badge status-delivered">${p.role.toUpperCase()}</span><span class="status-badge status-transit">${p.branchCode||'GLOBAL'}</span>`;
-        window.renderCustomers(); window.renderDrivers(); window.renderVehicles(); window.renderBranches(); window.renderEmployees(); window.renderUsers(); window.renderFinance(); window.renderAuditLogs();
+        const roleLabel = (db.roleLabel ? db.roleLabel(p.role) : p.role).toUpperCase();
+        const badge = $id('adminRoleBadge');
+        if (badge) {
+            badge.textContent = roleLabel;
+            badge.className = 'status-badge ' + (p.role === 'superadmin' ? 'status-delivered' : 'status-transit');
+        }
+        const summary = $id('enterpriseRoleSummary');
+        if (summary) summary.innerHTML = `<div style="display:flex; gap:12px;"><span class="status-badge status-delivered">${roleLabel}</span><span class="status-badge status-transit" style="border-radius:6px;">${p.branchCode||'GLOBAL HUB'}</span></div>`;
+        window.renderUsers(); window.renderFinance(); window.renderAuditLogs();
     } catch (e) {}
 };
 
@@ -749,28 +907,62 @@ window.renderOps = async () => {
 
 window.exportShipmentTable = (format) => {
     const items = enterpriseAdminState.currentItems;
-    if (!items.length) return alert('No data to export');
-    const headers = ['Tracking #', 'Date', 'Sender', 'Receiver', 'Status', 'Cost'];
-    const data = items.map(i => [i.trackingId, i.data.date, i.data.sender, i.data.receiver, i.data.status, i.data.shippingCost]);
+    if (!items.length) return alert('No data identified for export');
+
+    const headers = [
+        'Date', 'SWB Serial No.', 'Cust Inv No.', 'SWB Date', 'Customer',
+        'Customer Inv. No.', 'Shipper Name', 'Consignee Name', 'Orig. Qty', 'Qty',
+        'Orig. Wt.', 'Wt.', 'Consignee City', 'Consingee Address'
+    ];
+
+    const data = items.map(i => {
+        const d = i.data;
+        return [
+            d.date || '',
+            d.swbSerial || '',
+            d.shippingNumber || '',
+            d.swbDate || '',
+            d.branchCode || '',
+            d.customerInvoice || '',
+            d.sender || '',
+            d.receiver || '',
+            d.originalQuantity || '',
+            d.quantity || '',
+            d.originalWeight || '',
+            d.weight || '',
+            d.destination || '',
+            d.receiverAddress || ''
+        ];
+    });
+
     if (format === 'csv') {
-        const csv = [headers.join(','), ...data.map(r => r.join(','))].join('\n');
+        const csv = [headers.join(','), ...data.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n');
         const blob = new Blob([csv], { type: 'text/csv' }); const url = URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href = url; a.download = 'shipments.csv'; a.click();
     } else if (format === 'xlsx') {
         const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
         XLSX.utils.book_append_sheet(wb, ws, 'Shipments'); XLSX.writeFile(wb, 'shipments.xlsx');
     } else if (format === 'pdf') {
-        const { jsPDF } = window.jspdf; const doc = new jsPDF();
-        doc.text('Shipment Manifest', 10, 10); doc.autoTable({ head: [headers], body: data }); doc.save('shipments.pdf');
+        const { jsPDF } = window.jspdf; const doc = new jsPDF('landscape');
+        doc.text('Shipment Manifest', 10, 10); doc.autoTable({ head: [headers], body: data, styles: { fontSize: 7 } }); doc.save('shipments.pdf');
     }
 };
 
-window.exportAudit = (format) => alert('Audit trail export in ' + format + ' initialized.');
+window.exportAudit = (format) => alert('Audit trail export in ' + format + ' cycle initialized.');
 
 // --- Global Initialization ---
 
 async function init() {
   createUI();
+
+  // Use event delegation for reliable interaction in multi-page environment
+  document.addEventListener('click', e => {
+      if (e.target.closest('#btnOpenManifestsModal')) {
+          e.preventDefault();
+          window.openManifestsModal();
+      }
+  });
+
   $id('searchDbInput')?.addEventListener('keyup', () => window.loadDashboard());
   window.addEventListener('noorani:admin-auth-state', e => {
       if (e.detail.user) {

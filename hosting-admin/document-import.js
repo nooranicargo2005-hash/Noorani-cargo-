@@ -27,22 +27,32 @@ import { nooraniDb } from './firebase.js';
   window.openImportModal = () => {
     const modal = $id('importDataModal');
     if (modal) {
-        modal.classList.add('is-open');
+        modal.style.opacity = '1';
+        modal.style.pointerEvents = 'auto';
         window.resetImportModal();
     }
   };
 
   window.closeImportModal = () => {
     const modal = $id('importDataModal');
-    if (modal) modal.classList.remove('is-open');
+    if (modal) {
+        modal.style.opacity = '0';
+        modal.style.pointerEvents = 'none';
+    }
   };
 
   window.resetImportModal = () => {
     importState = { file: null, type: null, shipments: [], existingIds: [] };
-    if ($id('importUploadZone')) $id('importUploadZone').style.display = 'flex';
-    if ($id('importFileDetails')) $id('importFileDetails').style.display = 'none';
-    if ($id('importProgress')) $id('importProgress').style.display = 'none';
-    if ($id('importPreviewArea')) $id('importPreviewArea').style.display = 'none';
+    const uz = $id('importUploadZone');
+    const fd = $id('importFileDetails');
+    const pg = $id('importProgress');
+    const pa = $id('importPreviewArea');
+
+    if (uz) uz.style.display = 'flex';
+    if (fd) fd.classList.add('hidden');
+    if (pg) pg.classList.add('hidden');
+    if (pa) pa.classList.add('hidden');
+
     if ($id('btnExecuteImport')) $id('btnExecuteImport').disabled = true;
     if ($id('importProgressBar')) $id('importProgressBar').style.width = '0%';
     if ($id('importFileInput')) $id('importFileInput').value = '';
@@ -50,13 +60,13 @@ import { nooraniDb } from './firebase.js';
 
   const setProgress = (percent, status, isError = false) => {
     const pArea = $id('importProgress');
-    if (pArea) pArea.style.display = 'block';
+    if (pArea) pArea.classList.remove('hidden');
     const bar = $id('importProgressBar');
     if (bar) bar.style.width = `${percent}%`;
     const st = $id('importProgressStatus');
     if (st) {
         st.textContent = status;
-        st.style.color = isError ? 'var(--noorani-danger)' : 'var(--noorani-gold)';
+        st.style.color = isError ? 'var(--n-danger)' : 'var(--n-gold)';
     }
   };
 
@@ -146,131 +156,137 @@ import { nooraniDb } from './firebase.js';
   function parseAutonomousExcel(rows) {
     if (!rows || rows.length === 0) return [];
 
-    console.log('%c[Import] Starting Dedicated Manifest Parser...', 'color: #3b82f6;');
+    console.log('%c[Import] Activating Smart Header Discovery...', 'color: #3b82f6;');
 
     const KEYWORDS = {
-        trackingId: ['tracking', 'shipping no', 'awb', 'serial', 's.no', 'manifest no', 'ref', 'no.', 'no', 'consignment'],
-        date: ['date', 'swb date', 'shipment date', 'manifest date', 'booking date'],
-        branchCode: ['branch', 'hub', 'origin', 'station', 'from'],
-        swbSerial: ['swb serial', 'serial no', 'swb no', 'doc no', 'bag no'],
-        customerInvoice: ['invoice', 'customer invoice', 'inv', 'bill no', 'cust inv'],
-        sender: ['shipper', 'sender', 'shipper name', 'consignor', 'from name'],
-        receiver: ['consignee', 'receiver', 'consignee name', 'client', 'to name'],
+        trackingId: ['tracking', 'shipping no', 'awb', 'serial', 's.no', 'manifest no', 'ref', 'no.', 'no', 'consignment', 'waybill'],
+        date: ['date', 'swb date', 'shipment date', 'manifest date', 'booking date', 'registration'],
+        branchCode: ['branch', 'hub', 'origin', 'station', 'from', 'org', 'sales branch'],
+        swbSerial: ['swb serial no', 'swb serial', 'swb no', 'bag no', 'swb'],
+        swbDate: ['swb date'],
+        shippingNumber: ['cust inv no', 'cust inv', 'manifest no', 'shipping no'],
+        customerInvoice: ['customer inv no', 'customer invoice no', 'customer invoice', 'cust inv', 'invoice no'],
+        branchCode: ['customer', 'branch', 'hub', 'origin', 'station', 'from', 'org', 'sales branch'],
+        sender: ['shipper name', 'shipper', 'sender', 'consignor', 'from name'],
+        receiver: ['consignee name', 'consignee', 'receiver', 'client', 'to name'],
         originalQuantity: ['orig qty', 'original quantity', 'pcs', 'orig pieces', 'booking qty', 'booked pcs'],
-        quantity: ['qty', 'quantity', 'pieces', 'actual qty', 'no of packages', 'pkgs'],
-        originalWeight: ['orig weight', 'original weight', 'orig wgt', 'booking weight', 'booked weight'],
-        weight: ['weight', 'wgt', 'kg', 'kilograms', 'actual weight', 'gross weight', 'net weight'],
-        destination: ['destination', 'city', 'consignee city', 'port', 'to city'],
-        receiverAddress: ['address', 'consignee address', 'receiver address', 'delivery address', 'to address']
+        quantity: ['qty', 'quantity', 'pieces', 'actual qty', 'no of packages', 'pkgs', 'total qty'],
+        originalWeight: ['orig wt', 'orig weight', 'original weight', 'orig wgt', 'booking weight', 'booked weight'],
+        weight: ['wt', 'weight', 'wgt', 'kg', 'kilograms', 'actual weight', 'gross weight', 'net weight', 'total weight'],
+        destination: ['consignee city', 'destination', 'city', 'port', 'to city', 'dest'],
+        receiverAddress: ['consingee addr', 'consingee address', 'consignee address', 'receiver address', 'delivery address', 'to address'],
+        senderPhone: ['shipper phone', 'sender phone', 'shipper tel', 'sender tel', 'shipper mobile', 'sender mobile'],
+        receiverPhone: ['consignee phone', 'receiver phone', 'consignee tel', 'receiver tel', 'consignee mobile', 'receiver mobile'],
+        originCountry: ['origin country', 'from country', 'origin nation', 'org country'],
+        destinationCountry: ['destination country', 'to country', 'final country', 'dest country'],
+        shipmentType: ['shipment type', 'freight type', 'cargo type', 'type of shipment', 'mode']
     };
 
+    let headerRowIndex = -1;
+    let mapping = {};
     let metadata = { date: null, shippingNo: null };
 
-    // 1. Metadata Scan (First 12 rows)
-    for (let i = 0; i < Math.min(rows.length, 12); i++) {
+    // 1. Unified Discovery Scan
+    for (let i = 0; i < Math.min(rows.length, 50); i++) {
         const row = rows[i];
         if (!Array.isArray(row)) continue;
-        for (let j = 0; j < row.length; j++) {
-            const cell = String(row[j] || '').trim();
-            if (!cell) continue;
-            const low = cell.toLowerCase();
 
-            if (low.includes('date') && !metadata.date) {
-                const candidates = [cell.replace(/date[:\s]*/i, ''), String(row[j+1]||''), String(row[j+2]||''), (rows[i+1] ? String(rows[i+1][j]||'') : '')];
-                for (const cand of candidates) {
-                    const d = cleanDate(cand);
-                    if (d) { metadata.date = d; break; }
-                }
-            }
-            if ((low.includes('shipping no') || low.includes('manifest no')) && !metadata.shippingNo) {
-                const candidates = [cell.replace(/(shipping|manifest) no[:\s]*/i, ''), String(row[j+1]||''), String(row[j+2]||'')];
-                for (const cand of candidates) {
-                    const id = cleanId(cand);
-                    if (id && id.length > 2 && !KEYWORDS.trackingId.some(k => cand.toLowerCase() === k)) {
-                        metadata.shippingNo = id; break;
+        let rowMapping = {};
+        let matches = 0;
+
+        for (let j = 0; j < row.length; j++) {
+            const cell = String(row[j] || '').trim().toLowerCase();
+            if (!cell) continue;
+
+            // Header Matching
+            Object.keys(KEYWORDS).forEach(key => {
+                if (KEYWORDS[key].some(k => cell === k || cell.includes(k))) {
+                    if (rowMapping[key] === undefined) {
+                        rowMapping[key] = j;
+                        matches++;
                     }
                 }
+            });
+
+            // Metadata Matching (Date/Shipping No) in non-header rows
+            if (headerRowIndex === -1) {
+                if (cell.includes('date') && !metadata.date) {
+                    const d = cleanDate(row[j+1]) || cleanDate(row[j+2]);
+                    if (d) metadata.date = d;
+                }
+                if ((cell.includes('shipping no') || cell.includes('manifest no')) && !metadata.shippingNo) {
+                    const id = cleanId(row[j+1]) || cleanId(row[j+2]);
+                    if (id && id.length > 3) metadata.shippingNo = id;
+                }
             }
+        }
+
+        // Determine if this is the header row (Need at least 3 keyword matches)
+        if (matches >= 3 && matches > Object.keys(mapping).length) {
+            mapping = rowMapping;
+            headerRowIndex = i;
+            console.log(`[Import] Header Row Discovered at Index: ${i} with ${matches} matches.`);
         }
     }
 
-    // 2. Header Mapping (Rows 13-14 - index 12-13)
-    let mapping = {};
-    const headerRows = [rows[12] || [], rows[13] || []];
-
-    headerRows.forEach(hRow => {
-        for (let j = 0; j < hRow.length; j++) {
-            const cell = String(hRow[j] || '').trim().toLowerCase();
-            if (!cell) continue;
-            Object.keys(KEYWORDS).forEach(key => {
-                if (KEYWORDS[key].some(k => cell === k || cell.includes(k))) {
-                    if (mapping[key] === undefined) mapping[key] = j;
-                }
-            });
-        }
-    });
-
-    // Fallback if row 13 didn't work (scan up to row 20)
-    if (Object.keys(mapping).length < 3) {
-        for (let i = 12; i < Math.min(rows.length, 20); i++) {
-            const r = rows[i];
-            let score = 0;
-            let tempMapping = {};
-            r.forEach((c, j) => {
-                const val = String(c || '').trim().toLowerCase();
-                Object.keys(KEYWORDS).forEach(key => {
-                    if (KEYWORDS[key].some(k => val === k || val.includes(k))) {
-                        if (tempMapping[key] === undefined) { tempMapping[key] = j; score++; }
-                    }
-                });
-            });
-            if (score > Object.keys(mapping).length) {
-                mapping = tempMapping;
-                console.log(`[Import] Alternative Header found at Row ${i + 1}`);
-            }
-        }
+    if (headerRowIndex === -1) {
+        console.warn('[Import] Automated header discovery failed. Attempting fallback mapping...');
+        // Fallback: Assume Row 0 if everything else fails but data exists
+        if (rows.length > 1) headerRowIndex = 0;
+        else return [];
     }
 
     const shipments = [];
-    const get = (key, rowData) => (mapping[key] !== undefined && rowData) ? rowData[mapping[key]] : null;
+    const getVal = (key, rowData) => (mapping[key] !== undefined && rowData) ? rowData[mapping[key]] : null;
 
-    // 3. Data Processing (Starts from Row 15 - index 14, in pairs)
-    for (let i = 14; i < rows.length; i += 2) {
-        const r1 = rows[i];
-        const r2 = rows[i+1];
-        if (!Array.isArray(r1) || !r1.some(c => String(c).trim())) continue;
+    // 2. Data Extraction
+    for (let i = headerRowIndex + 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!Array.isArray(r) || !r.some(c => String(c).trim())) continue;
 
-        let tracking = cleanId(get('trackingId', r1));
-        if (!tracking) continue;
+        let tracking = cleanId(getVal('trackingId', r));
+        if (!tracking || tracking.length < 3) continue;
 
         const current = {
             trackingId: tracking,
-            shippingNumber: metadata.shippingNo || '',
-            date: cleanDate(get('date', r1)) || metadata.date,
-            branchCode: String(get('branchCode', r1) || '').trim(),
-            swbSerial: String(get('swbSerial', r1) || '').trim(),
-            customerInvoice: String(get('customerInvoice', r1) || '').trim(),
-            sender: String(get('sender', r1) || '').trim(),
-            receiver: String(get('receiver', r1) || '').trim(),
-            destination: String(get('destination', r1) || '').trim(),
-            receiverAddress: String(get('receiverAddress', r1) || '').trim(),
-            // Measurements often on second row in these split formats
-            originalQuantity: parseInt(get('originalQuantity', r1) || get('originalQuantity', r2) || 0, 10),
-            quantity: parseInt(get('quantity', r1) || get('quantity', r2) || 0, 10),
-            originalWeight: parseFloat(get('originalWeight', r1) || get('originalWeight', r2) || 0),
-            weight: parseFloat(get('weight', r1) || get('weight', r2) || 0),
+            date: cleanDate(getVal('date', r)) || metadata.date || new Date().toISOString().split('T')[0],
+            swbSerial: String(getVal('swbSerial', r) || '').trim(),
+            shippingNumber: String(getVal('shippingNumber', r) || '').trim() || metadata.shippingNo || '',
+            swbDate: cleanDate(getVal('swbDate', r)) || '',
+            branchCode: String(getVal('branchCode', r) || '').trim(),
+            customerInvoice: String(getVal('customerInvoice', r) || '').trim(),
+            sender: String(getVal('sender', r) || '').trim(),
+            senderPhone: String(getVal('senderPhone', r) || '').trim(),
+            receiver: String(getVal('receiver', r) || '').trim(),
+            receiverPhone: String(getVal('receiverPhone', r) || '').trim(),
+            destination: String(getVal('destination', r) || '').trim(),
+            receiverAddress: String(getVal('receiverAddress', r) || '').trim(),
+            originCountry: String(getVal('originCountry', r) || '').trim(),
+            destinationCountry: String(getVal('destinationCountry', r) || '').trim(),
+            shipmentType: String(getVal('shipmentType', r) || 'Air Freight').trim(),
+            originalQuantity: parseInt(getVal('originalQuantity', r) || 0, 10),
+            quantity: parseInt(getVal('quantity', r) || 1, 10),
+            originalWeight: parseFloat(getVal('originalWeight', r) || 0),
+            weight: parseFloat(getVal('weight', r) || 0),
+            status: 'Pending',
+            source: 'import',
+            importedAt: new Date().toISOString()
+        };
+            quantity: parseInt(getVal('quantity', r) || 1, 10),
+            originalWeight: parseFloat(getVal('originalWeight', r) || 0),
+            weight: parseFloat(getVal('weight', r) || 0),
             status: 'Pending',
             source: 'import',
             importedAt: new Date().toISOString()
         };
 
-        if (!current.quantity) current.quantity = 1;
         if (!current.originalQuantity) current.originalQuantity = current.quantity;
+        if (!current.originalWeight) current.originalWeight = current.weight;
 
         shipments.push(current);
     }
 
-    console.log(`[Import] Discovery Results: ${shipments.length} records.`);
+    console.log(`[Import] DISCOVERY COMPLETE: Found ${shipments.length} valid shipment records.`);
     return shipments;
   }
 
@@ -293,7 +309,7 @@ import { nooraniDb } from './firebase.js';
 
         if (ext === 'xlsx' || ext === 'xls') {
             const buffer = await file.arrayBuffer();
-            const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
+            const wb = XLSX.read(buffer, { type: 'array', cellDates: true, cellNF: false, cellText: false });
 
             if (!wb.SheetNames || wb.SheetNames.length === 0) {
                 throw new Error('Excel file appears to be empty or invalid (no sheets found).');
@@ -302,27 +318,35 @@ import { nooraniDb } from './firebase.js';
             const sheetName = wb.SheetNames[0];
             const sheet = wb.Sheets[sheetName];
 
-            if (!sheet) {
-                throw new Error(`Could not access sheet: ${sheetName}`);
-            }
+            // Log sheet range for debugging
+            console.log(`[Import] Processing Sheet: ${sheetName}, Range: ${sheet['!ref']}`);
 
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+            console.log(`[Import] Raw row count: ${rows.length}`);
+
             data = parseAutonomousExcel(rows);
 
         } else if (ext === 'csv') {
-            data = await new Promise(res => {
-                Papa.parse(file, { header: false, skipEmptyLines: true, complete: r => res(parseAutonomousExcel(r.data)) });
+            data = await new Promise((resolve, reject) => {
+                Papa.parse(file, {
+                    header: false,
+                    skipEmptyLines: true,
+                    complete: r => resolve(parseAutonomousExcel(r.data)),
+                    error: err => reject(err)
+                });
             });
         }
 
         importState.shipments = data;
 
-        if (data.length === 0) {
+        if (!data || data.length === 0) {
+            console.error('[Import] Discovery FAILED: No records found after parsing.');
             setProgress(0, 'Failed to discover shipments. Please verify the manifest format.', true);
         } else {
+            console.log(`[Import] Discovery SUCCESS: Mapped ${data.length} shipments.`);
             renderPreview();
             setProgress(100, `Successfully mapped ${data.length} shipments.`);
-            setTimeout(() => { if($id('importProgress')) $id('importProgress').style.display = 'none'; }, 2000);
+            setTimeout(() => { if($id('importProgress')) $id('importProgress').classList.add('hidden'); }, 2000);
         }
 
     } catch (e) {
@@ -372,7 +396,7 @@ import { nooraniDb } from './firebase.js';
         `;
     }).join('');
 
-    $id('importPreviewArea').style.display = 'block';
+    $id('importPreviewArea').classList.remove('hidden');
     $id('btnExecuteImport').disabled = importState.shipments.length === 0;
   }
 
@@ -428,15 +452,31 @@ import { nooraniDb } from './firebase.js';
     document.addEventListener('change', (e) => {
         if (e.target.id === 'importFileInput' && e.target.files[0]) {
             const file = e.target.files[0];
-            const uz = $id('importUploadZone');
             const fd = $id('importFileDetails');
             const fn = $id('importFileName');
             const fs = $id('importFileSize');
 
-            if (uz) uz.style.display = 'none';
-            if (fd) fd.style.display = 'block';
+            if (fd) fd.classList.remove('hidden');
             if (fn) fn.textContent = file.name;
             if (fs) fs.textContent = `${(file.size / 1024).toFixed(1)} KB`;
+
+            // Persist manifest file to server storage permanently
+            (async () => {
+                try {
+                    const db = getDb();
+                    if (db && db.uploadManifestFile) {
+                        console.log('[Import] Archiving manifest to server storage...');
+                        const res = await db.uploadManifestFile(file);
+                        console.log('[Import] Archive SUCCESS:', res.fileName);
+                        console.log('[Import] Physical Path:', res.physicalPath);
+                    } else {
+                        console.error('[Import] Database bridge not ready for upload.');
+                    }
+                } catch (err) {
+                    console.error('[Import] Archive FAILED:', err);
+                }
+            })();
+
             processFile(file);
         }
         if (e.target.id === 'importUpdateToggle') {

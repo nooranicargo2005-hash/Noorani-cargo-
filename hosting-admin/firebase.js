@@ -8,7 +8,7 @@ import * as perms from './permissions.js';
  */
 
 // --- API Configuration ---
-const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const isLocal = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 
 // PRODUCTION API URL - IMPORTANT: Ensure your Render service name matches this!
 const PROD_API_URL = 'https://noorani-cargo-api.onrender.com/api';
@@ -130,13 +130,27 @@ export const nooraniDb = {
     getCurrentAdminUser: () => window.nooraniAdminUser || null,
     getCurrentAdminProfile: async () => {
         const user = window.nooraniAdminUser;
-        return {
-            uid: user?.uid || 'admin',
-            email: user?.email || 'admin@nooranicargo.com',
-            role: 'superadmin',
-            status: 'enabled',
-            permissions: {}
-        };
+        if (!user) return null;
+        try {
+            const profile = await apiFetch(`/users/profile/${user.email}`);
+            return {
+                uid: String(profile.id),
+                email: profile.email,
+                role: profile.role || 'employee',
+                branchCode: profile.branchCode || 'HQ',
+                status: profile.status || 'enabled',
+                permissions: profile.permissions ? JSON.parse(profile.permissions) : {}
+            };
+        } catch (e) {
+            console.warn('[Profile] Failed to fetch profile, using fallback:', e);
+            return {
+                uid: user.uid,
+                email: user.email,
+                role: 'admin',
+                status: 'enabled',
+                permissions: {}
+            };
+        }
     },
     profileHasPermission: perms.profileHasPermission,
     roleLabel: perms.roleLabel,
@@ -154,7 +168,7 @@ export const nooraniDb = {
     getTimelineForShipment: (id) => apiFetch(`/shipments/${id}/timeline`),
     saveShipmentTimelineEntry: (id, data) => apiFetch(`/shipments/${id}/timeline`, { method: 'POST', body: JSON.stringify(data) }),
     getShipmentNotesForShipment: (id) => apiFetch(`/shipments/${id}/notes`),
-    saveShipmentNote: (id, content) => apiFetch(`/shipments/${id}/notes`, { method: 'POST', body: JSON.stringify({ content }) }),
+    saveShipmentNote: (id, data) => apiFetch(`/shipments/${id}/notes`, { method: 'POST', body: JSON.stringify(data) }),
     getShipmentAssetsForShipment: (id) => apiFetch(`/shipments/${id}/assets`),
 
     uploadShipmentDocument: async (id, file) => {
@@ -168,31 +182,15 @@ export const nooraniDb = {
         return res.json();
     },
 
-    // --- Operations & Fleet ---
-    saveCustomer: (d) => apiFetch('/customers', { method: 'POST', body: JSON.stringify(d) }),
-    queryCustomers: (o = {}) => apiFetch(`/customers?${new URLSearchParams(o).toString()}`),
-    getCustomerDetails: (id) => apiFetch(`/customers/${id}`),
-    deleteCustomer: (id) => apiFetch(`/customers/${id}`, { method: 'DELETE' }),
+    uploadManifestFile: async (file) => {
+        const fd = new FormData(); fd.append('file', file);
+        const res = await fetch(`${API_BASE}/manifests/upload`, { method: 'POST', body: fd });
+        return res.json();
+    },
 
-    saveDriver: (d) => apiFetch('/drivers', { method: 'POST', body: JSON.stringify(d) }),
-    queryDrivers: () => apiFetch('/drivers'),
-    getDriverDetails: (id) => apiFetch(`/drivers/${id}`),
-    deleteDriver: (id) => apiFetch(`/drivers/${id}`, { method: 'DELETE' }),
-
-    saveVehicle: (d) => apiFetch('/vehicles', { method: 'POST', body: JSON.stringify(d) }),
-    queryVehicles: () => apiFetch('/vehicles'),
-    getVehicleDetails: (id) => apiFetch(`/vehicles/${id}`),
-    deleteVehicle: (id) => apiFetch(`/vehicles/${id}`, { method: 'DELETE' }),
-
-    saveBranch: (d) => apiFetch('/branches', { method: 'POST', body: JSON.stringify(d) }),
-    queryBranches: () => apiFetch('/branches'),
-    getBranchDetails: (id) => apiFetch(`/branches/${id}`),
-    deleteBranch: (id) => apiFetch(`/branches/${id}`, { method: 'DELETE' }),
-
-    saveEmployee: (d) => apiFetch('/employees', { method: 'POST', body: JSON.stringify(d) }),
-    queryEmployees: () => apiFetch('/employees'),
-    getEmployeeDetails: (id) => apiFetch(`/employees/${id}`),
-    deleteEmployee: (id) => apiFetch(`/employees/${id}`, { method: 'DELETE' }),
+    queryManifests: () => apiFetch('/manifests'),
+    getManifestDownloadUrl: (filename) => `${API_BASE}/manifests/download/${filename}`,
+    getManifestViewUrl: (filename) => `${API_BASE}/manifests/view/${filename}`,
 
     // --- Finance & System ---
     queryTransactions: (o = {}) => apiFetch(`/transactions?${new URLSearchParams(o).toString()}`),
@@ -204,10 +202,10 @@ export const nooraniDb = {
     },
     queryAuditLogs: () => apiFetch('/audit-logs'),
     watchNotifications: (uid, cb) => {
-        const poll = async () => { try { const res = await apiFetch('/notifications'); cb(res); } catch (e) {} };
+        const poll = async () => { try { const res = await apiFetch(`/notifications?uid=${uid}`); cb(res); } catch (e) {} };
         poll(); const itv = setInterval(poll, 10000); return () => clearInterval(itv);
     },
-    clearNotifications: () => apiFetch('/notifications', { method: 'DELETE' }),
+    clearNotifications: (uid) => apiFetch(`/notifications?uid=${uid}`, { method: 'DELETE' }),
     getSystemSettings: (cat) => apiFetch(`/settings/${cat}`),
     saveSystemSettings: (cat, data) => apiFetch(`/settings/${cat}`, { method: 'POST', body: JSON.stringify(data) }),
     getUserAccounts: () => apiFetch('/users'),

@@ -10,43 +10,23 @@
 
   const pageConfigs = {
     'dashboard': {
-      navKey: 'dashboard', title: 'Operational Command Center', intro: 'Live fleet metrics and shipment performance analytics.', breadcrumbs: ['Admin', 'Dashboard'],
-      showRegisterShipment: false, showDatabase: true, databaseTitle: 'Real-Time Inventory', enterpriseCards: ['enterpriseAnalyticsCard', 'enterpriseActivityCard']
+      navKey: 'dashboard', title: 'Dashboard', intro: 'Live fleet metrics and shipment performance analytics.', breadcrumbs: ['Admin', 'Dashboard'],
+      showRegisterShipment: false, showDatabase: false, databaseTitle: 'Real-Time Inventory', enterpriseCards: []
     },
     'create-shipment': {
-      navKey: 'create-shipment', title: 'Register New Shipment', intro: 'Register cargo and sync milestones to Database.', breadcrumbs: ['Admin', 'Operations', 'Create'],
-      showRegisterShipment: true, showDatabase: true, enterpriseCards: []
+      navKey: 'create-shipment', title: 'Cargo Registration', intro: 'Register cargo and sync milestones to Database.', breadcrumbs: ['Admin', 'Operations', 'Create'],
+      showRegisterShipment: true, showDatabase: false, enterpriseCards: []
     },
     'shipment-management': {
-      navKey: 'shipment-management', title: 'Inventory Control', intro: 'Manage lifecycle of all active shipments.', breadcrumbs: ['Admin', 'Operations', 'Shipments'],
+      navKey: 'shipment-management', title: 'Shipment Inventory', intro: 'Manage lifecycle of all active shipments.', breadcrumbs: ['Admin', 'Operations', 'Shipments'],
       showRegisterShipment: false, showDatabase: true, databaseTitle: 'Shipment Master Database', enterpriseCards: []
     },
-    'customers': {
-      navKey: 'customers', title: 'Customer CRM', intro: 'Maintain relationships and history.', breadcrumbs: ['Admin', 'Management', 'Customers'],
-      showRegisterShipment: false, showDatabase: false, enterpriseCards: ['enterpriseCustomersCard']
-    },
-    'branches': {
-      navKey: 'branches', title: 'Branch Network', intro: 'Global office directory and performance.', breadcrumbs: ['Admin', 'Management', 'Branches'],
-      showRegisterShipment: false, showDatabase: false, enterpriseCards: ['enterpriseBranchesCard']
-    },
-    'employees': {
-      navKey: 'employees', title: 'Workforce Management', intro: 'Manage team members and assigned branch permissions.', breadcrumbs: ['Admin', 'Management', 'Employees'],
-      showRegisterShipment: false, showDatabase: false, enterpriseCards: ['enterpriseEmployeesCard']
-    },
-    'drivers': {
-      navKey: 'drivers', title: 'Dispatch & Drivers', intro: 'Manage registered fleet operators.', breadcrumbs: ['Admin', 'Management', 'Drivers'],
-      showRegisterShipment: false, showDatabase: false, enterpriseCards: ['enterpriseDriversCard']
-    },
-    'vehicles-warehouses': {
-      navKey: 'vehicles-warehouses', title: 'Fleet & Assets', intro: 'Vehicle tracking and facility assets.', breadcrumbs: ['Admin', 'Management', 'Assets'],
-      showRegisterShipment: false, showDatabase: false, enterpriseCards: ['enterpriseFleetCard']
-    },
     'reports': {
-      navKey: 'reports', title: 'Reporting Studio', intro: 'Operational summaries and exports.', breadcrumbs: ['Admin', 'Business', 'Reports'],
+      navKey: 'reports', title: 'Reports', intro: 'Operational summaries and exports.', breadcrumbs: ['Admin', 'Business', 'Reports'],
       showRegisterShipment: false, showDatabase: false, enterpriseCards: ['enterpriseReportsCard']
     },
     'finance': {
-      navKey: 'finance', title: 'Financial Ledger', intro: 'Revenue, expenses, and net profit tracking.', breadcrumbs: ['Admin', 'Business', 'Finance'],
+      navKey: 'finance', title: 'Finance', intro: 'Revenue, expenses, and net profit tracking.', breadcrumbs: ['Admin', 'Business', 'Finance'],
       showRegisterShipment: false, showDatabase: false, enterpriseCards: ['enterpriseFinanceCard']
     },
     'invoices': {
@@ -54,7 +34,7 @@
       showRegisterShipment: false, showDatabase: false, enterpriseCards: ['enterpriseInvoicesCard']
     },
     'user-management': {
-      navKey: 'user-management', title: 'Access Control', intro: 'System roles and login provisioning.', breadcrumbs: ['Admin', 'System', 'Users'],
+      navKey: 'user-management', title: 'User Access', intro: 'System roles and login provisioning.', breadcrumbs: ['Admin', 'System', 'Users'],
       showRegisterShipment: false, showDatabase: false, enterpriseCards: ['enterpriseUsersCard']
     },
     'activity-log': {
@@ -65,8 +45,12 @@
       navKey: 'notifications', title: 'System Notifications', intro: 'Full history of automated alerts and system messages.', breadcrumbs: ['Admin', 'Communications', 'Alerts'],
       showRegisterShipment: false, showDatabase: false, enterpriseCards: ['enterpriseNotificationsCard']
     },
+    'profile': {
+      navKey: 'profile', title: 'User Profile', intro: 'Manage your account settings.', breadcrumbs: ['Admin', 'Profile'],
+      showRegisterShipment: false, showDatabase: false, enterpriseCards: ['enterpriseProfileCard']
+    },
     'settings': {
-      navKey: 'settings', title: 'Global Settings', intro: 'Company info and platform configuration.', breadcrumbs: ['Admin', 'System', 'Settings'],
+      navKey: 'settings', title: 'Settings', intro: 'Company info and platform configuration.', breadcrumbs: ['Admin', 'System', 'Settings'],
       showRegisterShipment: false, showDatabase: false, enterpriseCards: ['enterpriseSettingsCard']
     }
   };
@@ -87,54 +71,24 @@
     dashboard.id = 'premiumDashboardExperience';
     dashboard.className = 'premium-dashboard-experience';
     dashboard.innerHTML = `
-      <section class="enterprise-dashboard-welcome enterprise-card">
+      <section class="dashboard-hero n-card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:24px; background:linear-gradient(135deg, var(--n-surface), #000); border-color:var(--n-border-accent);">
         <div>
-          <span class="breadcrumbs" style="color:var(--n-gold);">Logistics Intelligence</span>
-          <h1 style="margin-top:8px;">Operational Command Center</h1>
-          <p style="margin-top:8px; max-width:600px;">Real-time analytics and management of the global Noorani Cargo network.</p>
+          <span class="text-muted" style="text-transform:uppercase; letter-spacing:3px; font-weight:900; font-size:0.7rem; color:var(--n-gold);">Command Center</span>
+          <h1 style="margin-top:12px; font-size:2.5rem; letter-spacing:-1.5px;">Network Overview</h1>
+          <p class="text-muted" style="margin-top:8px; font-size:1.1rem; max-width:600px;">Real-time intelligence and global fleet synchronization.</p>
         </div>
-        <div style="display:flex; gap:12px; align-items:center;">
-          <button class="btn-primary-action" onclick="window.location.href='?page=create-shipment'"><i class="fa-solid fa-plus"></i> New Shipment</button>
-          <button class="btn-action" onclick="window.openImportModal()"><i class="fa-solid fa-file-import"></i> Import</button>
-          <button class="btn-action" onclick="window.refreshDashboard()"><i class="fa-solid fa-sync"></i></button>
+        <div style="display:flex; gap:16px;">
+          <button class="n-btn primary" onclick="window.location.href='?page=create-shipment'"><i class="fa-solid fa-plus-circle"></i> Register Cargo</button>
+          <button class="n-btn" onclick="window.openImportModal()"><i class="fa-solid fa-file-import"></i> Data Manifest</button>
+          <button class="n-btn" onclick="window.refreshDashboard()"><i class="fa-solid fa-sync"></i></button>
         </div>
       </section>
 
-      <section class="enterprise-kpi-grid">
-        <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon"><i class="fa-solid fa-boxes-stacked"></i></span><div><small>Total shipments</small><strong id="stat-total-shipments">0</strong></div></article>
-        <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon" style="color:var(--n-success);"><i class="fa-solid fa-check-circle"></i></span><div><small>Delivered</small><strong id="stat-delivered">0</strong></div></article>
-        <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon" style="color:var(--n-gold);"><i class="fa-solid fa-truck"></i></span><div><small>In Transit</small><strong id="stat-transit">0</strong></div></article>
-        <article class="enterprise-kpi-card"><span class="enterprise-kpi-icon" style="color:var(--n-warning);"><i class="fa-solid fa-clock"></i></span><div><small>Pending</small><strong id="stat-pending">0</strong></div></article>
-      </section>
-
-      <section class="form-grid">
-        <article class="enterprise-card chart-card">
-          <header class="enterprise-card-heading"><h3><i class="fa-solid fa-chart-line"></i> Shipment Volume</h3></header>
-          <div class="chart-container"><canvas id="dailyChart"></canvas></div>
-        </article>
-        <article class="enterprise-card chart-card">
-          <header class="enterprise-card-heading"><h3><i class="fa-solid fa-wallet"></i> Revenue Distribution</h3></header>
-          <div class="chart-container"><canvas id="revenueChart"></canvas></div>
-        </article>
-        <article class="enterprise-card chart-card" style="display:grid; place-items:center;">
-          <header class="enterprise-card-heading" style="width:100%;"><h3><i class="fa-solid fa-circle-pie"></i> Fleet Status</h3></header>
-          <div style="height:220px; width:220px; position:relative; margin-top:20px;"><canvas id="statusChart"></canvas></div>
-        </article>
-      </section>
-
-      <section class="form-grid">
-        <article class="enterprise-card">
-          <header class="enterprise-card-heading"><h3><i class="fa-solid fa-list-ul"></i> Recent Activity</h3></header>
-          <div id="recent-activity-list" class="sidebar-nav" style="padding:0; max-height:300px; overflow-y:auto;"></div>
-        </article>
-        <article class="enterprise-card">
-          <header class="enterprise-card-heading"><h3><i class="fa-solid fa-bolt"></i> Quick Actions</h3></header>
-          <div style="display:grid; gap:12px;">
-            <a class="nav-item" href="?page=customers" style="background:var(--n-raised);"><i class="fa-solid fa-user-plus"></i><span>Create Customer Record</span></a>
-            <a class="nav-item" href="?page=drivers" style="background:var(--n-raised);"><i class="fa-solid fa-id-card"></i><span>Register New Driver</span></a>
-            <a class="nav-item" href="?page=branches" style="background:var(--n-raised);"><i class="fa-solid fa-plus-square"></i><span>Add Global Hub</span></a>
-          </div>
-        </article>
+      <section class="kpi-grid">
+        <article class="kpi-card"><div class="kpi-icon"><i class="fa-solid fa-boxes-stacked"></i></div><div class="kpi-data"><span>Total Operations</span><strong id="stat-total-shipments">0</strong></div></article>
+        <article class="kpi-card"><div class="kpi-icon" style="color:var(--n-success); background:rgba(16,185,129,0.1);"><i class="fa-solid fa-circle-check"></i></div><div class="kpi-data"><span>Delivered</span><strong id="stat-delivered">0</strong></div></article>
+        <article class="kpi-card"><div class="kpi-icon" style="color:var(--n-gold); background:var(--n-gold-glow);"><i class="fa-solid fa-truck-fast"></i></div><div class="kpi-data"><span>In Transit</span><strong id="stat-transit">0</strong></div></article>
+        <article class="kpi-card"><div class="kpi-icon" style="color:var(--n-warning); background:rgba(245,158,11,0.1);"><i class="fa-solid fa-clock-rotate-left"></i></div><div class="kpi-data"><span>Pending</span><strong id="stat-pending">0</strong></div></article>
       </section>
     `;
     mainContent.appendChild(dashboard);
@@ -203,7 +157,7 @@
     if (contentArea) contentArea.scrollTop = 0;
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 
-    document.title = `Noorani Admin — ${config.title}`;
+    document.title = `NOORANI CARGO — ${config.title}`;
 
     document.querySelectorAll('.sidebar .nav-item').forEach(i => {
         i.classList.toggle('active', i.dataset.navKey === config.navKey);
@@ -239,7 +193,7 @@
 
     const ep = $id('enterprise-admin-panel');
     if (ep) {
-      const cards = ['enterpriseAnalyticsCard', 'enterpriseReportsCard', 'enterpriseCustomersCard', 'enterpriseBranchesCard', 'enterpriseEmployeesCard', 'enterpriseDriversCard', 'enterpriseFleetCard', 'enterpriseFinanceCard', 'enterpriseInvoicesCard', 'enterpriseUsersCard', 'enterpriseActivityCard', 'enterpriseNotificationsCard', 'enterpriseProfileCard', 'enterpriseSettingsCard', 'enterpriseBackupCard'];
+      const cards = ['enterpriseAnalyticsCard', 'enterpriseReportsCard', 'enterpriseFinanceCard', 'enterpriseInvoicesCard', 'enterpriseUsersCard', 'enterpriseActivityCard', 'enterpriseNotificationsCard', 'enterpriseProfileCard', 'enterpriseSettingsCard', 'enterpriseBackupCard'];
       cards.forEach(id => {
         const c = $id(id);
         if (c) setVisible(c, config.enterpriseCards.includes(id));

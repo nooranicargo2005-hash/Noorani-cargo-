@@ -1,11 +1,6 @@
 export const PERMISSION_KEYS = [
   'viewDashboard',
   'createShipments', 'viewShipments', 'editShipments', 'deleteShipments', 'printShipments',
-  'createCustomers', 'viewCustomers', 'editCustomers', 'deleteCustomers',
-  'createDrivers', 'viewDrivers', 'editDrivers', 'deleteDrivers',
-  'createVehicles', 'viewVehicles', 'editVehicles', 'deleteVehicles',
-  'createBranches', 'viewBranches', 'editBranches', 'deleteBranches',
-  'createEmployees', 'viewEmployees', 'editEmployees', 'deleteEmployees',
   'viewFinance', 'addFinance', 'editFinance', 'deleteFinance',
   'viewReports', 'exportReports',
   'viewSettings', 'editSettings',
@@ -19,26 +14,6 @@ export const PERMISSION_LABELS = {
   editShipments: 'Edit Shipments',
   deleteShipments: 'Delete Shipments',
   printShipments: 'Print Shipments',
-  createCustomers: 'Create Customers',
-  viewCustomers: 'View Customers',
-  editCustomers: 'Edit Customers',
-  deleteCustomers: 'Delete Customers',
-  createDrivers: 'Create Drivers',
-  viewDrivers: 'View Drivers',
-  editDrivers: 'Edit Drivers',
-  deleteDrivers: 'Delete Drivers',
-  createVehicles: 'Create Vehicles',
-  viewVehicles: 'View Vehicles',
-  editVehicles: 'Edit Vehicles',
-  deleteVehicles: 'Delete Vehicles',
-  createBranches: 'Create Branches',
-  viewBranches: 'View Branches',
-  editBranches: 'Edit Branches',
-  deleteBranches: 'Delete Branches',
-  createEmployees: 'Create Employees',
-  viewEmployees: 'View Employees',
-  editEmployees: 'Edit Employees',
-  deleteEmployees: 'Delete Employees',
   viewFinance: 'View Finance',
   addFinance: 'Add Finance',
   editFinance: 'Edit Finance',
@@ -61,8 +36,6 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     admin: {
         viewDashboard: true,
         viewShipments: true, createShipments: true, editShipments: true, printShipments: true,
-        viewCustomers: true, createCustomers: true, editCustomers: true,
-        viewDrivers: true, viewVehicles: true, viewBranches: true, viewEmployees: true,
         viewFinance: true, addFinance: true,
         viewReports: true, exportReports: true,
         viewSettings: true
@@ -70,20 +43,12 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     branchmanager: {
         viewDashboard: true,
         viewShipments: true, createShipments: true, editShipments: true,
-        viewCustomers: true,
-        viewDrivers: true, viewVehicles: true,
-        viewEmployees: true,
         viewFinance: true,
         viewReports: true
     },
     employee: {
         viewDashboard: true,
-        viewShipments: true, createShipments: true,
-        viewCustomers: true
-    },
-    driver: {
-        viewDashboard: true,
-        viewShipments: true
+        viewShipments: true, createShipments: true
     },
     customer: {
         viewShipments: true
@@ -96,10 +61,10 @@ export function normalizeEmail(value) {
 
 export function normalizeRole(value) {
   const role = String(value || '').trim().toLowerCase().replace(/\s+/g, '');
-  if (['admin', 'superadmin', 'super_admin', 'fulladmin'].includes(role)) return 'superadmin';
+  if (['superadmin', 'super_admin', 'fulladmin'].includes(role)) return 'superadmin';
+  if (['admin', 'administrator'].includes(role)) return 'admin';
   if (['branchadmin', 'branchmanager', 'branch_admin', 'branch_manager'].includes(role)) return 'branchmanager';
   if (role === 'employee' || role === 'staff') return 'employee';
-  if (role === 'driver') return 'driver';
   return 'customer';
 }
 
@@ -110,7 +75,6 @@ export function roleLabel(role) {
       admin: 'Administrator',
       branchmanager: 'Branch Manager',
       employee: 'Employee / Staff',
-      driver: 'Driver',
       customer: 'Customer'
   };
   return labels[normalized] || 'Guest';
