@@ -13,6 +13,4 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: PORT
-        value: "3000"
-      - key: YARN_VERSION
-        value: "0"
+        value: "10000"

@@ -1,11 +1,13 @@
 {
   "name": "noorani-cargo-enterprise-v2",
-  "version": "2.6.0",
-  "description": "NOORANI CARGO SERVICES | Enterprise SWB System",
+  "version": "2.3.5",
+  "description": "NOORANI CARGO SERVICES | Professional Enterprise SWB System",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "echo 'Deploying Enterprise Engine...'"
+    "build": "echo 'Deploying Noorani Cargo API...'",
+    "serve-admin": "firebase serve --only hosting:admin",
+    "serve-tracking": "firebase serve --only hosting:tracking"
   },
   "engines": {
     "node": ">=18.0.0"
