@@ -13,13 +13,13 @@ const PORT = process.env.PORT || 10000;
 // =====================================================
 
 const SUPABASE_URL =
-  process.env.SUPABASE_URL ||
-  process.env.SUPABASE_PROJECT_URL;
+  (process.env.SUPABASE_URL ||
+  process.env.SUPABASE_PROJECT_URL || "").trim();
 
 const SUPABASE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  (process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SECRET_KEY ||
-  process.env.SUPABASE_SERVICE_KEY;
+  process.env.SUPABASE_SERVICE_KEY || "").trim();
 
 const ADMIN_ORIGINS = [
   "https://noorani-cargo-admin-2005.web.app",
