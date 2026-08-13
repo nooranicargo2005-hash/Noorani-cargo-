@@ -157,10 +157,14 @@ app.get("/api/health", async (req, res) => {
     databaseConfigured: !!supabase,
     databaseReachable: canQuery,
     databaseError: dbError,
-    missing: [
-      !SUPABASE_URL && "SUPABASE_URL",
-      !SUPABASE_KEY && "SUPABASE_SERVICE_ROLE_KEY"
-    ].filter(Boolean),
+    envDiagnostics: {
+      hasUrl: !!process.env.SUPABASE_URL,
+      hasProjectUrl: !!process.env.SUPABASE_PROJECT_URL,
+      hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      hasSecretKey: !!process.env.SUPABASE_SECRET_KEY,
+      hasServiceKeyAlt: !!process.env.SUPABASE_SERVICE_KEY,
+      otherKeys: Object.keys(process.env).filter(k => k.toLowerCase().includes('supabase') && !['SUPABASE_URL', 'SUPABASE_PROJECT_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_KEY'].includes(k))
+    },
     version: "2.3.8",
   });
 });
