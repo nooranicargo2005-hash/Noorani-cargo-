@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { createClient } = require("@supabase/supabase-js");
+const dns = require("dns").promises;
 
 dotenv.config();
 
@@ -144,6 +145,17 @@ app.get("/api/health", async (req, res) => {
         console.error("[Health] Database query failed:", dbError);
       } else {
         canQuery = true;
+      }
+
+      // DNS Diagnostic
+      try {
+        const url = new URL(SUPABASE_URL);
+        const lookup = await dns.lookup(url.hostname);
+        if (dbError) dbError.dns = lookup.address;
+        else dbError = { dns: lookup.address };
+      } catch (de) {
+        if (dbError) dbError.dns = de.message;
+        else dbError = { dns: de.message };
       }
     } catch (e) {
       dbError = { message: e.message };
