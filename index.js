@@ -6,196 +6,64 @@ const { createClient } = require('@supabase/supabase-js');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Supabase Configuration
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-    console.error('[System] CRITICAL: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env');
-}
-
-const supabase = createClient(supabaseUrl || '', supabaseKey || '');
-
-// Enhanced CORS for local and production flexibility
-const allowedOrigins = [
-    'http://127.0.0.1:5500',
-    'http://127.0.0.1:5501',
-    'http://localhost:5500',
-    'http://localhost:5501',
-    'http://localhost:3000',
-    'https://noorani-cargo-admin-2005.web.app',
-    'https://noorani-cargo-tracking-2005.web.app',
-    'https://noorani-cargo-admin.firebaseapp.com',
-    'https://noorani-cargo-tracking.firebaseapp.com'
-];
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 app.use(cors({
-    origin: function (origin, callback) {
-        if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.includes('web.app')) {
-            callback(null, true);
-        } else {
-            console.warn('[CORS] Origin Blocked:', origin);
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
+    origin: '*', // Dynamic authorized origins logic can be added later if needed
     credentials: true
 }));
 
 app.use(express.json({ limit: '50mb' }));
 
-// --- API Router ---
 const apiRouter = express.Router();
 
 // Dashboard Stats
 apiRouter.get('/stats/dashboard', async (req, res) => {
     try {
         const { count, error } = await supabase.from('swbs').select('*', { count: 'exact', head: true });
-        if (error) throw error;
-
-        // Breakdown by status
-        const { data: statusCounts, error: statusError } = await supabase.rpc('get_status_counts');
+        const { data: statusCounts } = await supabase.rpc('get_status_counts');
         let breakdown = {};
-        if (statusError) {
-            const { data: allStatuses } = await supabase.from('swbs').select('status');
-            breakdown = (allStatuses || []).reduce((acc, curr) => {
-                acc[curr.status] = (acc[curr.status] || 0) + 1;
-                return acc;
-            }, {});
-        } else {
-            statusCounts.forEach(row => breakdown[row.status] = row.count);
-        }
+        (statusCounts || []).forEach(row => breakdown[row.status] = row.count);
 
-        const { data: recent, error: recentError } = await supabase
-            .from('swbs')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(10);
+        const { data: recent } = await supabase.from('swbs').select('*').order('created_at', { ascending: false }).limit(10);
 
-        if (recentError) throw recentError;
-
-        res.json({
-            totalSwbs: count || 0,
-            breakdown,
-            recentItems: recent || []
-        });
-    } catch (err) {
-        console.error('[API] Stats Error:', err.message);
-        res.status(500).json({ error: err.message });
-    }
+        res.json({ totalSwbs: count || 0, breakdown, recentItems: recent || [] });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // SWB Endpoints
 apiRouter.get('/swbs', async (req, res) => {
     try {
-        const { search, status, origin, destination, manifestNo, dateFrom, dateTo, limit = 1000 } = req.query;
+        const { search, status, origin, destination, manifestNo, limit = 1000 } = req.query;
         let query = supabase.from('swbs').select('*');
-
-        if (search && search.trim() !== '') {
-            const s = search.trim();
-            query = query.or(`"swbSerial".ilike.%${s}%,"customer".ilike.%${s}%,"consigneeName".ilike.%${s}%,"consigneeCity".ilike.%${s}%,"customerInvNo".ilike.%${s}%`);
-        }
-
+        if (search) query = query.or(`"swbSerial".ilike.%${search}%,"customer".ilike.%${search}%,"consigneeName".ilike.%${search}%`);
         if (status) query = query.eq('status', status);
         if (origin) query = query.ilike('origin', `%${origin}%`);
         if (destination) query = query.ilike('destination', `%${destination}%`);
         if (manifestNo) query = query.eq('manifestNo', manifestNo);
-        if (dateFrom) query = query.gte('created_at', dateFrom);
-        if (dateTo) query = query.lte('created_at', dateTo);
 
         const { data, error } = await query.order('created_at', { ascending: false }).limit(parseInt(limit));
         if (error) throw error;
         res.json({ items: data || [] });
-    } catch (err) {
-        console.error('[API] Query Error:', err.message);
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-apiRouter.get('/swbs/:id/history', async (req, res) => {
+apiRouter.get('/swbs/:id', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('status_history')
-            .select('*')
-            .eq('swbSerial', req.params.id)
-            .order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('swbs').select('*').eq('swbSerial', req.params.id).maybeSingle();
         if (error) throw error;
-        res.json(data || []);
+        if (!data) return res.status(404).json({ error: "Not Found" });
+        res.json({ data });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 apiRouter.post('/swbs/:id', async (req, res) => {
     try {
-        const id = req.params.id;
-        const d = req.body;
-        const actorEmail = d.actorEmail || 'system';
-
-        if (!id) return res.status(400).json({ error: "SWB Serial Number is required" });
-
-        const { data: existing } = await supabase.from('swbs').select('status').eq('swbSerial', id).maybeSingle();
-
-        const swbData = {
-            swbSerial: id,
-            custInvNo: d.custInvNo || '',
-            swbDate: d.swbDate || '',
-            customer: d.customer || '',
-            customerInvNo: d.customerInvNo || '',
-            shipperName: d.shipperName || '',
-            consigneeName: d.consigneeName || '',
-            origQty: parseInt(d.origQty) || 0,
-            origWt: parseFloat(d.origWt) || 0,
-            consigneeCity: d.consigneeCity || '',
-            consigneeAddress: d.consigneeAddress || '',
-            status: d.status || existing?.status || 'Created',
-            origin: d.origin || '',
-            destination: d.destination || '',
-            manifestNo: d.manifestNo || '',
-            assignedTo: d.assignedTo || '',
-            expectedDelivery: d.expectedDelivery || '',
-            notes: d.notes || '',
-            type: d.type || 'General',
-            updated_at: new Date().toISOString()
-        };
-
-        const { error } = await supabase.from('swbs').upsert(swbData, { onConflict: 'swbSerial' });
+        const { error } = await supabase.from('swbs').upsert({ ...req.body, swbSerial: req.params.id, updated_at: new Date().toISOString() }, { onConflict: 'swbSerial' });
         if (error) throw error;
-
-        if (!existing || existing.status !== swbData.status) {
-            await supabase.from('status_history').insert({
-                swbSerial: id,
-                status: swbData.status,
-                remarks: d.statusRemarks || 'Status updated',
-                actorEmail
-            });
-        }
-        res.json({ success: true, id });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-apiRouter.post('/swbs/bulk/status', async (req, res) => {
-    try {
-        const { ids, status, remarks, actorEmail } = req.body;
-        const { error } = await supabase.from('swbs').update({ status, updated_at: new Date().toISOString() }).in('swbSerial', ids);
-        if (error) throw error;
-        const entries = ids.map(id => ({ swbSerial: id, status, remarks: remarks || 'Bulk update', actorEmail: actorEmail || 'system' }));
-        await supabase.from('status_history').insert(entries);
-        res.json({ success: true, count: ids.length });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-apiRouter.get('/manifests', async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('manifests').select('*').order('created_at', { ascending: false });
-        if (error) throw error;
-        res.json(data || []);
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-apiRouter.post('/manifests', async (req, res) => {
-    try {
-        const d = req.body;
-        const { error } = await supabase.from('manifests').upsert(d, { onConflict: 'manifestNo' });
-        if (error) throw error;
-        res.json({ success: true, manifestNo: d.manifestNo });
+        res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -207,53 +75,32 @@ apiRouter.delete('/swbs/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-apiRouter.get('/users', async (req, res) => {
+// Manifests
+apiRouter.get('/manifests', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('users').select('id, email, role, status');
+        const { data, error } = await supabase.from('manifests').select('*').order('created_at', { ascending: false });
         if (error) throw error;
-        res.json(data.map(r => ({ ...r, uid: String(r.id) })));
+        res.json(data || []);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-apiRouter.post('/users', async (req, res) => {
+apiRouter.post('/manifests', async (req, res) => {
     try {
-        const d = req.body;
-        const { error } = await supabase.from('users').upsert({
-            displayName: d.displayName || d.email.split('@')[0],
-            email: d.email, password: d.password, role: d.role || 'employee', status: 'enabled', updated_at: new Date().toISOString()
-        }, { onConflict: 'email' });
+        const { error } = await supabase.from('manifests').upsert(req.body, { onConflict: 'manifestNo' });
         if (error) throw error;
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-apiRouter.delete('/users/:id', async (req, res) => {
-    try {
-        const { error } = await supabase.from('users').delete().eq('id', req.params.id);
-        if (error) throw error;
-        res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-apiRouter.get('/users/profile/:email', async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('users').select('*').eq('email', req.params.email).maybeSingle();
-        if (error) throw error;
-        if (!data) return res.status(404).json({ error: "Profile not found" });
-        res.json(data);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.use('/api', apiRouter);
 
-// NOORANI CARGO ROOT PROXY | Version 2.3
+// NOORANI ENTERPRISE ENGINE | Version 2.6
 app.get('/', (req, res) => res.json({
-    app: "NOORANI CARGO ENTERPRISE",
-    version: "2.3",
-    status: "online",
-    api_base: "/api"
+    system: "NOORANI CARGO ENTERPRISE",
+    version: "2.6",
+    status: "online"
 }));
 
 app.listen(port, '0.0.0.0', () => {
-    console.log(`[System] NOORANI Enterprise Server Running on Port ${port}`);
+    console.log(`[System] NOORANI Server Running on Port ${port}`);
 });

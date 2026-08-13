@@ -1,23 +1,19 @@
 {
   "name": "noorani-cargo-enterprise-v2",
-  "version": "2.3.5",
-  "description": "NOORANI CARGO SERVICES | Professional Enterprise SWB System",
+  "version": "2.6.0",
+  "description": "NOORANI CARGO SERVICES | Enterprise SWB System",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "echo 'Build Success: Noorani Enterprise Engine Ready'",
-    "serve-admin": "firebase serve --only hosting:admin",
-    "serve-tracking": "firebase serve --only hosting:tracking"
+    "build": "echo 'Deploying Enterprise Engine...'"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
-    "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
-    "express": "^4.18.2",
-    "multer": "^1.4.5-lts.1"
+    "express": "^4.18.2"
   }
 }
