@@ -115,7 +115,7 @@ app.get("/", (req, res) => {
   res.json({
     success: true,
     name: "Noorani Cargo Enterprise API",
-    version: "2.3.7",
+    version: "2.3.8",
     status: "online",
     database: supabase ? "connected" : "disconnected",
     time: new Date().toISOString(),
@@ -161,7 +161,7 @@ app.get("/api/health", async (req, res) => {
       !SUPABASE_URL && "SUPABASE_URL",
       !SUPABASE_KEY && "SUPABASE_SERVICE_ROLE_KEY"
     ].filter(Boolean),
-    version: "2.3.7",
+    version: "2.3.8",
   });
 });
 
@@ -517,7 +517,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log("==========================================");
   console.log(" NOORANI CARGO ENTERPRISE API");
-  console.log(" Version: 2.3.7");
+  console.log(" Version: 2.3.8");
   console.log(` Port: ${PORT}`);
   console.log(` Supabase URL: ${SUPABASE_URL ? "PRESENT" : "MISSING"}`);
   console.log(` Supabase Key: ${SUPABASE_KEY ? "PRESENT" : "MISSING"}`);

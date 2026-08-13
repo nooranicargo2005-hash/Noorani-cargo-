@@ -1,6 +1,6 @@
 {
   "name": "noorani-cargo-enterprise-v2",
-  "version": "2.3.5",
+  "version": "2.3.8",
   "description": "NOORANI CARGO SERVICES | Professional Enterprise SWB System",
   "main": "index.js",
   "scripts": {
