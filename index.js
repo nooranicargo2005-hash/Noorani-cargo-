@@ -125,15 +125,29 @@ app.get("/", (req, res) => {
 app.get("/api/health", async (req, res) => {
   let dbStatus = "not_configured";
   let canQuery = false;
+  let dbError = null;
 
   if (supabase) {
     dbStatus = "configured";
     try {
       // Real connection test: query the count of shipments
       const { count, error } = await supabase.from("swbs").select("*", { count: "exact", head: true });
-      if (!error) canQuery = true;
+
+      if (error) {
+        dbError = {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          status: error.status
+        };
+        console.error("[Health] Database query failed:", dbError);
+      } else {
+        canQuery = true;
+      }
     } catch (e) {
-      console.error("[Health] Query failed:", e.message);
+      dbError = { message: e.message };
+      console.error("[Health] Unexpected error during connectivity test:", e.message);
     }
   }
 
@@ -142,6 +156,7 @@ app.get("/api/health", async (req, res) => {
     status: "healthy",
     databaseConfigured: !!supabase,
     databaseReachable: canQuery,
+    databaseError: dbError,
     missing: [
       !SUPABASE_URL && "SUPABASE_URL",
       !SUPABASE_KEY && "SUPABASE_SERVICE_ROLE_KEY"
