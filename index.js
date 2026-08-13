@@ -119,9 +119,13 @@ app.get("/", (req, res) => {
   res.json({
     success: true,
     name: "Noorani Cargo Enterprise API",
-    version: "2.3.5",
+    version: "2.3.6",
     status: "online",
     database: supabase ? "configured" : "not_configured",
+    diagnostics: {
+      url_present: !!SUPABASE_URL,
+      key_present: !!SUPABASE_KEY,
+    },
     time: new Date().toISOString(),
   });
 });
@@ -131,7 +135,7 @@ app.get("/health", (req, res) => {
     success: true,
     status: "healthy",
     databaseConfigured: !!supabase,
-    version: "2.3.5",
+    version: "2.3.6",
   });
 });
 
@@ -140,7 +144,11 @@ app.get("/api/health", (req, res) => {
     success: true,
     status: "healthy",
     databaseConfigured: !!supabase,
-    version: "2.3.5",
+    missing: [
+      !SUPABASE_URL && "SUPABASE_URL",
+      !SUPABASE_KEY && "SUPABASE_SERVICE_ROLE_KEY"
+    ].filter(Boolean),
+    version: "2.3.6",
   });
 });
 
@@ -151,6 +159,10 @@ app.get("/api/health", (req, res) => {
 app.get("/api/swbs", requireSupabase, async (req, res) => {
   try {
     const search = String(req.query.search || "").trim();
+    const status = req.query.status;
+    const origin = req.query.origin;
+    const destination = req.query.destination;
+    const manifestNo = req.query.manifestNo;
 
     let query = supabase
       .from("swbs")
@@ -159,35 +171,32 @@ app.get("/api/swbs", requireSupabase, async (req, res) => {
 
     if (search) {
       const safe = search.replace(/,/g, " ");
-
       query = query.or(
         `swbSerial.ilike.%${safe}%,customer.ilike.%${safe}%,shipperName.ilike.%${safe}%,consigneeName.ilike.%${safe}%,consigneeCity.ilike.%${safe}%`
       );
     }
 
+    if (status) query = query.eq("status", status);
+    if (origin) query = query.ilike("origin", `%${origin}%`);
+    if (destination) query = query.ilike("consigneeCity", `%${destination}%`);
+    if (manifestNo) query = query.eq("manifestNo", manifestNo);
+
     const { data, error } = await query;
 
     if (error) {
       console.error("[GET /api/swbs]", error);
-
-      return res.status(500).json({
-        success: false,
-        error: error.message,
-      });
+      return res.status(500).json({ success: false, error: error.message });
     }
 
     res.json({
       success: true,
       count: data?.length || 0,
       data: data || [],
+      items: data || [], // For frontend compatibility
     });
   } catch (error) {
     console.error(error);
-
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -309,94 +318,107 @@ app.post("/api/swbs", requireSupabase, async (req, res) => {
 });
 
 // =====================================================
-// SWB - UPDATE
+// SWB - CREATE OR UPDATE (UPSERT)
 // =====================================================
 
-app.put("/api/swbs/:serial", requireSupabase, async (req, res) => {
+app.post("/api/swbs/:serial", requireSupabase, async (req, res) => {
   try {
     const serial = decodeURIComponent(req.params.serial);
     const body = req.body || {};
 
-    const allowedFields = [
-      "custInvNo",
-      "swbDate",
-      "customer",
-      "customerInvNo",
-      "shipperName",
-      "consigneeName",
-      "origQty",
-      "origWt",
-      "consigneeCity",
-      "consigneeAddress",
-      "status",
-      "origin",
-      "destination",
-      "manifestNo",
-      "assignedTo",
-      "expectedDelivery",
-      "notes",
-      "type",
-    ];
+    const record = cleanObject({
+      swbSerial: serial,
+      custInvNo: body.custInvNo,
+      swbDate: body.swbDate,
+      customer: body.customer,
+      customerInvNo: body.customerInvNo,
+      shipperName: body.shipperName,
+      consigneeName: body.consigneeName,
+      origQty: body.origQty,
+      origWt: body.origWt,
+      consigneeCity: body.consigneeCity,
+      consigneeAddress: body.consigneeAddress,
+      status: body.status || "Created",
+      origin: body.origin,
+      destination: body.destination,
+      manifestNo: body.manifestNo,
+      assignedTo: body.assignedTo,
+      expectedDelivery: body.expectedDelivery,
+      notes: body.notes,
+      type: body.type || "SWB",
+    });
 
-    const update = {};
-
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        update[field] = body[field];
-      }
-    }
-
-    const { data: oldRecord } = await supabase
+    // Check if exists for timeline tracking
+    const { data: existing } = await supabase
       .from("swbs")
-      .select("*")
+      .select("status")
       .eq("swbSerial", serial)
       .maybeSingle();
 
-    if (!oldRecord) {
-      return res.status(404).json({
-        success: false,
-        error: "SWB not found",
-      });
-    }
-
     const { data, error } = await supabase
       .from("swbs")
-      .update(update)
-      .eq("swbSerial", serial)
+      .upsert(record)
       .select("*")
       .single();
 
     if (error) {
-      return res.status(500).json({
-        success: false,
-        error: error.message,
-      });
+      console.error("[UPSERT SWB]", error);
+      return res.status(500).json({ success: false, error: error.message });
     }
 
-    // Save status change
-    if (
-      body.status !== undefined &&
-      body.status !== oldRecord.status
-    ) {
+    // Timeline if status changed or new
+    if (!existing || existing.status !== record.status) {
       await supabase.from("status_history").insert({
         swbSerial: serial,
-        status: body.status,
-        location: body.location || body.destination || null,
-        remarks: body.remarks || "Status updated",
+        status: record.status,
+        location: record.origin || null,
+        remarks: existing ? "Status updated" : "Shipment created",
         actorEmail: body.actorEmail || "system",
       });
     }
 
     res.json({
       success: true,
-      message: "SWB updated successfully.",
+      message: "SWB record synchronized.",
       data,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// =====================================================
+// SWB - BULK STATUS UPDATE
+// =====================================================
+
+app.post("/api/swbs/bulk/status", requireSupabase, async (req, res) => {
+  try {
+    const { ids, status, remarks, actorEmail } = req.body || {};
+
+    if (!ids || !Array.isArray(ids) || !status) {
+      return res.status(400).json({ success: false, error: "Invalid bulk data" });
+    }
+
+    const { error } = await supabase
+      .from("swbs")
+      .update({ status })
+      .in("swbSerial", ids);
+
+    if (error) throw error;
+
+    // History records
+    const historyEntries = ids.map((id) => ({
+      swbSerial: id,
+      status,
+      remarks: remarks || "Bulk status update",
+      actorEmail: actorEmail || "system",
+    }));
+
+    await supabase.from("status_history").insert(historyEntries);
+
+    res.json({ success: true, message: `Updated ${ids.length} shipments.` });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -612,36 +634,96 @@ app.get("/api/stats/dashboard", requireSupabase, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("swbs")
-      .select("status");
+      .select("status, swbSerial, customer, swbDate")
+      .order("created_at", { ascending: false });
 
     if (error) {
-      return res.status(500).json({
-        success: false,
-        error: error.message,
-      });
+      return res.status(500).json({ success: false, error: error.message });
     }
 
     const rows = data || [];
+    const breakdown = {};
+    rows.forEach((r) => {
+      const s = r.status || "Created";
+      breakdown[s] = (breakdown[s] || 0) + 1;
+    });
 
-    const count = (status) =>
-      rows.filter((x) => x.status === status).length;
+    const count = (status) => breakdown[status] || 0;
 
     res.json({
       success: true,
       totalSwbs: rows.length,
-      pending: count("Pending"),
+      pending: count("Pending") + count("Created") + count("Received"),
       received: count("Received"),
       processing: count("Processing"),
-      inTransit: count("In Transit"),
+      inTransit: count("In Transit") + count("Allocated"),
       arrived: count("Arrived"),
       delivered: count("Delivered"),
       cancelled: count("Cancelled"),
+      breakdown,
+      recentItems: rows.slice(0, 10),
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// =====================================================
+// USERS MANAGEMENT
+// =====================================================
+
+app.get("/api/users", requireSupabase, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, email, role, status, created_at");
+    if (error) throw error;
+    res.json(data.map(u => ({ ...u, uid: String(u.id) })));
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/users", requireSupabase, async (req, res) => {
+  try {
+    const { email, password, role } = req.body;
+    const { data, error } = await supabase
+      .from("users")
+      .insert({ email, password, role })
+      .select("*")
+      .single();
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete("/api/users/:uid", requireSupabase, async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from("users")
+      .delete()
+      .eq("id", req.params.uid);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get("/api/users/profile/:email", requireSupabase, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", req.params.email)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: "User not found" });
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -677,8 +759,10 @@ app.use((err, req, res, next) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log("==========================================");
   console.log(" NOORANI CARGO ENTERPRISE API");
-  console.log(" Version: 2.3.5");
+  console.log(" Version: 2.3.6");
   console.log(` Port: ${PORT}`);
-  console.log(` Supabase: ${supabase ? "CONNECTED" : "NOT CONFIGURED"}`);
+  console.log(` Supabase URL: ${SUPABASE_URL ? "PRESENT" : "MISSING"}`);
+  console.log(` Supabase Key: ${SUPABASE_KEY ? "PRESENT" : "MISSING"}`);
+  console.log(` Supabase Client: ${supabase ? "INITIALIZED" : "FAILED"}`);
   console.log("==========================================");
 });

@@ -30,9 +30,10 @@ window.refreshDashboard = async () => {
 
         for (const [id, statuses] of Object.entries(mapping)) {
             const el = $id(id);
-            if (el) el.textContent = statuses.reduce((sum, st) => sum + (b[statuses] || 0), 0);
-            // Fix: the breakdown uses the status name as key
-            if (el) el.textContent = statuses.reduce((sum, st) => sum + (b[st] || 0), 0);
+            if (el) {
+                const total = statuses.reduce((sum, st) => sum + (b[st] || 0), 0);
+                el.textContent = total;
+            }
         }
 
         // Render Recent Records in Dashboard if the container exists
