@@ -2,7 +2,6 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { createClient } = require("@supabase/supabase-js");
-const dns = require("dns").promises;
 
 dotenv.config();
 
@@ -124,15 +123,15 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/health", async (req, res) => {
-  let dbStatus = "not_configured";
   let canQuery = false;
   let dbError = null;
 
   if (supabase) {
-    dbStatus = "configured";
     try {
       // Real connection test: query the count of shipments
-      const { count, error } = await supabase.from("swbs").select("*", { count: "exact", head: true });
+      const { count, error } = await supabase
+        .from("swbs")
+        .select("*", { count: "exact", head: true });
 
       if (error) {
         dbError = {
@@ -146,19 +145,11 @@ app.get("/api/health", async (req, res) => {
       } else {
         canQuery = true;
       }
-
-      // DNS Diagnostic
-      try {
-        const url = new URL(SUPABASE_URL);
-        const lookup = await dns.lookup(url.hostname);
-        if (dbError) dbError.dns = lookup.address;
-        else dbError = { dns: lookup.address };
-      } catch (de) {
-        if (dbError) dbError.dns = de.message;
-        else dbError = { dns: de.message };
-      }
     } catch (e) {
-      dbError = { message: e.message };
+      dbError = {
+        message: "Fetch failure or DNS error",
+        details: e.message
+      };
       console.error("[Health] Unexpected error during connectivity test:", e.message);
     }
   }
@@ -169,15 +160,11 @@ app.get("/api/health", async (req, res) => {
     databaseConfigured: !!supabase,
     databaseReachable: canQuery,
     databaseError: dbError,
-    envDiagnostics: {
-      hasUrl: !!process.env.SUPABASE_URL,
-      hasProjectUrl: !!process.env.SUPABASE_PROJECT_URL,
-      hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      hasSecretKey: !!process.env.SUPABASE_SECRET_KEY,
-      hasServiceKeyAlt: !!process.env.SUPABASE_SERVICE_KEY,
-      otherKeys: Object.keys(process.env).filter(k => k.toLowerCase().includes('supabase') && !['SUPABASE_URL', 'SUPABASE_PROJECT_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_KEY'].includes(k))
-    },
-    version: "2.3.8",
+    missing: [
+      !SUPABASE_URL && "SUPABASE_URL",
+      !SUPABASE_KEY && "SUPABASE_SERVICE_ROLE_KEY"
+    ].filter(Boolean),
+    version: "2.3.9",
   });
 });
 
