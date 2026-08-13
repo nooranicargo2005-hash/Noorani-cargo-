@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "build": "echo 'No build required for production'",
     "serve-admin": "firebase serve --only hosting:admin",
     "serve-tracking": "firebase serve --only hosting:tracking"
   },
