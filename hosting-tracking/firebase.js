@@ -29,4 +29,12 @@ export async function getSwbBySerial(id) {
     }
 }
 
-window.nooraniDb = { getSwbBySerial };
+export async function getSwbHistory(id) {
+    try {
+        return await apiFetch(`/swbs/${id}/history`);
+    } catch (e) {
+        return [];
+    }
+}
+
+window.nooraniDb = { getSwbBySerial, getSwbHistory };

@@ -7,8 +7,9 @@
 
   const pageConfigs = {
     'dashboard': { navKey: 'dashboard', title: 'Dashboard', showRegisterSwb: false, showDatabase: false, enterpriseCards: [] },
-    'create-swb': { navKey: 'create-swb', title: 'SWB Registration', showRegisterSwb: true, showDatabase: false, enterpriseCards: [] },
-    'swb-management': { navKey: 'swb-management', title: 'SWB Inventory', showRegisterSwb: false, showDatabase: true, enterpriseCards: [] },
+    'create-swb': { navKey: 'create-swb', title: 'Shipment Registration', showRegisterSwb: true, showDatabase: false, enterpriseCards: [] },
+    'swb-management': { navKey: 'swb-management', title: 'Shipment Management', showRegisterSwb: false, showDatabase: true, enterpriseCards: [] },
+    'manifests': { navKey: 'manifests', title: 'Manifest & Containers', showRegisterSwb: false, showDatabase: false, enterpriseCards: ['manifestSection'] },
     'user-management': { navKey: 'user-management', title: 'User Access', showRegisterSwb: false, showDatabase: false, enterpriseCards: ['enterpriseUsersCard'] }
   };
 
@@ -28,30 +29,58 @@
     dashboard.id = 'premiumDashboardExperience';
     dashboard.innerHTML = `
       <section class="dashboard-hero n-card">
-        <span class="text-gold" style="text-transform:uppercase; letter-spacing:2px; font-weight:800; font-size:0.75rem;">Control Center</span>
-        <h1 style="font-size:2.5rem; color:#fff; margin-top:8px; letter-spacing:-1px;">Operational Intelligence</h1>
-        <p class="text-muted" style="margin-top:12px; font-size:1.1rem;">Real-time management of Sea Waybills and global cargo records.</p>
+        <span class="text-gold" style="text-transform:uppercase; letter-spacing:2px; font-weight:800; font-size:0.75rem;">Command Center</span>
+        <h1 style="font-size:2.5rem; color:#fff; margin-top:8px; letter-spacing:-1px;">Network Intelligence</h1>
+        <p class="text-muted" style="margin-top:12px; font-size:1.1rem;">Enterprise orchestration of Sea Waybills and global supply chain records.</p>
         <div style="margin-top:32px; display:flex; gap:16px;">
-          <button class="n-btn primary" onclick="window.location.search='?page=create-swb'">REGISTER NEW SWB</button>
-          <button class="n-btn" onclick="document.getElementById('inventoryImportFile').click()"><i class="fa-solid fa-file-import"></i> BULK IMPORT</button>
-          <button class="n-btn" onclick="window.refreshDashboard()"><i class="fa-solid fa-rotate"></i> SYNC DASHBOARD</button>
+          <button class="n-btn primary" onclick="window.location.search='?page=create-swb'"><i class="fa-solid fa-plus-circle"></i> NEW SHIPMENT</button>
+          <button class="n-btn" onclick="window.refreshDashboard()"><i class="fa-solid fa-rotate"></i> REFRESH STREAM</button>
         </div>
       </section>
 
-      <div style="display:grid; grid-template-columns: 1fr 2fr; gap:24px; margin-top:24px;">
-        <article class="kpi-card n-card" style="height:fit-content;">
-            <div style="font-size:3rem; color:var(--n-gold);"><i class="fa-solid fa-file-invoice"></i></div>
-            <div style="margin-top:16px;">
-                <span class="text-muted" style="text-transform:uppercase; letter-spacing:1px; font-size:0.7rem; font-weight:800;">Master SWB Records</span>
-                <strong id="stat-total-swbs" style="font-size:2.5rem; color:#fff; display:block; margin-top:8px;">0</strong>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:20px; margin-bottom:24px;">
+        <article class="kpi-card n-card" style="padding:20px !important;">
+            <div style="color:var(--n-gold); font-size:1.5rem;"><i class="fa-solid fa-boxes-stacked"></i></div>
+            <div style="margin-top:12px;">
+                <span class="text-muted small block">MASTER SWB</span>
+                <strong id="stat-total-swbs" style="font-size:1.8rem; color:#fff;">0</strong>
             </div>
-            <p class="text-muted" style="font-size:0.8rem; margin-top:16px; border-top:1px solid var(--n-border); padding-top:16px;">Total entries synchronized with Supabase cloud infrastructure.</p>
         </article>
+        <article class="kpi-card n-card" style="padding:20px !important;">
+            <div style="color:#3498db; font-size:1.5rem;"><i class="fa-solid fa-hourglass-start"></i></div>
+            <div style="margin-top:12px;">
+                <span class="text-muted small block">PENDING</span>
+                <strong id="stat-pending" style="font-size:1.8rem; color:#fff;">0</strong>
+            </div>
+        </article>
+        <article class="kpi-card n-card" style="padding:20px !important;">
+            <div style="color:var(--n-gold); font-size:1.5rem;"><i class="fa-solid fa-truck-fast"></i></div>
+            <div style="margin-top:12px;">
+                <span class="text-muted small block">IN TRANSIT</span>
+                <strong id="stat-transit" style="font-size:1.8rem; color:#fff;">0</strong>
+            </div>
+        </article>
+        <article class="kpi-card n-card" style="padding:20px !important;">
+            <div style="color:#1abc9c; font-size:1.5rem;"><i class="fa-solid fa-warehouse"></i></div>
+            <div style="margin-top:12px;">
+                <span class="text-muted small block">ARRIVED</span>
+                <strong id="stat-arrived" style="font-size:1.8rem; color:#fff;">0</strong>
+            </div>
+        </article>
+        <article class="kpi-card n-card" style="padding:20px !important;">
+            <div style="color:var(--n-success); font-size:1.5rem;"><i class="fa-solid fa-check-double"></i></div>
+            <div style="margin-top:12px;">
+                <span class="text-muted small block">DELIVERED</span>
+                <strong id="stat-delivered" style="font-size:1.8rem; color:#fff;">0</strong>
+            </div>
+        </article>
+      </div>
 
-        <article class="n-card">
+      <div style="display:grid; grid-template-columns: 1fr; gap:24px;">
+        <article class="n-card" style="margin:0;">
             <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h3 style="font-size:1.1rem; color:#fff;"><i class="fa-solid fa-clock-rotate-left" style="color:var(--n-gold); margin-right:8px;"></i> Recent Activity</h3>
-                <a href="?page=swb-management" class="text-gold" style="font-size:0.8rem; font-weight:700;">VIEW ALL</a>
+                <h3 style="font-size:1.1rem; color:#fff;"><i class="fa-solid fa-clock-rotate-left" style="color:var(--n-gold); margin-right:8px;"></i> Recent Global Activity</h3>
+                <a href="?page=swb-management" class="text-gold" style="font-size:0.8rem; font-weight:700;">VIEW ALL SHIPMENTS</a>
             </header>
             <div class="table-container">
                 <table class="table">
@@ -59,9 +88,9 @@
                         <tr>
                             <th>Serial No.</th>
                             <th>Customer</th>
-                            <th>Consignee</th>
+                            <th>Current Status</th>
                             <th>Date</th>
-                            <th class="text-right">Action</th>
+                            <th class="text-right">Workspace</th>
                         </tr>
                     </thead>
                     <tbody id="recentSwbTableBody">

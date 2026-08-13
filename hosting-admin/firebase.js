@@ -120,11 +120,18 @@ export const nooraniDb = {
     saveSwb: (id, data) => apiFetch(`/swbs/${id}`, { method: 'POST', body: JSON.stringify(data) }),
     deleteSwb: (id) => apiFetch(`/swbs/${id}`, { method: 'DELETE' }),
     getSwbBySerial: (id) => apiFetch(`/swbs/${id}`),
+    getSwbHistory: (id) => apiFetch(`/swbs/${id}/history`),
+    bulkUpdateStatus: (ids, status, remarks) => apiFetch('/swbs/bulk/status', {
+        method: 'POST',
+        body: JSON.stringify({ ids, status, remarks, actorEmail: window.nooraniAdminUser?.email })
+    }),
     querySwbs: (o = {}) => apiFetch(`/swbs?${new URLSearchParams(o).toString()}`),
     getDashboardStats: () => apiFetch('/stats/dashboard'),
     getUserAccounts: () => apiFetch('/users'),
     saveUserAccount: (d) => apiFetch('/users', { method: 'POST', body: JSON.stringify(d) }),
-    deleteUserAccount: (id) => apiFetch(`/users/${id}`, { method: 'DELETE' })
+    deleteUserAccount: (id) => apiFetch(`/users/${id}`, { method: 'DELETE' }),
+    getManifests: () => apiFetch('/manifests'),
+    saveManifest: (d) => apiFetch('/manifests', { method: 'POST', body: JSON.stringify(d) })
 };
 
 getAuthInstance().catch(console.error);

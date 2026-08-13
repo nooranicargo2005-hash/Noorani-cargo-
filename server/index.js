@@ -55,16 +55,31 @@ apiRouter.get('/stats/dashboard', async (req, res) => {
         const { count, error } = await supabase.from('swbs').select('*', { count: 'exact', head: true });
         if (error) throw error;
 
+        // Breakdown by status
+        const { data: statusCounts, error: statusError } = await supabase.rpc('get_status_counts');
+        // Fallback if RPC is not defined yet
+        let breakdown = {};
+        if (statusError) {
+            const { data: allStatuses } = await supabase.from('swbs').select('status');
+            breakdown = (allStatuses || []).reduce((acc, curr) => {
+                acc[curr.status] = (acc[curr.status] || 0) + 1;
+                return acc;
+            }, {});
+        } else {
+            statusCounts.forEach(row => breakdown[row.status] = row.count);
+        }
+
         const { data: recent, error: recentError } = await supabase
             .from('swbs')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(5);
+            .limit(10);
 
         if (recentError) throw recentError;
 
         res.json({
             totalSwbs: count || 0,
+            breakdown,
             recentItems: recent || []
         });
     } catch (err) {
@@ -76,15 +91,20 @@ apiRouter.get('/stats/dashboard', async (req, res) => {
 // SWB Endpoints
 apiRouter.get('/swbs', async (req, res) => {
     try {
-        const { search, limit = 500 } = req.query;
+        const { search, status, origin, destination, manifestNo, dateFrom, dateTo, limit = 1000 } = req.query;
         let query = supabase.from('swbs').select('*');
 
         if (search && search.trim() !== '') {
             const s = search.trim();
-            // Strictly search across Serial, Customer, Consignee, and City for the new system
-            // Fix: Ensure %${s}% is used for correct interpolation
-            query = query.or(`"swbSerial".ilike.%${s}%,"customer".ilike.%${s}%,"consigneeName".ilike.%${s}%,"consigneeCity".ilike.%${s}%`);
+            query = query.or(`"swbSerial".ilike.%${s}%,"customer".ilike.%${s}%,"consigneeName".ilike.%${s}%,"consigneeCity".ilike.%${s}%,"customerInvNo".ilike.%${s}%`);
         }
+
+        if (status) query = query.eq('status', status);
+        if (origin) query = query.ilike('origin', `%${origin}%`);
+        if (destination) query = query.ilike('destination', `%${destination}%`);
+        if (manifestNo) query = query.eq('manifestNo', manifestNo);
+        if (dateFrom) query = query.gte('created_at', dateFrom);
+        if (dateTo) query = query.lte('created_at', dateTo);
 
         const { data, error } = await query.order('created_at', { ascending: false }).limit(parseInt(limit));
         if (error) throw error;
@@ -95,15 +115,15 @@ apiRouter.get('/swbs', async (req, res) => {
     }
 });
 
-apiRouter.get('/swbs/:id', async (req, res) => {
+apiRouter.get('/swbs/:id/history', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('swbs')
+        const { data, error } = await supabase
+            .from('status_history')
             .select('*')
             .eq('swbSerial', req.params.id)
-            .maybeSingle();
+            .order('created_at', { ascending: false });
         if (error) throw error;
-        if (!data) return res.status(404).json({ error: "SWB Record Not Found" });
-        res.json({ data });
+        res.json(data || []);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -111,8 +131,12 @@ apiRouter.post('/swbs/:id', async (req, res) => {
     try {
         const id = req.params.id;
         const d = req.body;
+        const actorEmail = d.actorEmail || 'system';
 
         if (!id) return res.status(400).json({ error: "SWB Serial Number is required" });
+
+        // Get current status to check if it changed
+        const { data: existing } = await supabase.from('swbs').select('status').eq('swbSerial', id).maybeSingle();
 
         const swbData = {
             swbSerial: id,
@@ -126,19 +150,74 @@ apiRouter.post('/swbs/:id', async (req, res) => {
             origWt: parseFloat(d.origWt) || 0,
             consigneeCity: d.consigneeCity || '',
             consigneeAddress: d.consigneeAddress || '',
+            status: d.status || existing?.status || 'Created',
+            origin: d.origin || '',
+            destination: d.destination || '',
+            manifestNo: d.manifestNo || '',
+            assignedTo: d.assignedTo || '',
+            expectedDelivery: d.expectedDelivery || '',
+            notes: d.notes || '',
+            type: d.type || 'General',
             updated_at: new Date().toISOString()
         };
 
         const { error } = await supabase.from('swbs').upsert(swbData, { onConflict: 'swbSerial' });
-        if (error) {
-            console.error('[Supabase Error]', error);
-            throw error;
+        if (error) throw error;
+
+        // Log status change if it's new or different
+        if (!existing || existing.status !== swbData.status) {
+            await supabase.from('status_history').insert({
+                swbSerial: id,
+                status: swbData.status,
+                remarks: d.statusRemarks || 'Status updated via manual entry',
+                actorEmail
+            });
         }
+
         res.json({ success: true, id });
     } catch (err) {
         console.error('[API] Save Error:', err.message);
         res.status(500).json({ error: err.message });
     }
+});
+
+apiRouter.post('/swbs/bulk/status', async (req, res) => {
+    try {
+        const { ids, status, remarks, actorEmail } = req.body;
+        if (!ids || !ids.length || !status) return res.status(400).json({ error: "IDs and status are required" });
+
+        const { error } = await supabase.from('swbs').update({ status, updated_at: new Date().toISOString() }).in('swbSerial', ids);
+        if (error) throw error;
+
+        // Log history for all
+        const historyEntries = ids.map(id => ({
+            swbSerial: id,
+            status,
+            remarks: remarks || 'Bulk status update',
+            actorEmail: actorEmail || 'system'
+        }));
+        await supabase.from('status_history').insert(historyEntries);
+
+        res.json({ success: true, count: ids.length });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Manifest Endpoints
+apiRouter.get('/manifests', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('manifests').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        res.json(data || []);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+apiRouter.post('/manifests', async (req, res) => {
+    try {
+        const d = req.body;
+        const { error } = await supabase.from('manifests').upsert(d, { onConflict: 'manifestNo' });
+        if (error) throw error;
+        res.json({ success: true, manifestNo: d.manifestNo });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 apiRouter.delete('/swbs/:id', async (req, res) => {

@@ -1,7 +1,7 @@
 export const PERMISSION_KEYS = [
   'viewDashboard',
   'createSwbs', 'viewSwbs', 'editSwbs', 'deleteSwbs',
-  'manageUsers'
+  'manageUsers', 'manageManifests', 'viewReports'
 ];
 
 export const PERMISSION_LABELS = {
@@ -10,7 +10,9 @@ export const PERMISSION_LABELS = {
   viewSwbs: 'View SWB Inventory',
   editSwbs: 'Edit SWB',
   deleteSwbs: 'Delete SWB',
-  manageUsers: 'Manage Users'
+  manageUsers: 'Manage Users',
+  manageManifests: 'Manage Manifests',
+  viewReports: 'View Reports'
 };
 
 export const APPROVED_FULL_ADMIN_EMAILS = Object.freeze([
@@ -22,11 +24,23 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     superadmin: PERMISSION_KEYS.reduce((acc, key) => ({ ...acc, [key]: true }), {}),
     admin: {
         viewDashboard: true,
-        viewSwbs: true, createSwbs: true, editSwbs: true
+        viewSwbs: true, createSwbs: true, editSwbs: true,
+        manageManifests: true, viewReports: true
+    },
+    operations: {
+        viewDashboard: true,
+        viewSwbs: true, editSwbs: true,
+        manageManifests: true
+    },
+    dataentry: {
+        viewSwbs: true, createSwbs: true
     },
     employee: {
         viewDashboard: true,
         viewSwbs: true, createSwbs: true
+    },
+    viewer: {
+        viewDashboard: true, viewSwbs: true
     }
 };
 
@@ -36,15 +50,19 @@ export function normalizeEmail(value) {
 
 export function normalizeRole(value) {
   const role = String(value || '').trim().toLowerCase();
-  if (['superadmin', 'admin'].includes(role)) return role;
-  return 'employee';
+  const valid = ['superadmin', 'admin', 'operations', 'dataentry', 'employee', 'viewer'];
+  if (valid.includes(role)) return role;
+  return 'viewer';
 }
 
 export function roleLabel(role) {
   const labels = {
       superadmin: 'Super Admin',
       admin: 'Administrator',
-      employee: 'Employee / Staff'
+      operations: 'Operations Lead',
+      dataentry: 'Data Entry Clerk',
+      employee: 'Employee / Staff',
+      viewer: 'Guest Viewer'
   };
   return labels[role] || 'Guest';
 }

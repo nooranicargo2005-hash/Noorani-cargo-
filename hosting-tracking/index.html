@@ -36,13 +36,22 @@
         </section>
 
         <main id="resultArea" hidden style="margin-top:60px;">
-            <div class="info-card n-card" style="max-width:900px; margin:0 auto; padding:60px; background:#0a0a0a; border:1px solid var(--n-border-active);">
-                <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:40px; border-bottom:1px solid var(--n-border); padding-bottom:20px;">
-                    <h2 style="color:var(--n-gold);"><i class="fa-solid fa-file-contract"></i> DOCUMENT DETAILS</h2>
-                    <span id="displaySerial" style="font-family:monospace; font-size:1.5rem; color:#fff;"></span>
-                </header>
-                <div id="swbContent" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:40px;">
-                    <!-- Data will be injected here -->
+            <div style="max-width:1100px; margin:0 auto; display:grid; grid-template-columns: 2fr 1fr; gap:32px;">
+                <div class="info-card n-card" style="padding:60px; background:#0a0a0a; border:1px solid var(--n-border-active);">
+                    <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:40px; border-bottom:1px solid var(--n-border); padding-bottom:20px;">
+                        <h2 style="color:var(--n-gold);"><i class="fa-solid fa-file-contract"></i> DOCUMENT DETAILS</h2>
+                        <span id="displaySerial" style="font-family:monospace; font-size:1.5rem; color:#fff;"></span>
+                    </header>
+                    <div id="swbContent" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:32px;">
+                        <!-- Data will be injected here -->
+                    </div>
+                </div>
+
+                <div class="n-card" style="padding:40px; background:#0a0a0a; border-color:var(--n-border);">
+                    <h3 style="color:var(--n-gold); font-size:0.9rem; text-transform:uppercase; letter-spacing:2px; margin-bottom:32px;">Shipment Timeline</h3>
+                    <div id="track-timeline" class="timeline-container">
+                        <!-- Timeline Items -->
+                    </div>
                 </div>
             </div>
         </main>
@@ -62,7 +71,7 @@
     </div>
 
     <script type="module">
-        import { getSwbBySerial } from './firebase.js';
+        import { getSwbBySerial, getSwbHistory } from './firebase.js';
 
         const $id = id => document.getElementById(id);
 
@@ -70,12 +79,13 @@
             const id = $id('swbInput').value.trim().toUpperCase();
             if (!id) return;
 
-            $id('statusMsg').textContent = 'ESTABLISHING SECURE CONNECTION...';
+            $id('statusMsg').textContent = 'CONNECTING TO GLOBAL NETWORK...';
             $id('resultArea').hidden = true;
             $id('notFoundArea').hidden = true;
 
             try {
                 const res = await getSwbBySerial(id);
+                const history = await getSwbHistory(id);
                 $id('statusMsg').textContent = '';
 
                 if (res && res.data) {
@@ -83,27 +93,39 @@
                     $id('displaySerial').textContent = d.swbSerial;
 
                     const fields = [
-                        { l: 'Cust. Inv. No.', v: d.custInvNo, icon: 'fa-hashtag' },
-                        { l: 'SWB Date', v: d.swbDate, icon: 'fa-calendar-days' },
+                        { l: 'Status', v: d.status, icon: 'fa-circle-dot' },
+                        { l: 'Origin', v: d.origin, icon: 'fa-plane-departure' },
+                        { l: 'Destination', v: d.consigneeCity, icon: 'fa-plane-arrival' },
                         { l: 'Customer', v: d.customer, icon: 'fa-user-tie' },
-                        { l: 'Customer Inv. No.', v: d.customerInvNo, icon: 'fa-receipt' },
-                        { l: 'Shipper Name', v: d.shipperName, icon: 'fa-truck-ramp-box' },
-                        { l: 'Consignee Name', v: d.consigneeName, icon: 'fa-box-open' },
-                        { l: 'Orig. Qty', v: d.origQty, icon: 'fa-cubes' },
-                        { l: 'Orig. Wt.', v: d.origWt, icon: 'fa-weight-hanging' },
-                        { l: 'Consignee City', v: d.consigneeCity, icon: 'fa-city' },
-                        { l: 'Consignee Address', v: d.consigneeAddress, icon: 'fa-map-location-dot' }
+                        { l: 'Shipper', v: d.shipperName, icon: 'fa-truck-ramp-box' },
+                        { l: 'Consignee', v: d.consigneeName, icon: 'fa-box-open' },
+                        { l: 'Quantity', v: d.origQty, icon: 'fa-cubes' },
+                        { l: 'Weight (KG)', v: d.origWt, icon: 'fa-weight-hanging' }
                     ];
 
                     $id('swbContent').innerHTML = fields.map(f => `
-                        <div style="display:grid; gap:12px; padding:20px; background:rgba(255,255,255,0.02); border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
-                            <div style="display:flex; align-items:center; gap:10px; color:var(--n-gold);">
-                                <i class="fa-solid ${f.icon}" style="font-size:0.9rem;"></i>
-                                <span style="font-size:0.7rem; text-transform:uppercase; font-weight:800; letter-spacing:1px;">${f.l}</span>
+                        <div style="display:grid; gap:8px;">
+                            <div style="display:flex; align-items:center; gap:8px; color:var(--n-gold);">
+                                <i class="fa-solid ${f.icon}" style="font-size:0.8rem;"></i>
+                                <span style="font-size:0.65rem; text-transform:uppercase; font-weight:800; letter-spacing:1px;">${f.l}</span>
                             </div>
-                            <strong style="font-size:1.15rem; color:#fff; display:block;">${f.v || '—'}</strong>
+                            <strong style="font-size:1.1rem; color:#fff; border-left:2px solid var(--n-border); padding-left:12px;">${f.v || '—'}</strong>
                         </div>
                     `).join('');
+
+                    // Timeline
+                    $id('track-timeline').innerHTML = (history || []).map(h => `
+                        <div class="timeline-item">
+                            <div class="timeline-point"></div>
+                            <div class="timeline-content" style="padding:10px; font-size:0.85rem;">
+                                <div style="display:flex; justify-content:space-between;">
+                                    <strong style="color:var(--n-gold);">${h.status}</strong>
+                                    <span class="text-muted" style="font-size:0.7rem;">${new Date(h.created_at).toLocaleDateString()}</span>
+                                </div>
+                                <p style="margin-top:4px; font-size:0.75rem;">${h.remarks || ''}</p>
+                            </div>
+                        </div>
+                    `).join('') || '<p class="text-muted">No timeline data available.</p>';
 
                     $id('resultArea').hidden = false;
                     $id('resultArea').scrollIntoView({ behavior: 'smooth' });

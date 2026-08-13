@@ -17,7 +17,7 @@
             <div class="logo-icon"><i class="fa-solid fa-shipping-fast"></i></div>
             <div>
                 <h1 style="font-size:1.2rem; color:var(--n-gold); letter-spacing:1px;">NOORANI CARGO</h1>
-                <p style="font-size:0.65rem; text-transform:uppercase; color:var(--n-text-muted); font-weight:800; letter-spacing:2px;">SWB Management System</p>
+                <p style="font-size:0.65rem; text-transform:uppercase; color:var(--n-text-muted); font-weight:800; letter-spacing:2px;">Enterprise SWB Management</p>
             </div>
         </div>
         <div class="header-actions">
@@ -26,7 +26,7 @@
                     <div id="adminUserEmail" style="font-size:0.85rem; font-weight:700; color:#fff;">—</div>
                     <div id="adminRoleBadge" class="status-badge" style="margin-top:4px;">GUEST</div>
                 </div>
-                <button class="n-btn" onclick="signOutAdminFromUi()" style="padding:10px;"><i class="fa-solid fa-power-off"></i></button>
+                <button class="n-btn" id="adminLogoutBtn" onclick="signOutAdminFromUi()" style="padding:10px;"><i class="fa-solid fa-power-off"></i></button>
             </div>
         </div>
     </header>
@@ -35,7 +35,8 @@
         <nav class="sidebar-nav">
             <a class="nav-item" href="?page=dashboard" data-nav-key="dashboard"><i class="fa-solid fa-house"></i><span>Dashboard</span></a>
             <a class="nav-item" href="?page=create-swb" data-nav-key="create-swb"><i class="fa-solid fa-plus-circle"></i><span>Register SWB</span></a>
-            <a class="nav-item" href="?page=swb-management" data-nav-key="swb-management"><i class="fa-solid fa-list-ul"></i><span>SWB Inventory</span></a>
+            <a class="nav-item" href="?page=swb-management" data-nav-key="swb-management"><i class="fa-solid fa-list-ul"></i><span>All Shipments</span></a>
+            <a class="nav-item" href="?page=manifests" data-nav-key="manifests"><i class="fa-solid fa-folder-tree"></i><span>Manifests</span></a>
             <div style="height:1px; background:var(--n-border); margin:16px 0;"></div>
             <a class="nav-item" href="?page=user-management" data-nav-key="user-management"><i class="fa-solid fa-users-gear"></i><span>User Access</span></a>
         </nav>
@@ -48,47 +49,96 @@
             <!-- SWB Registration -->
             <div id="registerSwb" class="n-card" hidden>
                 <header style="margin-bottom:40px; display:flex; justify-content:space-between; align-items:center;">
-                    <h2 style="font-size:1.5rem; color:#fff;"><i class="fa-solid fa-file-invoice" style="color:var(--n-gold); margin-right:12px;"></i> SWB Documentation</h2>
+                    <h2 style="font-size:1.5rem; color:#fff;"><i class="fa-solid fa-file-invoice" style="color:var(--n-gold); margin-right:12px;"></i> Shipment Documentation</h2>
                     <button class="n-btn" onclick="window.resetSwbForm()">Clear Form</button>
                 </header>
 
                 <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:24px;">
-                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">SWB Serial No.</label><input type="text" id="swbSerial" class="n-input" placeholder="Enter Serial Number"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Cust. Inv. No.</label><input type="text" id="custInvNo" class="n-input"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">SWB Date</label><input type="text" id="swbDate" class="n-input" placeholder="DD-MM-YYYY"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Customer</label><input type="text" id="customer" class="n-input"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Customer Inv. No.</label><input type="text" id="customerInvNo" class="n-input"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Shipper Name</label><input type="text" id="shipperName" class="n-input"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Consignee Name</label><input type="text" id="consigneeName" class="n-input"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Orig. Qty</label><input type="number" id="origQty" class="n-input"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Orig. Wt.</label><input type="number" id="origWt" class="n-input" step="0.01"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Consignee City</label><input type="text" id="consigneeCity" class="n-input"></div>
-                    <div style="display:grid; gap:8px; grid-column: 1 / -1;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Consignee Address</label><textarea id="consigneeAddress" class="n-input" style="height:100px;"></textarea></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted">SWB Serial No.</label><input type="text" id="swbSerial" class="n-input" placeholder="e.g. NC-2026-1001"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted">Cust. Inv. No.</label><input type="text" id="custInvNo" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted">SWB Date</label><input type="date" id="swbDate" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted">Customer</label><input type="text" id="customer" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted">Shipper Name</label><input type="text" id="shipperName" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted">Consignee Name</label><input type="text" id="consigneeName" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted">Origin Facility</label><input type="text" id="swbOrigin" class="n-input" placeholder="e.g. Dubai Main"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted">Destination City</label><input type="text" id="consigneeCity" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted">Current Status</label>
+                        <select id="swbStatus" class="n-input">
+                            <option value="Created">Created</option>
+                            <option value="Received">Received</option>
+                            <option value="Processing">Processing</option>
+                            <option value="Allocated">Allocated</option>
+                            <option value="Picked Up">Picked Up</option>
+                            <option value="In Transit">In Transit</option>
+                            <option value="Arrived">Arrived</option>
+                            <option value="Customs">Customs</option>
+                            <option value="Out for Delivery">Out for Delivery</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Hold">Hold</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted">Quantity</label><input type="number" id="origQty" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted">Weight (KG)</label><input type="number" id="origWt" class="n-input" step="0.01"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted">Expected Delivery</label><input type="date" id="expectedDelivery" class="n-input"></div>
+                    <div style="display:grid; gap:8px; grid-column: 1 / -1;"><label class="text-muted">Consignee Address</label><textarea id="consigneeAddress" class="n-input" style="height:80px;"></textarea></div>
+                    <div style="display:grid; gap:8px; grid-column: 1 / -1;"><label class="text-muted">Operational Notes</label><textarea id="swbNotes" class="n-input" style="height:80px;"></textarea></div>
                 </div>
 
                 <button id="btnSaveSwb" class="n-btn primary" onclick="window.saveSwb(event)" style="width:100%; margin-top:32px; padding:18px; font-weight:800; letter-spacing:1px; border-radius:12px;">
-                    <i class="fa-solid fa-save"></i> SYNC SWB RECORD
+                    <i class="fa-solid fa-save"></i> AUTHORIZE & SYNC SHIPMENT
                 </button>
             </div>
 
             <!-- SWB Inventory -->
             <div id="databaseSection" class="n-card" hidden>
-                <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px; flex-wrap:wrap; gap:20px;">
-                    <div>
-                        <h2 style="font-size:1.6rem; color:#fff;"><i class="fa-solid fa-boxes-stacked" style="color:var(--n-gold); margin-right:12px;"></i> SWB Inventory</h2>
-                        <p class="text-muted" style="margin-top:4px;">Master record of all Sea Waybills.</p>
+                <header style="margin-bottom:32px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
+                        <div>
+                            <h2 style="font-size:1.6rem; color:#fff;"><i class="fa-solid fa-boxes-stacked" style="color:var(--n-gold); margin-right:12px;"></i> Shipment Management</h2>
+                            <p class="text-muted" style="margin-top:4px;">Operational control of global cargo network.</p>
+                        </div>
+                        <div style="display:flex; gap:12px;">
+                            <input type="file" id="inventoryImportFile" hidden accept=".xlsx, .xls, .csv">
+                            <button class="n-btn" id="btnInventoryImport" onclick="document.getElementById('inventoryImportFile').click()"><i class="fa-solid fa-file-import"></i> IMPORT</button>
+                            <button class="n-btn" onclick="window.exportToExcel()"><i class="fa-solid fa-file-export"></i> EXPORT</button>
+                            <button class="n-btn" onclick="window.loadDashboard()"><i class="fa-solid fa-rotate"></i> REFRESH</button>
+                        </div>
                     </div>
 
-                    <div style="flex: 1; min-width: 300px; max-width: 500px; position: relative;">
-                        <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--n-text-muted);"></i>
-                        <input type="text" id="inventorySearch" class="n-input" placeholder="Search Serial, Customer, or City..." style="padding-left: 45px; border-radius: 12px; height: 50px;">
+                    <!-- Aramex-style Filter Tree -->
+                    <div class="filter-tree n-card mt-24" style="background:#111; padding:20px; border-radius:12px; display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:16px;">
+                        <div style="display:grid; gap:4px;"><label class="text-muted small">Status</label>
+                            <select id="filterStatus" class="n-input small" onchange="window.loadDashboard()">
+                                <option value="">All Statuses</option>
+                                <option value="Created">Created</option>
+                                <option value="In Transit">In Transit</option>
+                                <option value="Arrived">Arrived</option>
+                                <option value="Delivered">Delivered</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div style="display:grid; gap:4px;"><label class="text-muted small">Origin Facility</label><input type="text" id="filterOrigin" class="n-input small" placeholder="Any" oninput="window.loadDashboard()"></div>
+                        <div style="display:grid; gap:4px;"><label class="text-muted small">Destination</label><input type="text" id="filterDestination" class="n-input small" placeholder="Any" oninput="window.loadDashboard()"></div>
+                        <div style="display:grid; gap:4px;"><label class="text-muted small">Manifest Ref</label><input type="text" id="filterManifest" class="n-input small" placeholder="Any" oninput="window.loadDashboard()"></div>
+                        <div style="display:grid; gap:4px; grid-column: span 2; position: relative;">
+                            <label class="text-muted small">Global Search</label>
+                            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; bottom: 14px; color: var(--n-text-muted);"></i>
+                            <input type="text" id="inventorySearch" class="n-input small" placeholder="Serial, Customer, Consignee..." style="padding-left: 36px;">
+                        </div>
                     </div>
 
-                    <div style="display:flex; gap:12px;">
-                        <input type="file" id="inventoryImportFile" hidden accept=".xlsx, .xls, .csv">
-                        <button class="n-btn" id="btnInventoryImport" onclick="document.getElementById('inventoryImportFile').click()"><i class="fa-solid fa-file-import"></i> IMPORT</button>
-                        <button class="n-btn" onclick="window.exportToExcel()"><i class="fa-solid fa-file-export"></i> EXPORT</button>
-                        <button class="n-btn" onclick="window.loadDashboard()"><i class="fa-solid fa-rotate"></i> REFRESH</button>
+                    <!-- Bulk Actions -->
+                    <div id="bulkActions" class="mt-20" style="display:flex; align-items:center; gap:16px; padding:12px 20px; background:rgba(212, 175, 55, 0.05); border:1px solid var(--n-border-active); border-radius:8px;">
+                        <span style="font-size:0.75rem; font-weight:800; color:var(--n-gold);">BULK OPERATIONS:</span>
+                        <select id="bulkStatusSelect" class="n-input small" style="width:180px;">
+                            <option value="">Change Status...</option>
+                            <option value="In Transit">In Transit</option>
+                            <option value="Arrived">Arrived</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                        <button class="n-btn primary small" onclick="window.updateBulkStatus()">APPLY UPDATE</button>
                     </div>
                 </header>
 
@@ -96,17 +146,17 @@
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>SWB Serial No.</th>
-                                <th>Cust. Inv. No.</th>
-                                <th>SWB Date</th>
+                                <th style="width:40px;"><input type="checkbox" id="selectAllSwbs" onclick="const cbs = document.querySelectorAll('.swb-select'); cbs.forEach(cb => cb.checked = this.checked)"></th>
+                                <th>Serial No.</th>
+                                <th>Status</th>
                                 <th>Customer</th>
-                                <th>Customer Inv. No.</th>
-                                <th>Shipper Name</th>
-                                <th>Consignee Name</th>
-                                <th>Orig. Qty</th>
-                                <th>Orig. Wt.</th>
-                                <th>Consignee City</th>
-                                <th>Consignee Address</th>
+                                <th>Shipper</th>
+                                <th>Consignee</th>
+                                <th>Destination</th>
+                                <th>Qty</th>
+                                <th>Wt</th>
+                                <th>Manifest</th>
+                                <th>Created</th>
                                 <th class="text-right">Actions</th>
                             </tr>
                         </thead>
@@ -123,10 +173,89 @@
                 </header>
                 <div class="table-container"><table class="table"><thead><tr><th>User Profile</th><th>Role</th><th>Status</th><th class="text-right">Operations</th></tr></thead><tbody id="userTableBody"></tbody></table></div>
             </div>
+
+            <!-- Manifest Management -->
+            <div id="manifestSection" class="n-card hidden">
+                <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+                    <div>
+                        <h2 style="font-size:1.6rem;"><i class="fa-solid fa-folder-tree" style="color:var(--n-gold); margin-right:12px;"></i> Manifest & Containers</h2>
+                        <p class="text-muted">Consolidation of shipments for bulk transport.</p>
+                    </div>
+                    <button class="n-btn primary" onclick="window.showManifestForm()"><i class="fa-solid fa-plus-circle"></i> CREATE MANIFEST</button>
+                </header>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Manifest No.</th>
+                                <th>Date</th>
+                                <th>Origin</th>
+                                <th>Destination</th>
+                                <th>Container No.</th>
+                                <th>Status</th>
+                                <th class="text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="manifestTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </main>
 
     <!-- Modals -->
+    <div id="shipmentWorkspaceModal" class="enterprise-modal-backdrop">
+        <div class="n-card" style="width:95%; max-width:1200px; height:90vh; display:flex; flex-direction:column; padding:0; overflow:hidden;">
+            <header style="padding:24px 32px; border-bottom:1px solid var(--n-border); display:flex; justify-content:space-between; align-items:center; background:#111;">
+                <div style="display:flex; align-items:center; gap:20px;">
+                    <div class="logo-icon" style="background:var(--n-gold-glow); color:var(--n-gold);"><i class="fa-solid fa-box"></i></div>
+                    <div>
+                        <h3 id="ws-serial" style="font-size:1.4rem; color:#fff; letter-spacing:1px;">SWB-0000</h3>
+                        <span id="ws-status-badge" class="status-badge">Created</span>
+                    </div>
+                </div>
+                <div style="display:flex; gap:12px;">
+                    <button class="n-btn" onclick="window.printShipment()"><i class="fa-solid fa-print"></i> PRINT</button>
+                    <button class="n-btn" onclick="window.closeShipmentWorkspace()" style="border-radius:50%; width:40px; height:44px; padding:0;">&times;</button>
+                </div>
+            </header>
+            <div style="flex:1; overflow-y:auto; padding:32px; display:grid; grid-template-columns: 2fr 1fr; gap:32px; background:#080808;">
+                <div style="display:grid; gap:32px;">
+                    <!-- Overview Grid -->
+                    <div class="n-card" style="margin:0; background:#111;">
+                        <h4 style="margin-bottom:20px; color:var(--n-gold); font-size:0.8rem; text-transform:uppercase; letter-spacing:2px;">Operational Overview</h4>
+                        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:24px;">
+                            <div><label class="text-muted small block">Customer</label><strong id="ws-customer">—</strong></div>
+                            <div><label class="text-muted small block">Origin</label><strong id="ws-origin">—</strong></div>
+                            <div><label class="text-muted small block">Destination</label><strong id="ws-destination">—</strong></div>
+                            <div><label class="text-muted small block">Quantity</label><strong id="ws-qty">0</strong></div>
+                            <div><label class="text-muted small block">Weight</label><strong id="ws-wt">0</strong></div>
+                            <div><label class="text-muted small block">Manifest</label><strong id="ws-manifest">NONE</strong></div>
+                        </div>
+                    </div>
+                    <!-- Party Grid -->
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
+                        <div class="n-card" style="margin:0; background:#111;">
+                            <h4 style="margin-bottom:16px; font-size:0.75rem; color:var(--n-gold);">SHIPPER</h4>
+                            <p id="ws-shipper" style="font-weight:700;"></p>
+                        </div>
+                        <div class="n-card" style="margin:0; background:#111;">
+                            <h4 style="margin-bottom:16px; font-size:0.75rem; color:var(--n-gold);">CONSIGNEE</h4>
+                            <p id="ws-consignee" style="font-weight:700;"></p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Timeline -->
+                <div class="n-card" style="margin:0; background:#111; display:flex; flex-direction:column;">
+                    <h4 style="margin-bottom:24px; color:var(--n-gold); font-size:0.8rem; text-transform:uppercase; letter-spacing:2px;">Status Timeline</h4>
+                    <div id="ws-timeline" class="timeline-container" style="flex:1;">
+                        <!-- Timeline Items Injected -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="userFormModal" class="enterprise-modal-backdrop">
       <div class="n-card" style="width:100%; max-width:440px;">
         <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">

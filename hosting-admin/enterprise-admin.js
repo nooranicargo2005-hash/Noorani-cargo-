@@ -18,6 +18,23 @@ window.refreshDashboard = async () => {
         const s = await db.getDashboardStats();
         if ($id('stat-total-swbs')) $id('stat-total-swbs').textContent = s.totalSwbs || 0;
 
+        // Status Breakdown
+        const b = s.breakdown || {};
+        const mapping = {
+            'stat-pending': ['Created', 'Received', 'Processing'],
+            'stat-transit': ['Picked Up', 'In Transit', 'Allocated'],
+            'stat-arrived': ['Arrived', 'Customs'],
+            'stat-delivered': ['Delivered'],
+            'stat-cancelled': ['Cancelled', 'Hold']
+        };
+
+        for (const [id, statuses] of Object.entries(mapping)) {
+            const el = $id(id);
+            if (el) el.textContent = statuses.reduce((sum, st) => sum + (b[statuses] || 0), 0);
+            // Fix: the breakdown uses the status name as key
+            if (el) el.textContent = statuses.reduce((sum, st) => sum + (b[st] || 0), 0);
+        }
+
         // Render Recent Records in Dashboard if the container exists
         const recentTbody = $id('recentSwbTableBody');
         if (recentTbody && s.recentItems) {
@@ -25,9 +42,9 @@ window.refreshDashboard = async () => {
                 <tr>
                     <td style="font-weight:700; color:var(--n-gold);">${s.swbSerial}</td>
                     <td>${s.customer || '—'}</td>
-                    <td>${s.consigneeName || '—'}</td>
+                    <td><span class="status-badge status-${(s.status || '').toLowerCase().replace(' ', '-')}">${s.status || 'Created'}</span></td>
                     <td>${s.swbDate || '—'}</td>
-                    <td class="text-right"><button class="n-btn" onclick="window.editSwb('${s.swbSerial}')"><i class="fa-solid fa-eye"></i></button></td>
+                    <td class="text-right"><button class="n-btn" onclick="window.viewShipment('${s.swbSerial}')"><i class="fa-solid fa-eye"></i></button></td>
                 </tr>
             `).join('') || '<tr><td colspan="5" class="text-center text-muted">No recent activity.</td></tr>';
         }
@@ -41,41 +58,49 @@ window.loadDashboard = async () => {
     const db = getDb(); if (!db) return;
     const tbody = $id('swbTableBody'); if (!tbody) return;
 
-    // Check if there is a search query
-    const search = $id('inventorySearch')?.value || '';
+    // Advanced Filtering
+    const filters = {
+        search: $id('inventorySearch')?.value || '',
+        status: $id('filterStatus')?.value || '',
+        origin: $id('filterOrigin')?.value || '',
+        destination: $id('filterDestination')?.value || '',
+        manifestNo: $id('filterManifest')?.value || '',
+        limit: 1000
+    };
 
     try {
         console.log('[Inventory] Fetching records...');
-        tbody.innerHTML = '<tr><td colspan="12" class="text-center py-40"><i class="fa-solid fa-circle-notch fa-spin"></i> Synchronizing with Database...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="text-center py-40"><i class="fa-solid fa-circle-notch fa-spin"></i> Synchronizing with Global Network...</td></tr>';
 
-        const res = await db.querySwbs({ search, limit: 1000 });
+        const res = await db.querySwbs(filters);
         const items = res.items || [];
         tbody.innerHTML = items.map(s => `
             <tr id="row_${s.swbSerial}">
-                <td style="font-weight:800; color:var(--n-gold); white-space:nowrap;">${s.swbSerial}</td>
-                <td>${s.custInvNo || ''}</td>
-                <td>${s.swbDate || ''}</td>
+                <td><input type="checkbox" class="swb-select" value="${s.swbSerial}"></td>
+                <td style="font-weight:800; color:var(--n-gold); white-space:nowrap;" onclick="window.viewShipment('${s.swbSerial}')" class="clickable">${s.swbSerial}</td>
+                <td><span class="status-badge status-${(s.status || '').toLowerCase().replace(' ', '-')}">${s.status || 'Created'}</span></td>
                 <td>${s.customer || ''}</td>
-                <td>${s.customerInvNo || ''}</td>
                 <td>${s.shipperName || ''}</td>
                 <td>${s.consigneeName || ''}</td>
+                <td>${s.consigneeCity || ''}</td>
                 <td>${s.origQty || 0}</td>
                 <td>${s.origWt || 0}</td>
-                <td>${s.consigneeCity || ''}</td>
-                <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${s.consigneeAddress || ''}">${s.consigneeAddress || ''}</td>
+                <td>${s.manifestNo || '—'}</td>
+                <td>${s.swbDate || ''}</td>
                 <td class="text-right">
                     <div style="display:flex; justify-content:flex-end; gap:8px;">
+                        <button class="n-btn" title="View Details" style="padding:6px 10px;" onclick="window.viewShipment('${s.swbSerial}')"><i class="fa-solid fa-file-lines"></i></button>
                         <button class="n-btn" title="Edit Record" style="padding:6px 10px;" onclick="window.editSwb('${s.swbSerial}')"><i class="fa-solid fa-pen-to-square"></i></button>
                         <button class="n-btn" title="Delete Record" style="padding:6px 10px; color:var(--n-danger);" onclick="window.deleteSwb('${s.swbSerial}')"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </td>
             </tr>
-        `).join('') || `<tr><td colspan="12" class="text-center py-40 text-muted">No records found ${search ? `for "${search}"` : ''}.</td></tr>`;
+        `).join('') || `<tr><td colspan="13" class="text-center py-40 text-muted">No shipments matched your criteria.</td></tr>`;
     } catch (e) {
         console.error('[Inventory] Load Error:', e);
-        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-40 text-danger">
+        tbody.innerHTML = `<tr><td colspan="13" class="text-center py-40 text-danger">
             <i class="fa-solid fa-triangle-exclamation"></i><br>
-            <strong>Connection Failed</strong><br>
+            <strong>Operational Failure</strong><br>
             <span style="font-size:0.8rem;">${e.message}</span>
         </td></tr>`;
     }
@@ -132,6 +157,8 @@ window.saveSwb = async (e) => {
         btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> SYNCHRONIZING...';
     }
 
+    const actorEmail = window.nooraniAdminUser?.email || 'admin';
+
     const d = {
         custInvNo: $id('custInvNo').value,
         swbDate: $id('swbDate').value,
@@ -142,24 +169,94 @@ window.saveSwb = async (e) => {
         origQty: parseInt($id('origQty').value) || 0,
         origWt: parseFloat($id('origWt').value) || 0,
         consigneeCity: $id('consigneeCity').value,
-        consigneeAddress: $id('consigneeAddress').value
+        consigneeAddress: $id('consigneeAddress').value,
+        status: $id('swbStatus')?.value || 'Created',
+        origin: $id('swbOrigin')?.value || '',
+        destination: $id('swbDestination')?.value || '',
+        notes: $id('swbNotes')?.value || '',
+        actorEmail
     };
 
     try {
         await db.saveSwb(id, d);
-        alert(`Success: SWB ${id} has been permanently saved to the database.`);
+        alert(`Success: Shipment ${id} operational record updated.`);
 
         // Redirect to inventory to show the new record
         history.pushState(null, '', '?page=swb-management');
         window.dispatchEvent(new Event('popstate'));
     } catch (err) {
-        alert('Synchronization Failed: ' + err.message);
+        alert('Operational Failure: ' + err.message);
     } finally {
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = originalText;
         }
     }
+};
+
+window.viewShipment = async id => {
+    const db = getDb(); if (!db) return;
+    try {
+        const res = await db.getSwbBySerial(id);
+        const history = await db.getSwbHistory(id);
+        const d = res.data;
+
+        const m = $id('shipmentWorkspaceModal');
+        if (!m) return;
+
+        $id('ws-serial').textContent = d.swbSerial;
+        $id('ws-status-badge').className = `status-badge status-${(d.status || '').toLowerCase().replace(' ', '-')}`;
+        $id('ws-status-badge').textContent = d.status || 'Created';
+
+        $id('ws-customer').textContent = d.customer || '—';
+        $id('ws-shipper').textContent = d.shipperName || '—';
+        $id('ws-consignee').textContent = d.consigneeName || '—';
+        $id('ws-origin').textContent = d.origin || '—';
+        $id('ws-destination').textContent = d.destination || '—';
+        $id('ws-qty').textContent = d.origQty || '0';
+        $id('ws-wt').textContent = d.origWt || '0';
+        $id('ws-manifest').textContent = d.manifestNo || 'NONE';
+
+        // Timeline
+        const timeline = $id('ws-timeline');
+        timeline.innerHTML = (history || []).map(h => `
+            <div class="timeline-item">
+                <div class="timeline-point"></div>
+                <div class="timeline-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong>${h.status}</strong>
+                        <span class="text-muted" style="font-size:0.7rem;">${new Date(h.created_at).toLocaleString()}</span>
+                    </div>
+                    <p style="font-size:0.8rem; margin-top:4px;">${h.remarks || ''}</p>
+                    <div style="font-size:0.65rem; color:var(--n-gold); margin-top:4px;">Updated by: ${h.actorEmail}</div>
+                </div>
+            </div>
+        `).join('') || '<p class="text-center text-muted py-20">No history identified.</p>';
+
+        m.style.opacity = '1'; m.style.pointerEvents = 'auto';
+    } catch (e) { alert('Failed to load shipment workspace.'); }
+};
+
+window.closeShipmentWorkspace = () => {
+    $id('shipmentWorkspaceModal').style.opacity = '0';
+    $id('shipmentWorkspaceModal').style.pointerEvents = 'none';
+};
+
+window.updateBulkStatus = async () => {
+    const status = $id('bulkStatusSelect').value;
+    if (!status) return alert('Select a professional status.');
+
+    const selected = Array.from(document.querySelectorAll('.swb-select:checked')).map(cb => cb.value);
+    if (!selected.length) return alert('No shipments selected.');
+
+    if (!confirm(`Update ${selected.length} shipments to ${status}?`)) return;
+
+    const db = getDb();
+    try {
+        await db.bulkUpdateStatus(selected, status, 'Bulk update via Operations');
+        alert('Mission Success: Bulk operational update complete.');
+        window.loadDashboard();
+    } catch (e) { alert('Bulk Update Failed: ' + e.message); }
 };
 
 window.editSwb = async id => {
@@ -171,17 +268,24 @@ window.editSwb = async id => {
         $id('custInvNo').value = d.custInvNo || '';
         $id('swbDate').value = d.swbDate || '';
         $id('customer').value = d.customer || '';
-        $id('customerInvNo').value = d.customerInvNo || '';
         $id('shipperName').value = d.shipperName || '';
         $id('consigneeName').value = d.consigneeName || '';
+        $id('swbOrigin').value = d.origin || '';
+        $id('consigneeCity').value = d.consigneeCity || '';
+        $id('swbStatus').value = d.status || 'Created';
         $id('origQty').value = d.origQty || '';
         $id('origWt').value = d.origWt || '';
-        $id('consigneeCity').value = d.consigneeCity || '';
+        $id('expectedDelivery').value = d.expectedDelivery || '';
         $id('consigneeAddress').value = d.consigneeAddress || '';
+        $id('swbNotes').value = d.notes || '';
 
         history.pushState(null, '', '?page=create-swb');
         window.dispatchEvent(new Event('popstate'));
     } catch (e) { alert('Load Failure'); }
+};
+
+window.printShipment = () => {
+    window.print();
 };
 
 window.deleteSwb = async id => {
@@ -390,6 +494,42 @@ window.deleteUser = async uid => {
     }
 };
 
+// --- Manifest Logic ---
+
+window.loadManifests = async () => {
+    const db = getDb(); if (!db) return;
+    const tbody = $id('manifestTableBody'); if (!tbody) return;
+    try {
+        const data = await db.getManifests();
+        tbody.innerHTML = (data || []).map(m => `
+            <tr>
+                <td style="font-weight:700; color:var(--n-gold);">${m.manifestNo}</td>
+                <td>${m.date || ''}</td>
+                <td>${m.origin || ''}</td>
+                <td>${m.destination || ''}</td>
+                <td>${m.containerNo || ''}</td>
+                <td><span class="status-badge">${m.status || 'Draft'}</span></td>
+                <td class="text-right">
+                    <button class="n-btn" onclick="window.viewManifest('${m.manifestNo}')"><i class="fa-solid fa-eye"></i></button>
+                </td>
+            </tr>
+        `).join('') || '<tr><td colspan="7" class="text-center text-muted">No manifests identified.</td></tr>';
+    } catch (e) { console.error('[Manifests] Load Error', e); }
+};
+
+window.showManifestForm = () => {
+    const no = 'MNF-' + Date.now();
+    const manifest = {
+        manifestNo: no,
+        date: new Date().toISOString().split('T')[0],
+        status: 'Draft',
+        created_by: window.nooraniAdminUser?.email || 'admin'
+    };
+    if (confirm(`Initialize new manifest ${no}?`)) {
+        getDb().saveManifest(manifest).then(() => window.loadManifests());
+    }
+};
+
 // --- Initialization ---
 
 async function init() {
@@ -401,6 +541,7 @@ async function init() {
             window.loadDashboard();
             window.refreshDashboard();
             window.renderUsers();
+            window.loadManifests();
 
             // Setup Search Listener with debounce
             let searchTimer;
@@ -410,9 +551,11 @@ async function init() {
             });
 
             window.addEventListener('popstate', () => {
-                window.loadDashboard();
-                window.refreshDashboard();
-                window.renderUsers();
+                const p = new URLSearchParams(window.location.search).get('page');
+                if (p === 'swb-management') window.loadDashboard();
+                else if (p === 'dashboard') window.refreshDashboard();
+                else if (p === 'user-management') window.renderUsers();
+                else if (p === 'manifests') window.loadManifests();
             });
         }
     }, 200);
