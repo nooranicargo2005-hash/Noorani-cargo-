@@ -27,7 +27,11 @@ const ADMIN_ORIGINS = [
   "https://noorani-cargo-tracking-2005.web.app",
   "https://noorani-cargo-tracking-2005.firebaseapp.com",
   "http://localhost:3000",
+  "http://localhost:5000",
   "http://localhost:5173",
+  "http://localhost:10000",
+  "http://127.0.0.1:5000",
+  "http://127.0.0.1:5001",
 ];
 
 const allowedOrigins = [
@@ -61,12 +65,12 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // =====================================================
-// SUPABASE
+// SUPABASE (STRICT PRODUCTION CONFIG)
 // =====================================================
 
 let supabase = null;
 
-if (SUPABASE_URL && SUPABASE_KEY) {
+if (SUPABASE_URL && SUPABASE_KEY && !SUPABASE_KEY.includes("your-")) {
   supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
       autoRefreshToken: false,
@@ -75,80 +79,74 @@ if (SUPABASE_URL && SUPABASE_KEY) {
     },
   });
 
-  console.log("[System] Supabase connected.");
+  console.log("[System] Supabase initialized.");
 } else {
   console.error(
-    "[System] CRITICAL: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are missing."
+    "[System] CRITICAL: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are missing or invalid."
   );
 }
-
-// =====================================================
-// HELPERS
-// =====================================================
 
 function requireSupabase(req, res, next) {
   if (!supabase) {
     return res.status(503).json({
       success: false,
       error: "Database configuration is missing.",
-      message:
-        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured in Render.",
+      message: "The server is not connected to Supabase. Check Render environment variables.",
     });
   }
-
   next();
 }
 
 function cleanObject(obj) {
   const result = {};
-
   for (const [key, value] of Object.entries(obj || {})) {
-    if (value !== undefined) {
+    if (value !== undefined && value !== null) {
       result[key] = value;
     }
   }
-
   return result;
 }
 
 // =====================================================
-// ROOT / HEALTH
+// ROOT / HEALTH (PRODUCTION DIAGNOSTICS)
 // =====================================================
 
 app.get("/", (req, res) => {
   res.json({
     success: true,
     name: "Noorani Cargo Enterprise API",
-    version: "2.3.6",
+    version: "2.3.7",
     status: "online",
-    database: supabase ? "configured" : "not_configured",
-    diagnostics: {
-      url_present: !!SUPABASE_URL,
-      key_present: !!SUPABASE_KEY,
-    },
+    database: supabase ? "connected" : "disconnected",
     time: new Date().toISOString(),
   });
 });
 
-app.get("/health", (req, res) => {
-  res.json({
-    success: true,
-    status: "healthy",
-    databaseConfigured: !!supabase,
-    version: "2.3.6",
-  });
-});
+app.get("/api/health", async (req, res) => {
+  let dbStatus = "not_configured";
+  let canQuery = false;
 
-app.get("/api/health", (req, res) => {
+  if (supabase) {
+    dbStatus = "configured";
+    try {
+      // Real connection test: query the count of shipments
+      const { count, error } = await supabase.from("swbs").select("*", { count: "exact", head: true });
+      if (!error) canQuery = true;
+    } catch (e) {
+      console.error("[Health] Query failed:", e.message);
+    }
+  }
+
   res.json({
     success: true,
     status: "healthy",
     databaseConfigured: !!supabase,
+    databaseReachable: canQuery,
     missing: [
       !SUPABASE_URL && "SUPABASE_URL",
       !SUPABASE_KEY && "SUPABASE_SERVICE_ROLE_KEY"
     ].filter(Boolean),
-    version: "2.3.6",
+    version: "2.3.7",
   });
 });
 
@@ -182,17 +180,13 @@ app.get("/api/swbs", requireSupabase, async (req, res) => {
     if (manifestNo) query = query.eq("manifestNo", manifestNo);
 
     const { data, error } = await query;
-
-    if (error) {
-      console.error("[GET /api/swbs]", error);
-      return res.status(500).json({ success: false, error: error.message });
-    }
+    if (error) throw error;
 
     res.json({
       success: true,
       count: data?.length || 0,
       data: data || [],
-      items: data || [], // For frontend compatibility
+      items: data || [],
     });
   } catch (error) {
     console.error(error);
@@ -201,121 +195,25 @@ app.get("/api/swbs", requireSupabase, async (req, res) => {
 });
 
 // =====================================================
-// SWB - GET ONE
+// SWB - GET ONE (SUPPORTING BOTH :SERIAL AND :ID)
 // =====================================================
 
 app.get("/api/swbs/:serial", requireSupabase, async (req, res) => {
   try {
     const serial = decodeURIComponent(req.params.serial);
+    const { data, error } = await supabase.from("swbs").select("*").eq("swbSerial", serial).maybeSingle();
 
-    const { data, error } = await supabase
-      .from("swbs")
-      .select("*")
-      .eq("swbSerial", serial)
-      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ success: false, error: "SWB not found" });
 
-    if (error) {
-      return res.status(500).json({
-        success: false,
-        error: error.message,
-      });
-    }
-
-    if (!data) {
-      return res.status(404).json({
-        success: false,
-        error: "SWB not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      data,
-    });
+    res.json({ success: true, data });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// =====================================================
-// SWB - CREATE
-// =====================================================
-
-app.post("/api/swbs", requireSupabase, async (req, res) => {
-  try {
-    const body = req.body || {};
-
-    if (!body.swbSerial) {
-      return res.status(400).json({
-        success: false,
-        error: "SWB Serial Number is required.",
-      });
-    }
-
-    const record = cleanObject({
-      swbSerial: body.swbSerial,
-      custInvNo: body.custInvNo,
-      swbDate: body.swbDate,
-      customer: body.customer,
-      customerInvNo: body.customerInvNo,
-      shipperName: body.shipperName,
-      consigneeName: body.consigneeName,
-      origQty: body.origQty,
-      origWt: body.origWt,
-      consigneeCity: body.consigneeCity,
-      consigneeAddress: body.consigneeAddress,
-
-      status: body.status || "Received",
-      origin: body.origin,
-      destination: body.destination,
-      manifestNo: body.manifestNo,
-      assignedTo: body.assignedTo,
-      expectedDelivery: body.expectedDelivery,
-      notes: body.notes,
-      type: body.type || "SWB",
-    });
-
-    const { data, error } = await supabase
-      .from("swbs")
-      .insert(record)
-      .select("*")
-      .single();
-
-    if (error) {
-      console.error("[CREATE SWB]", error);
-
-      return res.status(500).json({
-        success: false,
-        error: error.message,
-      });
-    }
-
-    // Timeline
-    await supabase.from("status_history").insert({
-      swbSerial: data.swbSerial,
-      status: data.status || "Received",
-      location: data.origin || null,
-      remarks: "Shipment created",
-      actorEmail: req.body.actorEmail || "system",
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "SWB created successfully.",
-      data,
-    });
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
+// Alias for legacy test support
+app.get("/swbs/:serial", (req, res) => res.redirect(`/api/swbs/${req.params.serial}`));
 
 // =====================================================
 // SWB - CREATE OR UPDATE (UPSERT)
@@ -334,8 +232,8 @@ app.post("/api/swbs/:serial", requireSupabase, async (req, res) => {
       customerInvNo: body.customerInvNo,
       shipperName: body.shipperName,
       consigneeName: body.consigneeName,
-      origQty: body.origQty,
-      origWt: body.origWt,
+      origQty: parseInt(body.origQty) || 0,
+      origWt: parseFloat(body.origWt) || 0.0,
       consigneeCity: body.consigneeCity,
       consigneeAddress: body.consigneeAddress,
       status: body.status || "Created",
@@ -346,42 +244,26 @@ app.post("/api/swbs/:serial", requireSupabase, async (req, res) => {
       expectedDelivery: body.expectedDelivery,
       notes: body.notes,
       type: body.type || "SWB",
+      updated_at: new Date().toISOString()
     });
 
     // Check if exists for timeline tracking
-    const { data: existing } = await supabase
-      .from("swbs")
-      .select("status")
-      .eq("swbSerial", serial)
-      .maybeSingle();
+    const { data: existing } = await supabase.from("swbs").select("status").eq("swbSerial", serial).maybeSingle();
 
-    const { data, error } = await supabase
-      .from("swbs")
-      .upsert(record)
-      .select("*")
-      .single();
-
-    if (error) {
-      console.error("[UPSERT SWB]", error);
-      return res.status(500).json({ success: false, error: error.message });
-    }
+    const { data, error } = await supabase.from("swbs").upsert(record).select("*").single();
+    if (error) throw error;
 
     // Timeline if status changed or new
     if (!existing || existing.status !== record.status) {
       await supabase.from("status_history").insert({
         swbSerial: serial,
         status: record.status,
-        location: record.origin || null,
         remarks: existing ? "Status updated" : "Shipment created",
         actorEmail: body.actorEmail || "system",
       });
     }
 
-    res.json({
-      success: true,
-      message: "SWB record synchronized.",
-      data,
-    });
+    res.json({ success: true, message: "SWB record synchronized.", data });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -394,29 +276,20 @@ app.post("/api/swbs/:serial", requireSupabase, async (req, res) => {
 app.post("/api/swbs/bulk/status", requireSupabase, async (req, res) => {
   try {
     const { ids, status, remarks, actorEmail } = req.body || {};
+    if (!ids || !Array.isArray(ids) || !status) return res.status(400).json({ success: false, error: "Invalid bulk data" });
 
-    if (!ids || !Array.isArray(ids) || !status) {
-      return res.status(400).json({ success: false, error: "Invalid bulk data" });
-    }
-
-    const { error } = await supabase
-      .from("swbs")
-      .update({ status })
-      .in("swbSerial", ids);
-
+    const { error } = await supabase.from("swbs").update({ status }).in("swbSerial", ids);
     if (error) throw error;
 
-    // History records
-    const historyEntries = ids.map((id) => ({
+    const history = ids.map((id) => ({
       swbSerial: id,
       status,
       remarks: remarks || "Bulk status update",
       actorEmail: actorEmail || "system",
     }));
+    await supabase.from("status_history").insert(history);
 
-    await supabase.from("status_history").insert(historyEntries);
-
-    res.json({ success: true, message: `Updated ${ids.length} shipments.` });
+    res.json({ success: true, message: `Updated ${ids.length} records.` });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -430,167 +303,72 @@ app.delete("/api/swbs/:serial", requireSupabase, async (req, res) => {
   try {
     const serial = decodeURIComponent(req.params.serial);
 
-    await supabase
-      .from("status_history")
-      .delete()
-      .eq("swbSerial", serial);
+    // Cleanup history first
+    await supabase.from("status_history").delete().eq("swbSerial", serial);
 
-    const { error } = await supabase
-      .from("swbs")
-      .delete()
-      .eq("swbSerial", serial);
+    const { error } = await supabase.from("swbs").delete().eq("swbSerial", serial);
+    if (error) throw error;
 
-    if (error) {
-      return res.status(500).json({
-        success: false,
-        error: error.message,
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "SWB deleted successfully.",
-    });
+    res.json({ success: true, message: "SWB deleted successfully." });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // =====================================================
-// TRACKING
+// TRACKING (PUBLIC)
 // =====================================================
 
-app.get(
-  "/api/tracking/:serial",
-  requireSupabase,
-  async (req, res) => {
-    try {
-      const serial = decodeURIComponent(req.params.serial);
+app.get("/api/tracking/:serial", requireSupabase, async (req, res) => {
+  try {
+    const serial = decodeURIComponent(req.params.serial);
+    const { data: shipment, error } = await supabase.from("swbs").select("*").eq("swbSerial", serial).maybeSingle();
 
-      const { data: shipment, error } = await supabase
-        .from("swbs")
-        .select("*")
-        .eq("swbSerial", serial)
-        .maybeSingle();
+    if (error) throw error;
+    if (!shipment) return res.status(404).json({ success: false, error: "Shipment not found." });
 
-      if (error) {
-        return res.status(500).json({
-          success: false,
-          error: error.message,
-        });
-      }
+    const { data: history } = await supabase.from("status_history").select("*").eq("swbSerial", serial).order("created_at", { ascending: true });
 
-      if (!shipment) {
-        return res.status(404).json({
-          success: false,
-          error: "Shipment not found.",
-        });
-      }
-
-      const { data: history } = await supabase
-        .from("status_history")
-        .select("*")
-        .eq("swbSerial", serial)
-        .order("id", { ascending: true });
-
-      res.json({
-        success: true,
-        shipment,
-        history: history || [],
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        error: error.message,
-      });
-    }
+    res.json({ success: true, shipment, history: history || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
-);
+});
 
 // =====================================================
 // STATUS HISTORY
 // =====================================================
 
-app.get(
-  "/api/swbs/:serial/history",
-  requireSupabase,
-  async (req, res) => {
-    try {
-      const serial = decodeURIComponent(req.params.serial);
-
-      const { data, error } = await supabase
-        .from("status_history")
-        .select("*")
-        .eq("swbSerial", serial)
-        .order("id", { ascending: true });
-
-      if (error) {
-        return res.status(500).json({
-          success: false,
-          error: error.message,
-        });
-      }
-
-      res.json({
-        success: true,
-        data: data || [],
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        error: error.message,
-      });
-    }
-  }
-);
-
-// =====================================================
-// MANIFESTS - GET
-// =====================================================
-
-app.get("/api/manifests", requireSupabase, async (req, res) => {
+app.get("/api/swbs/:serial/history", requireSupabase, async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from("manifests")
-      .select("*")
-      .order("date", { ascending: false });
+    const serial = decodeURIComponent(req.params.serial);
+    const { data, error } = await supabase.from("status_history").select("*").eq("swbSerial", serial).order("created_at", { ascending: true });
 
-    if (error) {
-      return res.status(500).json({
-        success: false,
-        error: error.message,
-      });
-    }
-
-    res.json({
-      success: true,
-      data: data || [],
-    });
+    if (error) throw error;
+    res.json({ success: true, data: data || [] });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // =====================================================
-// MANIFESTS - CREATE
+// MANIFESTS
 // =====================================================
+
+app.get("/api/manifests", requireSupabase, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from("manifests").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json({ success: true, data: data || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 app.post("/api/manifests", requireSupabase, async (req, res) => {
   try {
     const body = req.body || {};
-
-    if (!body.manifestNo) {
-      return res.status(400).json({
-        success: false,
-        error: "Manifest number is required.",
-      });
-    }
+    if (!body.manifestNo) return res.status(400).json({ success: false, error: "Manifest number is required." });
 
     const manifest = {
       manifestNo: body.manifestNo,
@@ -599,30 +377,15 @@ app.post("/api/manifests", requireSupabase, async (req, res) => {
       destination: body.destination || null,
       containerNo: body.containerNo || null,
       status: body.status || "Open",
+      updated_at: new Date().toISOString()
     };
 
-    const { data, error } = await supabase
-      .from("manifests")
-      .insert(manifest)
-      .select("*")
-      .single();
+    const { data, error } = await supabase.from("manifests").upsert(manifest).select("*").single();
+    if (error) throw error;
 
-    if (error) {
-      return res.status(500).json({
-        success: false,
-        error: error.message,
-      });
-    }
-
-    res.status(201).json({
-      success: true,
-      data,
-    });
+    res.status(201).json({ success: true, data });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -632,14 +395,8 @@ app.post("/api/manifests", requireSupabase, async (req, res) => {
 
 app.get("/api/stats/dashboard", requireSupabase, async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from("swbs")
-      .select("status, swbSerial, customer, swbDate")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      return res.status(500).json({ success: false, error: error.message });
-    }
+    const { data, error } = await supabase.from("swbs").select("status, swbSerial, customer, swbDate").order("created_at", { ascending: false });
+    if (error) throw error;
 
     const rows = data || [];
     const breakdown = {};
@@ -674,9 +431,7 @@ app.get("/api/stats/dashboard", requireSupabase, async (req, res) => {
 
 app.get("/api/users", requireSupabase, async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from("users")
-      .select("id, email, role, status, created_at");
+    const { data, error } = await supabase.from("users").select("id, email, role, status, created_at");
     if (error) throw error;
     res.json(data.map(u => ({ ...u, uid: String(u.id) })));
   } catch (error) {
@@ -687,11 +442,7 @@ app.get("/api/users", requireSupabase, async (req, res) => {
 app.post("/api/users", requireSupabase, async (req, res) => {
   try {
     const { email, password, role } = req.body;
-    const { data, error } = await supabase
-      .from("users")
-      .insert({ email, password, role })
-      .select("*")
-      .single();
+    const { data, error } = await supabase.from("users").insert({ email, password, role }).select("*").single();
     if (error) throw error;
     res.json({ success: true, data });
   } catch (error) {
@@ -701,10 +452,7 @@ app.post("/api/users", requireSupabase, async (req, res) => {
 
 app.delete("/api/users/:uid", requireSupabase, async (req, res) => {
   try {
-    const { error } = await supabase
-      .from("users")
-      .delete()
-      .eq("id", req.params.uid);
+    const { error } = await supabase.from("users").delete().eq("id", req.params.uid);
     if (error) throw error;
     res.json({ success: true });
   } catch (error) {
@@ -714,11 +462,7 @@ app.delete("/api/users/:uid", requireSupabase, async (req, res) => {
 
 app.get("/api/users/profile/:email", requireSupabase, async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("email", req.params.email)
-      .maybeSingle();
+    const { data, error } = await supabase.from("users").select("*").eq("email", req.params.email).maybeSingle();
     if (error) throw error;
     if (!data) return res.status(404).json({ error: "User not found" });
     res.json(data);
@@ -745,7 +489,6 @@ app.use("/api", (req, res) => {
 
 app.use((err, req, res, next) => {
   console.error("[SERVER ERROR]", err);
-
   res.status(500).json({
     success: false,
     error: err.message || "Internal server error",
@@ -759,7 +502,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log("==========================================");
   console.log(" NOORANI CARGO ENTERPRISE API");
-  console.log(" Version: 2.3.6");
+  console.log(" Version: 2.3.7");
   console.log(` Port: ${PORT}`);
   console.log(` Supabase URL: ${SUPABASE_URL ? "PRESENT" : "MISSING"}`);
   console.log(` Supabase Key: ${SUPABASE_KEY ? "PRESENT" : "MISSING"}`);

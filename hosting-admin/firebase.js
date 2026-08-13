@@ -13,8 +13,11 @@ const getApiBase = () => {
     const h = window.location.hostname;
     const isLocal = ['localhost', '127.0.0.1', '::1'].includes(h);
 
-    // If local, try to use the current hostname but port 3000
-    if (isLocal) return `http://${h}:3000/api`;
+    // If local, try to use the current hostname but port 10000 (Primary) or 3000 (Legacy)
+    if (isLocal) {
+        // We prioritize 10000 as it's the root server port
+        return `http://${h}:10000/api`;
+    }
 
     // Production Endpoint
     return 'https://noorani-cargo-api.onrender.com/api';

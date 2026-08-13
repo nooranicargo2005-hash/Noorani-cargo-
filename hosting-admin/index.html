@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./core.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
 </head>
 <body class="admin-panel">
     <!-- Shell Structure Injected by admin-multipage.js -->
@@ -54,15 +55,17 @@
                 </header>
 
                 <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:24px;">
-                    <div style="display:grid; gap:8px;"><label class="text-muted">SWB Serial No.</label><input type="text" id="swbSerial" class="n-input" placeholder="e.g. NC-2026-1001"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted">Cust. Inv. No.</label><input type="text" id="custInvNo" class="n-input"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted">SWB Date</label><input type="date" id="swbDate" class="n-input"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted">Customer</label><input type="text" id="customer" class="n-input"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted">Shipper Name</label><input type="text" id="shipperName" class="n-input"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted">Consignee Name</label><input type="text" id="consigneeName" class="n-input"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted">Origin Facility</label><input type="text" id="swbOrigin" class="n-input" placeholder="e.g. Dubai Main"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted">Destination City</label><input type="text" id="consigneeCity" class="n-input"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted">Current Status</label>
+                    <div style="display:grid; gap:8px;"><label for="swbSerial" class="text-muted">SWB Serial No.</label><input type="text" id="swbSerial" class="n-input" placeholder="e.g. NC-2026-1001"></div>
+                    <div style="display:grid; gap:8px;"><label for="custInvNo" class="text-muted">Cust. Inv. No.</label><input type="text" id="custInvNo" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label for="customerInvNo" class="text-muted">Customer Inv. No.</label><input type="text" id="customerInvNo" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label for="swbDate" class="text-muted">SWB Date</label><input type="date" id="swbDate" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label for="customer" class="text-muted">Customer</label><input type="text" id="customer" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label for="shipperName" class="text-muted">Shipper Name</label><input type="text" id="shipperName" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label for="consigneeName" class="text-muted">Consignee Name</label><input type="text" id="consigneeName" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label for="swbOrigin" class="text-muted">Origin Facility</label><input type="text" id="swbOrigin" class="n-input" placeholder="e.g. Dubai Main"></div>
+                    <div style="display:grid; gap:8px;"><label for="swbDestination" class="text-muted">Destination Facility</label><input type="text" id="swbDestination" class="n-input" placeholder="e.g. London Hub"></div>
+                    <div style="display:grid; gap:8px;"><label for="consigneeCity" class="text-muted">Destination City</label><input type="text" id="consigneeCity" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label for="swbStatus" class="text-muted">Current Status</label>
                         <select id="swbStatus" class="n-input">
                             <option value="Created">Created</option>
                             <option value="Received">Received</option>
@@ -78,11 +81,11 @@
                             <option value="Cancelled">Cancelled</option>
                         </select>
                     </div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted">Quantity</label><input type="number" id="origQty" class="n-input"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted">Weight (KG)</label><input type="number" id="origWt" class="n-input" step="0.01"></div>
-                    <div style="display:grid; gap:8px;"><label class="text-muted">Expected Delivery</label><input type="date" id="expectedDelivery" class="n-input"></div>
-                    <div style="display:grid; gap:8px; grid-column: 1 / -1;"><label class="text-muted">Consignee Address</label><textarea id="consigneeAddress" class="n-input" style="height:80px;"></textarea></div>
-                    <div style="display:grid; gap:8px; grid-column: 1 / -1;"><label class="text-muted">Operational Notes</label><textarea id="swbNotes" class="n-input" style="height:80px;"></textarea></div>
+                    <div style="display:grid; gap:8px;"><label for="origQty" class="text-muted">Quantity</label><input type="number" id="origQty" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label for="origWt" class="text-muted">Weight (KG)</label><input type="number" id="origWt" class="n-input" step="0.01"></div>
+                    <div style="display:grid; gap:8px;"><label for="expectedDelivery" class="text-muted">Expected Delivery</label><input type="date" id="expectedDelivery" class="n-input"></div>
+                    <div style="display:grid; gap:8px; grid-column: 1 / -1;"><label for="consigneeAddress" class="text-muted">Consignee Address</label><textarea id="consigneeAddress" class="n-input" style="height:80px;"></textarea></div>
+                    <div style="display:grid; gap:8px; grid-column: 1 / -1;"><label for="swbNotes" class="text-muted">Operational Notes</label><textarea id="swbNotes" class="n-input" style="height:80px;"></textarea></div>
                 </div>
 
                 <button id="btnSaveSwb" class="n-btn primary" onclick="window.saveSwb(event)" style="width:100%; margin-top:32px; padding:18px; font-weight:800; letter-spacing:1px; border-radius:12px;">
@@ -99,7 +102,7 @@
                             <p class="text-muted" style="margin-top:4px;">Operational control of global cargo network.</p>
                         </div>
                         <div style="display:flex; gap:12px;">
-                            <input type="file" id="inventoryImportFile" hidden accept=".xlsx, .xls, .csv">
+                            <input type="file" id="inventoryImportFile" hidden accept=".xlsx, .xls, .csv, .pdf">
                             <button class="n-btn" id="btnInventoryImport" onclick="document.getElementById('inventoryImportFile').click()"><i class="fa-solid fa-file-import"></i> IMPORT</button>
                             <button class="n-btn" onclick="window.exportToExcel()"><i class="fa-solid fa-file-export"></i> EXPORT</button>
                             <button class="n-btn" onclick="window.loadDashboard()"><i class="fa-solid fa-rotate"></i> REFRESH</button>
@@ -108,7 +111,7 @@
 
                     <!-- Aramex-style Filter Tree -->
                     <div class="filter-tree n-card mt-24" style="background:#111; padding:20px; border-radius:12px; display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:16px;">
-                        <div style="display:grid; gap:4px;"><label class="text-muted small">Status</label>
+                        <div style="display:grid; gap:4px;"><label for="filterStatus" class="text-muted small">Status</label>
                             <select id="filterStatus" class="n-input small" onchange="window.loadDashboard()">
                                 <option value="">All Statuses</option>
                                 <option value="Created">Created</option>
@@ -118,11 +121,11 @@
                                 <option value="Cancelled">Cancelled</option>
                             </select>
                         </div>
-                        <div style="display:grid; gap:4px;"><label class="text-muted small">Origin Facility</label><input type="text" id="filterOrigin" class="n-input small" placeholder="Any" oninput="window.loadDashboard()"></div>
-                        <div style="display:grid; gap:4px;"><label class="text-muted small">Destination</label><input type="text" id="filterDestination" class="n-input small" placeholder="Any" oninput="window.loadDashboard()"></div>
-                        <div style="display:grid; gap:4px;"><label class="text-muted small">Manifest Ref</label><input type="text" id="filterManifest" class="n-input small" placeholder="Any" oninput="window.loadDashboard()"></div>
+                        <div style="display:grid; gap:4px;"><label for="filterOrigin" class="text-muted small">Origin Facility</label><input type="text" id="filterOrigin" class="n-input small" placeholder="Any" oninput="window.loadDashboard()"></div>
+                        <div style="display:grid; gap:4px;"><label for="filterDestination" class="text-muted small">Destination</label><input type="text" id="filterDestination" class="n-input small" placeholder="Any" oninput="window.loadDashboard()"></div>
+                        <div style="display:grid; gap:4px;"><label for="filterManifest" class="text-muted small">Manifest Ref</label><input type="text" id="filterManifest" class="n-input small" placeholder="Any" oninput="window.loadDashboard()"></div>
                         <div style="display:grid; gap:4px; grid-column: span 2; position: relative;">
-                            <label class="text-muted small">Global Search</label>
+                            <label for="inventorySearch" class="text-muted small">Global Search</label>
                             <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; bottom: 14px; color: var(--n-text-muted);"></i>
                             <input type="text" id="inventorySearch" class="n-input small" placeholder="Serial, Customer, Consignee..." style="padding-left: 36px;">
                         </div>
@@ -130,7 +133,7 @@
 
                     <!-- Bulk Actions -->
                     <div id="bulkActions" class="mt-20" style="display:flex; align-items:center; gap:16px; padding:12px 20px; background:rgba(212, 175, 55, 0.05); border:1px solid var(--n-border-active); border-radius:8px;">
-                        <span style="font-size:0.75rem; font-weight:800; color:var(--n-gold);">BULK OPERATIONS:</span>
+                        <label for="bulkStatusSelect" style="font-size:0.75rem; font-weight:800; color:var(--n-gold);">BULK OPERATIONS:</label>
                         <select id="bulkStatusSelect" class="n-input small" style="width:180px;">
                             <option value="">Change Status...</option>
                             <option value="In Transit">In Transit</option>
@@ -146,7 +149,7 @@
                     <table class="table">
                         <thead>
                             <tr>
-                                <th style="width:40px;"><input type="checkbox" id="selectAllSwbs" onclick="const cbs = document.querySelectorAll('.swb-select'); cbs.forEach(cb => cb.checked = this.checked)"></th>
+                                <th style="width:40px;"><input type="checkbox" id="selectAllSwbs" aria-label="Select all shipments" onclick="const cbs = document.querySelectorAll('.swb-select'); cbs.forEach(cb => cb.checked = this.checked)"></th>
                                 <th>Serial No.</th>
                                 <th>Status</th>
                                 <th>Customer</th>
@@ -263,9 +266,9 @@
             <button class="n-btn" onclick="window.closeUserForm()" style="border-radius:50%; width:40px; height:44px; padding:0;">&times;</button>
         </header>
         <form id="userEntryForm" style="display:grid; gap:20px;">
-            <div style="display:grid; gap:8px;"><label class="text-muted">Email Address</label><input id="user-email" type="email" class="n-input" required></div>
-            <div style="display:grid; gap:8px;"><label class="text-muted">Secure Password</label><input id="user-pass" type="password" class="n-input" required></div>
-            <div style="display:grid; gap:8px;"><label class="text-muted">Access Level</label><select id="user-role" class="n-input"><option value="admin">Administrator</option><option value="employee">Staff / Agent</option></select></div>
+            <div style="display:grid; gap:8px;"><label for="user-email" class="text-muted">Email Address</label><input id="user-email" type="email" class="n-input" required></div>
+            <div style="display:grid; gap:8px;"><label for="user-pass" class="text-muted">Secure Password</label><input id="user-pass" type="password" class="n-input" required></div>
+            <div style="display:grid; gap:8px;"><label for="user-role" class="text-muted">Access Level</label><select id="user-role" class="n-input"><option value="admin">Administrator</option><option value="employee">Staff / Agent</option></select></div>
         </form>
         <button class="n-btn primary" onclick="window.submitUserForm()" style="width:100%; margin-top:32px;">AUTHORIZE SESSION</button>
       </div>
@@ -280,13 +283,25 @@
         <div id="importZone" style="border:2px dashed var(--n-border); padding:60px 40px; text-align:center; border-radius:16px; transition:0.2s; cursor:pointer;" onclick="document.getElementById('modalImportFile').click()">
             <i class="fa-solid fa-cloud-arrow-up" style="font-size:4rem; color:var(--n-gold); margin-bottom:20px;"></i>
             <h4 id="importStatusTitle" style="font-size:1.2rem; color:#fff;">Select SWB Manifest</h4>
-            <p id="importFileNameDisplay" class="text-muted">Supports Excel (.xlsx, .xls) and CSV files</p>
-            <input type="file" id="modalImportFile" hidden accept=".xlsx, .xls, .csv">
+            <p id="importFileNameDisplay" class="text-muted">Supports Excel (.xlsx, .xls), CSV, and PDF files</p>
+            <input type="file" id="modalImportFile" hidden accept=".xlsx, .xls, .csv, .pdf">
         </div>
-        <div id="importPreview" class="hidden" style="margin-top:32px;">
-            <h4 style="margin-bottom:16px;">Manifest Data Preview</h4>
-            <div class="table-container" style="max-height:300px; overflow-y:auto;">
-                <table class="table"><thead><tr><th>Serial</th><th>Customer</th><th>Shipper</th></tr></thead><tbody id="importPreviewBody"></tbody></table>
+        <div id="importMappingSummary" style="margin-top:32px;"></div>
+        <div id="importPreview" class="hidden" style="margin-top:24px;">
+            <h4 style="margin-bottom:16px; font-size:0.9rem; color:var(--n-gold); text-transform:uppercase; letter-spacing:1px;">Manifest Data Preview</h4>
+            <div class="table-container" style="max-height:300px; overflow-y:auto; border:1px solid var(--n-border); border-radius:8px;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Serial/AWB</th>
+                            <th>Customer</th>
+                            <th>Shipper</th>
+                            <th>Consignee</th>
+                            <th>City</th>
+                        </tr>
+                    </thead>
+                    <tbody id="importPreviewBody"></tbody>
+                </table>
             </div>
         </div>
         <div id="importErrors" class="hidden" style="margin-top:24px; padding:20px; background:rgba(192, 57, 43, 0.1); border:1px solid var(--n-danger); border-radius:8px;">

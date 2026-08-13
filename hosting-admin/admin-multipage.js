@@ -152,8 +152,9 @@
     if (name === 'dashboard' && typeof window.refreshDashboard === 'function') window.refreshDashboard();
     else if (config.showDatabase && typeof window.loadDashboard === 'function') window.loadDashboard();
     else if (name === 'user-management' && typeof window.renderUsers === 'function') window.renderUsers();
+    else if (name === 'manifests' && typeof window.loadManifests === 'function') window.loadManifests();
 
-    const cards = ['enterpriseUsersCard'];
+    const cards = ['enterpriseUsersCard', 'manifestSection'];
     cards.forEach(id => { const c = $id(id); if (c) setVisible(c, config.enterpriseCards.includes(id)); });
 
     // Ensure scroll to top on page change

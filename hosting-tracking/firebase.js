@@ -5,7 +5,7 @@
 const getApiBase = () => {
     const h = window.location.hostname;
     const isLocal = ['localhost', '127.0.0.1', '::1'].includes(h);
-    if (isLocal) return `http://${h}:3000/api`;
+    if (isLocal) return `http://${h}:10000/api`;
     return 'https://noorani-cargo-api.onrender.com/api';
 };
 

@@ -77,12 +77,12 @@ function authFormMarkup() {
       <p class="text-muted" style="margin-bottom:40px;">Authenticated session required for network management.</p>
       <form id="adminAuthForm" style="display:grid; gap:20px; text-align:left;">
         <div style="display:grid; gap:8px;">
-            <label style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--n-low); margin-left:4px;">Corporate Email</label>
-            <input name="email" type="email" placeholder="email@nooranicargo.com" required class="n-input">
+            <label for="admin-email" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--n-low); margin-left:4px;">Corporate Email</label>
+            <input id="admin-email" name="email" type="email" placeholder="email@nooranicargo.com" required class="n-input">
         </div>
         <div style="display:grid; gap:8px;">
-            <label style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--n-low); margin-left:4px;">Access Token</label>
-            <input name="password" type="password" placeholder="••••••••" required class="n-input">
+            <label for="admin-password" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--n-low); margin-left:4px;">Access Token</label>
+            <input id="admin-password" name="password" type="password" placeholder="••••••••" required class="n-input">
         </div>
         <button type="submit" class="n-btn primary" style="width:100%; justify-content:center; padding:18px; margin-top:12px; font-size:1rem;">Authorize Session</button>
       </form>

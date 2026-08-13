@@ -141,7 +141,7 @@ window.exportToExcel = async () => {
 // --- SWB CRUD ---
 
 window.resetSwbForm = () => {
-    const fields = ['swbSerial', 'custInvNo', 'swbDate', 'customer', 'customerInvNo', 'shipperName', 'consigneeName', 'origQty', 'origWt', 'consigneeCity', 'consigneeAddress'];
+    const fields = ['swbSerial', 'custInvNo', 'customerInvNo', 'swbDate', 'customer', 'shipperName', 'consigneeName', 'swbOrigin', 'swbDestination', 'consigneeCity', 'origQty', 'origWt', 'expectedDelivery', 'consigneeAddress', 'swbNotes'];
     fields.forEach(f => { if ($id(f)) $id(f).value = ''; });
 };
 
@@ -174,6 +174,7 @@ window.saveSwb = async (e) => {
         status: $id('swbStatus')?.value || 'Created',
         origin: $id('swbOrigin')?.value || '',
         destination: $id('swbDestination')?.value || '',
+        expectedDelivery: $id('expectedDelivery')?.value || '',
         notes: $id('swbNotes')?.value || '',
         actorEmail
     };
@@ -267,11 +268,13 @@ window.editSwb = async id => {
         const d = res.data;
         $id('swbSerial').value = d.swbSerial;
         $id('custInvNo').value = d.custInvNo || '';
+        $id('customerInvNo').value = d.customerInvNo || '';
         $id('swbDate').value = d.swbDate || '';
         $id('customer').value = d.customer || '';
         $id('shipperName').value = d.shipperName || '';
         $id('consigneeName').value = d.consigneeName || '';
         $id('swbOrigin').value = d.origin || '';
+        $id('swbDestination').value = d.destination || '';
         $id('consigneeCity').value = d.consigneeCity || '';
         $id('swbStatus').value = d.status || 'Created';
         $id('origQty').value = d.origQty || '';
@@ -313,7 +316,7 @@ window.openImportModal = (file = null) => {
     $id('importCount').textContent = '0 records identified';
     $id('btnExecuteImport').disabled = true;
     $id('importStatusTitle').textContent = 'Select SWB Manifest';
-    $id('importFileNameDisplay').textContent = 'Supports Excel (.xlsx, .xls) and CSV files';
+    $id('importFileNameDisplay').textContent = 'Supports Excel (.xlsx, .xls), CSV, and PDF';
     if ($id('modalImportFile')) $id('modalImportFile').value = '';
 
     if (file) handleFileImport(file);
@@ -327,59 +330,148 @@ window.closeImportModal = () => {
 const handleFileImport = (file) => {
     if (!file) return;
     $id('importFileNameDisplay').textContent = `File: ${file.name}`;
-    $id('importStatusTitle').textContent = 'Reading Manifest...';
+    $id('importStatusTitle').textContent = 'Analyzing Aramex-Style Manifest...';
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    const extension = file.name.split('.').pop().toLowerCase();
+
+    reader.onload = async (evt) => {
         try {
-            const data = new Uint8Array(evt.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+            let rows = [];
+            if (extension === 'pdf') {
+                rows = await parsePdf(evt.target.result);
+            } else {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+            }
 
-            if (rows.length < 2) throw new Error('File appears to be empty.');
+            if (!rows || rows.length < 1) throw new Error('File appears to be empty or unreadable.');
 
-            // Column Mapping (Robust mapping for 11 professional fields)
-            const headers = rows[0].map(h => String(h || '').toLowerCase().trim());
-            const findCol = (terms) => headers.findIndex(h => terms.some(t => h.includes(t)));
+            // Advanced Header Detection
+            let headerIdx = rows.findIndex(r => r.some(c => String(c || '').toLowerCase().includes('serial') || String(c || '').toLowerCase().includes('awb') || String(c || '').toLowerCase().includes('swb')));
+            if (headerIdx === -1) headerIdx = 0;
 
-            const map = {
-                serial: findCol(['swb serial', 'serial no', 'swb no']),
-                custInv: findCol(['cust. inv. no', 'cust inv no', 'customer invoice number']),
-                date: findCol(['swb date', 'date']),
-                customer: findCol(['customer name', 'client']) || findCol(['customer']),
-                custInvNo: findCol(['customer inv. no', 'customer invoice no']),
-                shipper: findCol(['shipper name', 'shipper']),
-                consignee: findCol(['consignee name', 'consignee']),
-                qty: findCol(['orig. qty', 'orig qty', 'quantity']),
-                wt: findCol(['orig. wt', 'orig wt', 'weight']),
-                city: findCol(['consignee city', 'city']),
-                addr: findCol(['consignee address', 'address'])
+            const rawHeaders = rows[headerIdx];
+            const headers = rawHeaders.map(h => String(h || '').toLowerCase().trim());
+
+            const mappingSchema = {
+                swbSerial: ['swb serial', 'serial no', 'swb no', 'awb', 'hawb', 'reference', 'tracking', 'serial', 'awb #'],
+                custInvNo: ['cust. inv. no', 'cust inv no', 'customer invoice number', 'reference 1', 'ref 1', 'customer ref'],
+                swbDate: ['swb date', 'date', 'created at', 'ship date', 'date of booking'],
+                customer: ['customer name', 'client', 'customer', 'account', 'shipper name'],
+                customerInvNo: ['customer inv. no', 'customer invoice no', 'reference 2', 'ref 2', 'inv no'],
+                shipperName: ['shipper name', 'shipper', 'sender', 'from', 'shipper'],
+                consigneeName: ['consignee name', 'consignee', 'receiver', 'to', 'recipient', 'consignee'],
+                origQty: ['orig. qty', 'orig qty', 'quantity', 'pieces', 'pkgs', 'count', 'qty', 'total pkgs', 'qty (pcs)'],
+                origWt: ['orig. wt', 'orig wt', 'weight', 'gross weight', 'actual weight', 'wt', 'chargeable weight'],
+                consigneeCity: ['consignee city', 'city', 'destination city', 'recipient city', 'dest', 'dest. city'],
+                consigneeAddress: ['consignee address', 'address', 'recipient address', 'destination address', 'consignee address'],
+                origin: ['origin', 'origin hub', 'source', 'departure'],
+                destination: ['destination', 'dest hub', 'arrival hub'],
+                status: ['status', 'current status', 'shipment status'],
+                manifestNo: ['manifest', 'manifest no', 'runsheet', 'bag no'],
+                notes: ['notes', 'remarks', 'description', 'comments']
             };
 
-            const errors = [];
-            pendingImportData = rows.slice(1).map((row, idx) => {
-                if (!row || !row.length || !row.some(c => c)) return null;
-                const get = (k) => map[k] !== -1 ? String(row[map[k]] || '').trim() : '';
+            const colMap = {};
+            const unmapped = [];
+            const mappedInfo = [];
 
-                const swbSerial = get('serial');
-                if (!swbSerial) {
-                    errors.push(`Row ${idx + 2}: Missing SWB Serial Number`);
+            Object.entries(mappingSchema).forEach(([dbField, variations]) => {
+                // Try exact match first
+                let idx = headers.findIndex(h => variations.some(v => h === v));
+
+                // If no exact match, try "starts with" or "contains" with word boundary
+                if (idx === -1) {
+                    idx = headers.findIndex(h => variations.some(v => {
+                        if (v.length <= 3) return h === v; // Too short for fuzzy
+                        return h.includes(v);
+                    }));
+                }
+
+                if (idx !== -1 && !Object.values(colMap).includes(idx)) {
+                    colMap[dbField] = idx;
+                    mappedInfo.push({ field: dbField, col: rawHeaders[idx] });
+                }
+            });
+
+            headers.forEach((h, i) => {
+                if (!Object.values(colMap).includes(i)) unmapped.push(rawHeaders[i]);
+            });
+
+            // Update UI with mapping results
+            const mappingSummary = $id('importMappingSummary');
+            if (mappingSummary) {
+                mappingSummary.innerHTML = `
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; font-size:0.75rem; margin-bottom:20px;">
+                        <div class="n-card" style="margin:0; padding:12px; background:rgba(26, 188, 156, 0.1); border-color:var(--n-success);">
+                            <strong style="color:var(--n-success);"><i class="fa-solid fa-check-circle"></i> Mapped (${mappedInfo.length})</strong>
+                            <div style="margin-top:8px; opacity:0.8;">${mappedInfo.map(m => `<div>${m.field} &larr; ${m.col}</div>`).join('')}</div>
+                        </div>
+                        <div class="n-card" style="margin:0; padding:12px; background:rgba(192, 57, 43, 0.1); border-color:var(--n-danger);">
+                            <strong style="color:var(--n-danger);"><i class="fa-solid fa-triangle-exclamation"></i> Unmapped (${unmapped.length})</strong>
+                            <div style="margin-top:8px; opacity:0.8;">${unmapped.join(', ') || 'None'}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const errors = [];
+            const duplicateCheck = new Set();
+            const now = new Date().toISOString().split('T')[0];
+
+            pendingImportData = rows.slice(headerIdx + 1).map((row, idx) => {
+                if (!row || !row.length || !row.some(c => c)) return null;
+                const get = (k) => colMap[k] !== undefined ? String(row[colMap[k]] || '').trim() : '';
+
+                const swbSerial = get('swbSerial');
+                if (!swbSerial || swbSerial === 'null' || swbSerial === 'undefined') {
+                    // Skip empty rows silently, but log real missing serials
+                    if (row.some(c => c)) errors.push(`Row ${idx + 2}: Missing primary Serial/AWB`);
                     return null;
+                }
+
+                if (duplicateCheck.has(swbSerial)) {
+                    errors.push(`Row ${idx + 2}: Duplicate Serial ${swbSerial} in file`);
+                    return null;
+                }
+                duplicateCheck.add(swbSerial);
+
+                // Robust Date Parsing for Excel
+                let rawDate = get('swbDate');
+                let finalDate = now;
+                if (rawDate) {
+                    try {
+                        // Check if it's an Excel serial number
+                        if (!isNaN(rawDate) && Number(rawDate) > 40000) {
+                            const dateObj = XLSX.SSF.parse_date_code(Number(rawDate));
+                            finalDate = `${dateObj.y}-${String(dateObj.m).padStart(2, '0')}-${String(dateObj.d).padStart(2, '0')}`;
+                        } else {
+                            const d = new Date(rawDate);
+                            if (!isNaN(d.getTime())) finalDate = d.toISOString().split('T')[0];
+                        }
+                    } catch(e) { console.warn('Date parse failed for:', rawDate); }
                 }
 
                 return {
                     swbSerial,
-                    custInvNo: get('custInv'),
-                    swbDate: get('date'),
+                    custInvNo: get('custInvNo'),
+                    swbDate: finalDate,
                     customer: get('customer'),
-                    customerInvNo: get('custInvNo'),
-                    shipperName: get('shipper'),
-                    consigneeName: get('consignee'),
-                    origQty: parseInt(get('qty')) || 0,
-                    origWt: parseFloat(get('wt')) || 0,
-                    consigneeCity: get('city'),
-                    consigneeAddress: get('addr')
+                    customerInvNo: get('customerInvNo'),
+                    shipperName: get('shipperName'),
+                    consigneeName: get('consigneeName'),
+                    origQty: parseInt(get('origQty')) || 0,
+                    origWt: parseFloat(get('origWt')) || 0,
+                    consigneeCity: get('consigneeCity'),
+                    consigneeAddress: get('consigneeAddress'),
+                    origin: get('origin'),
+                    destination: get('destination'),
+                    status: get('status') || 'Created',
+                    manifestNo: get('manifestNo'),
+                    notes: get('notes')
                 };
             }).filter(Boolean);
 
@@ -391,20 +483,59 @@ const handleFileImport = (file) => {
             }
 
             $id('importPreviewBody').innerHTML = pendingImportData.slice(0, 5).map(s => `
-                <tr><td>${s.swbSerial}</td><td>${s.customer || '—'}</td><td>${s.shipperName || '—'}</td></tr>
+                <tr>
+                    <td><strong style="color:var(--n-gold);">${s.swbSerial}</strong></td>
+                    <td>${s.customer || '—'}</td>
+                    <td>${s.shipperName || '—'}</td>
+                    <td>${s.consigneeName || '—'}</td>
+                    <td>${s.consigneeCity || '—'}</td>
+                </tr>
             `).join('');
 
             $id('importPreview').classList.remove('hidden');
             $id('importCount').textContent = `${pendingImportData.length} Valid Records Ready`;
             $id('btnExecuteImport').disabled = pendingImportData.length === 0;
-            $id('importStatusTitle').textContent = 'Manifest Verified';
+            $id('importStatusTitle').textContent = 'Intelligence Analysis Complete';
 
         } catch (err) {
             console.error('[Import Error]', err);
-            alert('Parse Error: ' + err.message);
+            alert('Mission Failure: ' + err.message);
         }
     };
     reader.readAsArrayBuffer(file);
+};
+
+const parsePdf = async (buffer) => {
+    try {
+        const loadingTask = pdfjsLib.getDocument({ data: buffer });
+        const pdf = await loadingTask.promise;
+        let allRows = [];
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+
+            // Group items by Y coordinate to detect rows
+            const yGroups = {};
+            textContent.items.forEach(item => {
+                const y = Math.round(item.transform[5]);
+                if (!yGroups[y]) yGroups[y] = [];
+                yGroups[y].push(item);
+            });
+
+            // Sort Y coordinates descending (top to bottom)
+            const sortedY = Object.keys(yGroups).sort((a, b) => b - a);
+
+            sortedY.forEach(y => {
+                const rowItems = yGroups[y].sort((a, b) => a.transform[4] - b.transform[4]);
+                allRows.push(rowItems.map(item => item.str));
+            });
+        }
+        return allRows;
+    } catch (e) {
+        console.error('PDF Parse Error', e);
+        throw new Error('Could not parse PDF table structure.');
+    }
 };
 
 // Event Listeners for File Selection
@@ -419,26 +550,50 @@ $id('modalImportFile')?.addEventListener('change', (e) => {
     if (e.target.files[0]) handleFileImport(e.target.files[0]);
 });
 
+// Configure PDF.js worker
+if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
 window.executeImport = async () => {
     const db = getDb(); if (!db) return;
     const btn = $id('btnExecuteImport');
+    const originalText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = 'IMPORTING...';
 
     let success = 0;
+    let failed = 0;
+    const total = pendingImportData.length;
+
     try {
-        for (const item of pendingImportData) {
-            await db.saveSwb(item.swbSerial, item);
-            success++;
+        for (let i = 0; i < total; i++) {
+            const item = pendingImportData[i];
+            btn.textContent = `IMPORTING (${i + 1}/${total})...`;
+            try {
+                await db.saveSwb(item.swbSerial, item);
+                success++;
+            } catch (err) {
+                console.error(`Failed to import ${item.swbSerial}`, err);
+                failed++;
+            }
         }
-        alert(`Mission Success: ${success} records imported.`);
+
+        // Show success state in button before alert
+        btn.style.background = 'var(--n-success)';
+        btn.textContent = 'MISSION ACCOMPLISHED';
+
+        alert(`Mission Complete:\n- ${success} Shipments Synchronized\n- ${failed} Failed Records`);
+
         window.closeImportModal();
-        window.loadDashboard();
-        window.refreshDashboard();
+
+        // Ensure UI refreshes
+        if (window.loadDashboard) await window.loadDashboard();
+        if (window.refreshDashboard) await window.refreshDashboard();
     } catch (e) {
-        alert(`Import Error: ${e.message}. Success so far: ${success}`);
+        alert(`Critical Import Failure: ${e.message}`);
     } finally {
-        btn.textContent = 'PROCESS PERMANENT IMPORT';
+        btn.disabled = false;
+        btn.textContent = originalText;
     }
 };
 
@@ -529,6 +684,18 @@ window.showManifestForm = () => {
     if (confirm(`Initialize new manifest ${no}?`)) {
         getDb().saveManifest(manifest).then(() => window.loadManifests());
     }
+};
+
+window.viewManifest = (manifestNo) => {
+    // Switch to inventory page and set manifest filter
+    history.pushState(null, '', `?page=swb-management&manifest=${manifestNo}`);
+    const filterInput = $id('filterManifest');
+    if (filterInput) filterInput.value = manifestNo;
+    window.loadDashboard();
+
+    // Smooth scroll to inventory
+    const section = $id('swbManagementSection');
+    if (section) section.scrollIntoView({ behavior: 'smooth' });
 };
 
 // --- Initialization ---
