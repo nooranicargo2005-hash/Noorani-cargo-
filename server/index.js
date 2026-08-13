@@ -274,7 +274,8 @@ apiRouter.get('/users/profile/:email', async (req, res) => {
 // Mount Router
 app.use('/api', apiRouter);
 
-app.get('/', (req, res) => res.send('NOORANI CARGO SWB API v2 is online.'));
+// NOORANI CARGO ENTERPRISE API | Version 2.1
+app.get('/', (req, res) => res.send('NOORANI CARGO SWB API v2.1 is online.'));
 
 
 app.listen(port, '0.0.0.0', () => {
