@@ -7,10 +7,12 @@ services:
     startCommand: node index.js
     envVars:
       - key: NODE_VERSION
-        value: 18.0.0
+        value: "20"
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: PORT
         value: "3000"
+      - key: YARN_VERSION
+        value: "0"
