@@ -1,9 +1,9 @@
 {
-  "name": "noorani-cargo-enterprise",
-  "version": "1.0.0",
-  "description": "NOORANI CARGO SERVICES | Multi-Site Logistics",
+  "name": "noorani-cargo-v2-enterprise",
+  "version": "2.3.0",
+  "description": "NOORANI CARGO SERVICES | Enterprise SWB System",
   "scripts": {
-    "start": "node server/index.js",
+    "start": "node index.js",
     "postinstall": "cd server && npm install",
     "serve-admin": "firebase serve --only hosting:admin",
     "serve-tracking": "firebase serve --only hosting:tracking"
