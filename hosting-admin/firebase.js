@@ -125,7 +125,10 @@ export const nooraniDb = {
         method: 'POST',
         body: JSON.stringify({ ids, status, remarks, actorEmail: window.nooraniAdminUser?.email })
     }),
-    querySwbs: (o = {}) => apiFetch(`/swbs?${new URLSearchParams(o).toString()}`),
+    querySwbs: (o = {}) => {
+        const params = new URLSearchParams(o).toString();
+        return apiFetch(`/swbs${params ? `?${params}` : ''}`);
+    },
     getDashboardStats: () => apiFetch('/stats/dashboard'),
     getUserAccounts: () => apiFetch('/users'),
     saveUserAccount: (d) => apiFetch('/users', { method: 'POST', body: JSON.stringify(d) }),
