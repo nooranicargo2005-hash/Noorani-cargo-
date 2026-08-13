@@ -3,403 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="robots" content="noindex, nofollow">
-    <title>NOORANI CARGO — Management System</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+    <title>NOORANI CARGO — SWB Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./core.css">
-
-    <style>
-        @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
-    </style>
-
-    <!-- External Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
 </head>
 <body class="admin-panel">
-    <!-- Initial Loader -->
-    <div id="nooraniSplashOverlay" class="noorani-splash-screen">
-        <div class="noorani-splash-card">
-            <div class="splash-logo"><i class="fa-solid fa-shipping-fast"></i></div>
-            <h2 class="splash-title">NOORANI CARGO</h2>
-            <p class="splash-tagline">Cargo Management</p>
-        </div>
-    </div>
+    <!-- Shell Structure Injected by admin-multipage.js -->
 
-    <!-- Application Top Bar -->
-    <header class="header-bar">
-        <div class="header-brand">
-            <div class="brand-emblem"><i class="fa-solid fa-shipping-fast"></i></div>
+    <header class="header-bar" id="appHeader">
+        <div class="header-brand" style="display:flex; align-items:center; gap:16px;">
+            <div class="logo-icon"><i class="fa-solid fa-shipping-fast"></i></div>
             <div>
-                <div class="brand-title">NOORANI CARGO</div>
-                <div class="brand-sub">Management System</div>
+                <h1 style="font-size:1.2rem; color:var(--n-gold); letter-spacing:1px;">NOORANI CARGO</h1>
+                <p style="font-size:0.65rem; text-transform:uppercase; color:var(--n-text-muted); font-weight:800; letter-spacing:2px;">SWB Management System</p>
             </div>
         </div>
-        <div class="header-actions" style="display:flex; align-items:center; gap:16px;">
-            <div onclick="window.toggleNotificationDrawer()" style="position:relative; cursor:pointer; color:var(--n-muted); font-size:1.2rem; display:flex; align-items:center;">
-                <i class="fa-solid fa-bell"></i>
-                <span id="notif-count" class="badge-count" style="display:none; position:absolute; top:-8px; right:-8px; background:var(--n-danger); color:#fff; font-size:0.6rem; padding:2px 6px; border-radius:50px; font-weight:800;">0</span>
-            </div>
-            <div class="user-profile-section" style="display:flex; align-items:center; gap:20px; padding-left:20px; border-left:1px solid var(--n-border);">
+        <div class="header-actions">
+            <div class="user-profile-section" style="display:flex; align-items:center; gap:20px;">
                 <div style="text-align:right;">
                     <div id="adminUserEmail" style="font-size:0.85rem; font-weight:700; color:#fff;">—</div>
-                    <div id="adminRoleBadge" class="status-badge status-transit" style="font-size:0.6rem; padding:2px 8px; margin-top:2px; border-radius:4px;">GUEST</div>
+                    <div id="adminRoleBadge" class="status-badge" style="margin-top:4px;">GUEST</div>
                 </div>
-                <button id="adminLogoutBtn" type="button" class="n-btn" onclick="signOutAdminFromUi()" style="padding:10px 14px;">
-                    <i class="fa-solid fa-power-off"></i>
-                </button>
+                <button class="n-btn" onclick="signOutAdminFromUi()" style="padding:10px;"><i class="fa-solid fa-power-off"></i></button>
             </div>
         </div>
     </header>
 
-    <!-- Sidebar Navigation -->
     <aside class="sidebar" id="adminSidebar" hidden>
-        <div class="sidebar-logo">
-            <div class="logo-icon"><i class="fa-solid fa-truck-fast"></i></div>
-            <span style="font-family:var(--font-header); font-size:1.1rem; color:#fff; font-weight:800; letter-spacing:-0.5px;">NOORANI CARGO</span>
-        </div>
         <nav class="sidebar-nav">
-            <div class="nav-group">
-                <h4 class="nav-label">Operations</h4>
-                <a class="nav-item" href="?page=dashboard" data-nav-key="dashboard" data-permission="viewDashboard"><i class="fa-solid fa-grid-2"></i><span>Dashboard</span></a>
-                <a class="nav-item" href="?page=create-shipment" data-nav-key="create-shipment" data-permission="createShipments"><i class="fa-solid fa-plus-circle"></i><span>Create Shipment</span></a>
-                <a class="nav-item" href="?page=shipment-management" data-nav-key="shipment-management" data-permission="viewShipments"><i class="fa-solid fa-boxes-stacked"></i><span>All Shipments</span></a>
-            </div>
-            <div class="nav-group">
-                <h4 class="nav-label">Business</h4>
-                <a class="nav-item" href="?page=reports" data-nav-key="reports" data-permission="viewReports"><i class="fa-solid fa-chart-pie"></i><span>Reports</span></a>
-                <a class="nav-item" href="?page=finance" data-nav-key="finance" data-permission="viewFinance"><i class="fa-solid fa-wallet"></i><span>Finance</span></a>
-            </div>
-            <div class="nav-group">
-                <h4 class="nav-label">System</h4>
-                <a class="nav-item" href="?page=user-management" data-nav-key="user-management" data-permission="manageUsers"><i class="fa-solid fa-users-gear"></i><span>User Access</span></a>
-                <a class="nav-item" href="?page=settings" data-nav-key="settings" data-permission="viewSettings"><i class="fa-solid fa-sliders"></i><span>Settings</span></a>
-            </div>
+            <a class="nav-item" href="?page=dashboard" data-nav-key="dashboard"><i class="fa-solid fa-house"></i><span>Dashboard</span></a>
+            <a class="nav-item" href="?page=create-swb" data-nav-key="create-swb"><i class="fa-solid fa-plus-circle"></i><span>Register SWB</span></a>
+            <a class="nav-item" href="?page=swb-management" data-nav-key="swb-management"><i class="fa-solid fa-list-ul"></i><span>SWB Inventory</span></a>
+            <div style="height:1px; background:var(--n-border); margin:16px 0;"></div>
+            <a class="nav-item" href="?page=user-management" data-nav-key="user-management"><i class="fa-solid fa-users-gear"></i><span>User Access</span></a>
         </nav>
     </aside>
 
-    <!-- Notification Drawer -->
-    <div id="notificationDrawer" class="notification-drawer" style="position:fixed; right:-400px; top:0; bottom:0; width:380px; background:var(--n-surface); z-index:10000; border-left:1px solid var(--n-border); transition:0.4s cubic-bezier(0.16, 1, 0.3, 1); box-shadow:-20px 0 50px rgba(0,0,0,0.5);">
-        <header class="drawer-header" style="padding:24px; border-bottom:1px solid var(--n-border); display:flex; justify-content:space-between; align-items:center;">
-            <h3 style="font-size:1.1rem;"><i class="fa-solid fa-bell" style="color:var(--n-gold); margin-right:10px;"></i>Notifications</h3>
-            <div class="enterprise-btn-row" style="display:flex; gap:8px;">
-                <button class="btn-action sm" onclick="window.clearNotifications()"><i class="fa-solid fa-trash"></i></button>
-                <button class="btn-action sm" onclick="window.toggleNotificationDrawer()">&times;</button>
-            </div>
-        </header>
-        <div id="notif-list" class="drawer-body" style="padding:20px; overflow-y:auto; height:calc(100% - 140px);">
-            <p class="text-center mt-20" style="color:var(--n-muted); font-size:0.85rem;">No new alerts.</p>
-        </div>
-        <footer class="drawer-footer" style="padding:20px; border-top:1px solid var(--n-border); text-align:center;">
-            <a href="?page=notifications" onclick="window.toggleNotificationDrawer()" style="font-size:0.8rem; font-weight:800; color:var(--n-gold); text-transform:uppercase; letter-spacing:1px;">View All History</a>
-        </footer>
-    </div>
-
-    <!-- Main Workspace Area -->
     <main class="admin-main" id="adminMainArea" hidden>
-        <div id="adminView" class="view-section active-view">
+        <div id="adminView" class="view-section">
             <div id="dashboardMainContent"></div>
 
-            <!-- Shipment Registration Form -->
-            <div id="registerShipment" class="n-card" hidden>
-                <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:40px;">
-                    <div>
-                        <h2 style="font-size:1.8rem; letter-spacing:-0.5px;"><i class="fa-solid fa-pen-to-square" style="color:var(--n-gold); margin-right:16px;"></i>Cargo Registration</h2>
-                        <p class="text-muted" style="margin-top:4px;">Define cargo parameters and sync milestones.</p>
-                    </div>
+            <!-- SWB Registration -->
+            <div id="registerSwb" class="n-card" hidden>
+                <header style="margin-bottom:40px; display:flex; justify-content:space-between; align-items:center;">
+                    <h2 style="font-size:1.5rem; color:#fff;"><i class="fa-solid fa-file-invoice" style="color:var(--n-gold); margin-right:12px;"></i> SWB Documentation</h2>
+                    <button class="n-btn" onclick="window.resetSwbForm()">Clear Form</button>
                 </header>
 
-                <!-- Section 1: Identifiers (1-6) -->
-                <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:32px;">
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <label for="inputDate" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">1. Date</label>
-                        <input type="date" id="inputDate" class="n-input">
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <label for="inputTracking" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">2. Tracking ID / SWB / Invoice / Cust Inv</label>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="text" id="inputTracking" class="n-input" placeholder="NM-100001 or SR-000">
-                            <button class="n-btn" onclick="window.generateTrackingNumber()" title="Generate"><i class="fa-solid fa-rotate"></i></button>
-                            <button class="n-btn" onclick="window.findShipmentInForm()" title="Search"><i class="fa-solid fa-search"></i></button>
-                        </div>
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <label for="inputBranchCode" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">5. Customer</label>
-                        <input type="text" id="inputBranchCode" class="n-input" placeholder="Customer name">
-                    </div>
+                <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:24px;">
+                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">SWB Serial No.</label><input type="text" id="swbSerial" class="n-input" placeholder="Enter Serial Number"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Cust. Inv. No.</label><input type="text" id="custInvNo" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">SWB Date</label><input type="text" id="swbDate" class="n-input" placeholder="DD-MM-YYYY"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Customer</label><input type="text" id="customer" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Customer Inv. No.</label><input type="text" id="customerInvNo" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Shipper Name</label><input type="text" id="shipperName" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Consignee Name</label><input type="text" id="consigneeName" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Orig. Qty</label><input type="number" id="origQty" class="n-input"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Orig. Wt.</label><input type="number" id="origWt" class="n-input" step="0.01"></div>
+                    <div style="display:grid; gap:8px;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Consignee City</label><input type="text" id="consigneeCity" class="n-input"></div>
+                    <div style="display:grid; gap:8px; grid-column: 1 / -1;"><label class="text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Consignee Address</label><textarea id="consigneeAddress" class="n-input" style="height:100px;"></textarea></div>
                 </div>
 
-                <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:32px; margin-top:32px;">
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <label for="inputSwbSerial" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">2. SWB Serial No.</label>
-                        <input type="text" id="inputSwbSerial" class="n-input" placeholder="SR-000">
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <label for="inputShippingNo" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">3. Cust Inv No.</label>
-                        <input type="text" id="inputShippingNo" class="n-input" placeholder="Cust Inv No.">
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <label for="inputCustomerInvoice" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">6. Customer Inv. No.</label>
-                        <input type="text" id="inputCustomerInvoice" class="n-input" placeholder="INV-000">
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <label for="inputSwbDate" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">4. SWB Date</label>
-                        <input type="date" id="inputSwbDate" class="n-input">
-                    </div>
-                </div>
-
-                <div class="form-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:32px; margin-top:32px;">
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <label for="inputRoute" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Route (e.g. KSA to PK)</label>
-                        <input type="text" id="inputRoute" class="n-input" placeholder="Origin to Destination">
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <label for="inputShipmentType" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Shipment Type</label>
-                        <select id="inputShipmentType" class="n-input">
-                            <option value="Air Freight">Air Freight</option>
-                            <option value="Sea Freight">Sea Freight</option>
-                            <option value="Land Freight">Land Freight</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div style="height:1px; background:var(--n-border); margin:40px 0;"></div>
-
-                <!-- Section: Master Excel Milestones -->
-                <h3 style="font-size:1.1rem; color:var(--n-gold); margin-bottom:24px;"><i class="fa-solid fa-list-check"></i> Master logistics Milestones</h3>
-                <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:24px;">
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">1. Loaded in Saudi</label><input type="date" id="inputM1" class="n-input"></div>
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">2. Jeddah Port Transit</label><input type="date" id="inputM2" class="n-input"></div>
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">3. Sea Voyage</label><input type="date" id="inputM3" class="n-input"></div>
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">4. Karachi Port Arrival</label><input type="date" id="inputM4" class="n-input"></div>
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">5. Transfer to Lahore</label><input type="date" id="inputM5" class="n-input"></div>
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.7rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">6. Final Delivery</label><input type="date" id="inputM6" class="n-input"></div>
-                </div>
-
-                <div style="height:1px; background:var(--n-border); margin:40px 0;"></div>
-
-                <!-- Section 2: Parties (7-8) -->
-                <div class="form-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:32px;">
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">7. Shipper Name</label><input type="text" id="inputSender" class="n-input"></div>
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">8. Consignee Name</label><input type="text" id="inputReceiver" class="n-input"></div>
-                </div>
-
-                <div class="form-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:32px; margin-top:24px;">
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Shipper Phone</label><input type="text" id="inputSenderPhone" class="n-input" placeholder="+966..."></div>
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Consignee Phone</label><input type="text" id="inputReceiverPhone" class="n-input" placeholder="+966..."></div>
-                </div>
-
-                <div style="height:1px; background:var(--n-border); margin:40px 0;"></div>
-
-                <!-- Section 3: Metrics (9-12) -->
-                <div class="form-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:32px;">
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">9. Orig. Qty</label><input type="number" id="inputOriginalQuantity" class="n-input" value="1"></div>
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">10. Qty</label><input type="number" id="inputQuantity" class="n-input" value="1"></div>
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">11. Orig. Wt. (KG)</label><input type="number" id="inputOriginalWeight" class="n-input" value="0.00"></div>
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">12. Wt. (KG)</label><input type="number" id="inputWeight" class="n-input" value="0.00"></div>
-                </div>
-
-                <div style="height:1px; background:var(--n-border); margin:40px 0;"></div>
-
-                <!-- Section 4: Destination (13-14) -->
-                <div class="form-grid" style="display:grid; grid-template-columns: 1fr 2fr; gap:32px;">
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">13. Consignee City</label><input type="text" id="inputDestination" class="n-input"></div>
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">14. Consingee Address</label><input type="text" id="inputReceiverAddress" class="n-input"></div>
-                </div>
-
-                <div class="form-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:32px; margin-top:24px;">
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Origin Country</label><input type="text" id="inputOriginCountry" class="n-input" placeholder="Saudi Arabia"></div>
-                    <div style="display:flex; flex-direction:column; gap:12px;"><label style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Destination Country</label><input type="text" id="inputDestinationCountry" class="n-input" placeholder="Norway"></div>
-                </div>
-
-                <div style="height:1px; background:var(--n-border); margin:40px 0;"></div>
-
-                <!-- Section 5: Internal Operations -->
-                <div class="form-grid" style="display:grid; grid-template-columns: 1fr 2fr; gap:32px;">
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <label for="inputStatus" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--n-low);">Operational Status</label>
-                        <select id="inputStatus" class="n-input">
-                            <option value="Pending">Pending</option>
-                            <option value="Loaded in Saudi">1. Loaded in Saudi</option>
-                            <option value="Jeddah Port Transit">2. Jeddah Port Transit</option>
-                            <option value="Sea Voyage">3. Sea Voyage</option>
-                            <option value="Karachi Port Arrival">4. Karachi Port Arrival</option>
-                            <option value="Transfer to Lahore">5. Transfer to Lahore</option>
-                            <option value="Final Delivery">6. Final Delivery</option>
-                            <option value="Cancelled">Cancelled</option>
-                        </select>
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <label for="inputNotes" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; color:var(--n-low);">Manifest Notes</label>
-                        <textarea id="inputNotes" class="n-input" placeholder="Logistics notes..." style="height: 44px;"></textarea>
-                    </div>
-                </div>
-
-                <button class="n-btn primary" id="btnRegisterShipment" onclick="window.saveShipment()" style="width:100%; justify-content:center; margin-top:40px; padding:20px; font-size:1rem; border-radius:12px;">
-                    <i class="fa-solid fa-cloud-arrow-up"></i> Sync Shipment Record
+                <button id="btnSaveSwb" class="n-btn primary" onclick="window.saveSwb(event)" style="width:100%; margin-top:32px; padding:18px; font-weight:800; letter-spacing:1px; border-radius:12px;">
+                    <i class="fa-solid fa-save"></i> SYNC SWB RECORD
                 </button>
             </div>
 
-            <!-- Database Table Section -->
+            <!-- SWB Inventory -->
             <div id="databaseSection" class="n-card" hidden>
-                <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+                <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px; flex-wrap:wrap; gap:20px;">
                     <div>
-                        <h2 style="font-size:1.6rem;"><i class="fa-solid fa-database" style="color:var(--n-gold); margin-right:16px;"></i>Shipment Inventory</h2>
-                        <p class="text-muted" style="margin-top:4px;">Full record of global logistics movements.</p>
+                        <h2 style="font-size:1.6rem; color:#fff;"><i class="fa-solid fa-boxes-stacked" style="color:var(--n-gold); margin-right:12px;"></i> SWB Inventory</h2>
+                        <p class="text-muted" style="margin-top:4px;">Master record of all Sea Waybills.</p>
                     </div>
+
+                    <div style="flex: 1; min-width: 300px; max-width: 500px; position: relative;">
+                        <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--n-text-muted);"></i>
+                        <input type="text" id="inventorySearch" class="n-input" placeholder="Search Serial, Customer, or City..." style="padding-left: 45px; border-radius: 12px; height: 50px;">
+                    </div>
+
                     <div style="display:flex; gap:12px;">
-                        <button class="n-btn" id="btnOpenManifestsModal"><i class="fa-solid fa-file-lines"></i> Manifest Files</button>
-                        <button class="n-btn" id="btnOpenImportModal"><i class="fa-solid fa-file-import"></i> Import Manifest</button>
-                        <button class="n-btn" onclick="window.loadDashboard()"><i class="fa-solid fa-sync"></i> Refresh</button>
+                        <input type="file" id="inventoryImportFile" hidden accept=".xlsx, .xls, .csv">
+                        <button class="n-btn" id="btnInventoryImport" onclick="document.getElementById('inventoryImportFile').click()"><i class="fa-solid fa-file-import"></i> IMPORT</button>
+                        <button class="n-btn" onclick="window.exportToExcel()"><i class="fa-solid fa-file-export"></i> EXPORT</button>
+                        <button class="n-btn" onclick="window.loadDashboard()"><i class="fa-solid fa-rotate"></i> REFRESH</button>
                     </div>
                 </header>
-
-                <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:20px; margin-bottom:32px;">
-                    <div style="position:relative;">
-                        <input type="text" id="searchDbInput" class="n-input" placeholder="Search tracking, names, phone..." onkeyup="window.loadDashboard()" style="padding-left:50px;">
-                        <i class="fa-solid fa-search" style="position:absolute; left:20px; top:50%; transform:translateY(-50%); color:var(--n-muted);"></i>
-                    </div>
-                    <select id="filterStatus" class="n-input" onchange="window.loadDashboard()">
-                        <option value="">All Operational Statuses</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Picked Up">Picked Up</option>
-                        <option value="In Transit">In Transit</option>
-                        <option value="Arrived">Arrived</option>
-                        <option value="Out for Delivery">Out for Delivery</option>
-                        <option value="Delivered">Delivered</option>
-                        <option value="Cancelled">Cancelled</option>
-                    </select>
-                    <select id="filterPayment" class="n-input" onchange="window.loadDashboard()">
-                        <option value="">All Payments</option>
-                        <option value="Unpaid">Unpaid</option>
-                        <option value="Paid">Paid</option>
-                        <option value="Partial">Partial</option>
-                    </select>
-                    <select id="filterPageSize" class="n-input" onchange="window.loadDashboard()">
-                        <option value="25">25 records</option>
-                        <option value="50" selected>50 records</option>
-                        <option value="100">100 records</option>
-                    </select>
-                </div>
 
                 <div class="table-container">
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Tracking ID</th>
-                                <th>Route</th>
-                                <th>Shipper</th>
-                                <th>Consignee</th>
-                                <th>M1</th>
-                                <th>M2</th>
-                                <th>M3</th>
-                                <th>M4</th>
-                                <th>M5</th>
-                                <th>M6</th>
-                                <th>Status</th>
+                                <th>SWB Serial No.</th>
+                                <th>Cust. Inv. No.</th>
+                                <th>SWB Date</th>
+                                <th>Customer</th>
+                                <th>Customer Inv. No.</th>
+                                <th>Shipper Name</th>
+                                <th>Consignee Name</th>
+                                <th>Orig. Qty</th>
+                                <th>Orig. Wt.</th>
+                                <th>Consignee City</th>
+                                <th>Consignee Address</th>
                                 <th class="text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="dbTableBody"></tbody>
+                        <tbody id="swbTableBody"></tbody>
                     </table>
                 </div>
+            </div>
 
-                <footer class="pagination-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:32px; padding:20px; background:var(--n-surface); border-radius:12px; flex-wrap:wrap; gap:16px;">
-                    <div id="paginationInfo" style="font-size:0.75rem; color:var(--n-muted); font-weight:800; text-transform:uppercase; letter-spacing:1px;">Showing 0 records</div>
-                    <div style="display:flex; gap:12px;">
-                        <button class="n-btn" id="btnPrevPage" style="padding:8px 20px;">Previous</button>
-                        <button class="n-btn" id="btnNextPage" style="padding:8px 20px;">Next Page</button>
-                    </div>
-                </footer>
+            <!-- User Management -->
+            <div id="enterpriseUsersCard" class="n-card hidden">
+                <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+                    <h2 style="font-size:1.5rem;"><i class="fa-solid fa-user-lock" style="color:var(--n-gold); margin-right:12px;"></i> User Access Control</h2>
+                    <button class="n-btn primary" onclick="window.showUserForm()"><i class="fa-solid fa-user-plus"></i> NEW ACCOUNT</button>
+                </header>
+                <div class="table-container"><table class="table"><thead><tr><th>User Profile</th><th>Role</th><th>Status</th><th class="text-right">Operations</th></tr></thead><tbody id="userTableBody"></tbody></table></div>
             </div>
         </div>
     </main>
 
-    <footer class="app-footer">
-        <strong>NOORANI CARGO SERVICES</strong>
-        <div style="font-size:0.75rem; color:var(--n-muted); margin-top:12px; font-weight:700; text-transform:uppercase; letter-spacing:2px;">WORLDWIDE CARGO SERVICES<br>DOOR TO DOOR</div>
-    </footer>
-
-    <!-- Data Import Modal -->
-    <div id="importDataModal" class="enterprise-modal-backdrop" style="position:fixed; inset:0; z-index:11000; background:rgba(0,0,0,0.9); backdrop-filter:blur(15px); display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:0.4s;">
-        <div class="n-card" style="width:100%; max-width:850px; max-height:90vh; overflow-y:auto; border-color:var(--n-border-accent);">
-            <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:40px;">
-                <div>
-                    <span style="font-size:0.7rem; color:var(--n-gold); text-transform:uppercase; letter-spacing:3px; font-weight:800;">Logistics Utility</span>
-                    <h2 style="margin-top:6px;">Import Data Manifest</h2>
-                </div>
-                <button class="n-btn" onclick="window.closeImportModal()" style="border-radius:50%; width:40px; height:44px; padding:0; justify-content:center; font-size:1.4rem;">&times;</button>
-            </header>
-
-            <div id="importUploadZone" style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:260px; border:2px dashed var(--n-border); border-radius:var(--radius-lg); cursor:pointer; transition:0.3s; background:var(--n-surface);">
-                <div class="kpi-icon" style="width:80px; height:80px; font-size:2rem; margin-bottom:24px;"><i class="fa-solid fa-cloud-arrow-up"></i></div>
-                <h4 style="font-size:1.3rem;">Select manifest or drop file</h4>
-                <p class="text-muted" style="margin-top:10px;">Supports CSV, Excel and PDF logistics manifests</p>
-                <input type="file" id="importFileInput" accept=".csv, .xlsx, .xls, .pdf" hidden>
-            </div>
-
-            <div id="importFileDetails" class="hidden" style="margin-top:32px; padding:24px; background:var(--n-surface); border-radius:16px; border:1px solid var(--n-border); display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <strong id="importFileName" style="color:var(--n-gold); font-size:1.1rem;">filename.xlsx</strong><br>
-                    <small id="importFileSize" class="text-muted" style="font-weight:700; text-transform:uppercase; letter-spacing:1px;">0 KB</small>
-                </div>
-                <button class="n-btn" onclick="window.resetImportModal()" style="border-color:var(--n-danger); color:var(--n-danger);"><i class="fa-solid fa-trash"></i></button>
-            </div>
-
-            <div id="importProgress" class="hidden" style="margin-top:32px;">
-                <div style="height:6px; background:#000; border-radius:10px; overflow:hidden;"><div id="importProgressBar" style="height:100%; width:0%; background:var(--n-gold); transition:width 0.3s; box-shadow:0 0 15px var(--n-gold-glow);"></div></div>
-                <p id="importProgressStatus" class="text-center" style="font-size:0.85rem; color:var(--n-gold); font-weight:800; margin-top:16px; text-transform:uppercase; letter-spacing:1px;">Syncing metrics...</p>
-            </div>
-
-            <div id="importPreviewArea" class="hidden" style="margin-top:32px; max-height:400px; overflow-y:auto; border:1px solid var(--n-border); border-radius:12px; background:var(--n-surface);">
-                <table class="table" style="font-size:0.75rem; white-space:nowrap;">
-                    <thead>
-                        <tr>
-                            <th>Status</th>
-                            <th>Tracking ID</th>
-                            <th>Hub</th>
-                            <th>SWB Serial</th>
-                            <th>Invoice</th>
-                            <th>Date</th>
-                            <th>Shipper</th>
-                            <th>Consignee</th>
-                            <th>Orig Qty</th>
-                            <th>Qty</th>
-                            <th>Orig Wgt</th>
-                            <th>Wgt</th>
-                            <th>Destination</th>
-                            <th>Address</th>
-                        </tr>
-                    </thead>
-                    <tbody id="importPreviewBody"></tbody>
-                </table>
-            </div>
-
-            <footer style="margin-top:40px; padding-top:32px; border-top:1px solid var(--n-border); display:flex; justify-content:space-between; align-items:center;">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <input type="checkbox" id="importUpdateToggle" style="width:20px; height:20px; cursor:pointer; accent-color:var(--n-gold);">
-                    <label for="importUpdateToggle" style="cursor:pointer; font-weight:700; font-size:0.9rem;">Update existing records</label>
-                </div>
-                <div style="display:flex; gap:12px;">
-                    <button class="n-btn" onclick="window.closeImportModal()">Cancel</button>
-                    <button id="btnExecuteImport" class="n-btn primary" disabled onclick="window.executeDataImport()">Process Import</button>
-                </div>
-            </footer>
-        </div>
+    <!-- Modals -->
+    <div id="userFormModal" class="enterprise-modal-backdrop">
+      <div class="n-card" style="width:100%; max-width:440px;">
+        <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+            <h3>Provision Access</h3>
+            <button class="n-btn" onclick="window.closeUserForm()" style="border-radius:50%; width:40px; height:44px; padding:0;">&times;</button>
+        </header>
+        <form id="userEntryForm" style="display:grid; gap:20px;">
+            <div style="display:grid; gap:8px;"><label class="text-muted">Email Address</label><input id="user-email" type="email" class="n-input" required></div>
+            <div style="display:grid; gap:8px;"><label class="text-muted">Secure Password</label><input id="user-pass" type="password" class="n-input" required></div>
+            <div style="display:grid; gap:8px;"><label class="text-muted">Access Level</label><select id="user-role" class="n-input"><option value="admin">Administrator</option><option value="employee">Staff / Agent</option></select></div>
+        </form>
+        <button class="n-btn primary" onclick="window.submitUserForm()" style="width:100%; margin-top:32px;">AUTHORIZE SESSION</button>
+      </div>
     </div>
 
-    <!-- Scripts -->
+    <div id="importModal" class="enterprise-modal-backdrop">
+      <div class="n-card" style="width:100%; max-width:900px; max-height:90vh; overflow-y:auto;">
+        <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+            <h3>Bulk SWB Import</h3>
+            <button class="n-btn" onclick="window.closeImportModal()" style="border-radius:50%; width:40px; height:44px; padding:0;">&times;</button>
+        </header>
+        <div id="importZone" style="border:2px dashed var(--n-border); padding:60px 40px; text-align:center; border-radius:16px; transition:0.2s; cursor:pointer;" onclick="document.getElementById('modalImportFile').click()">
+            <i class="fa-solid fa-cloud-arrow-up" style="font-size:4rem; color:var(--n-gold); margin-bottom:20px;"></i>
+            <h4 id="importStatusTitle" style="font-size:1.2rem; color:#fff;">Select SWB Manifest</h4>
+            <p id="importFileNameDisplay" class="text-muted">Supports Excel (.xlsx, .xls) and CSV files</p>
+            <input type="file" id="modalImportFile" hidden accept=".xlsx, .xls, .csv">
+        </div>
+        <div id="importPreview" class="hidden" style="margin-top:32px;">
+            <h4 style="margin-bottom:16px;">Manifest Data Preview</h4>
+            <div class="table-container" style="max-height:300px; overflow-y:auto;">
+                <table class="table"><thead><tr><th>Serial</th><th>Customer</th><th>Shipper</th></tr></thead><tbody id="importPreviewBody"></tbody></table>
+            </div>
+        </div>
+        <div id="importErrors" class="hidden" style="margin-top:24px; padding:20px; background:rgba(192, 57, 43, 0.1); border:1px solid var(--n-danger); border-radius:8px;">
+            <h5 style="color:var(--n-danger);">Validation Issues Identified</h5>
+            <ul id="importErrorList" style="margin-top:10px; font-size:0.85rem; padding-left:20px; color:#ff9999;"></ul>
+        </div>
+        <footer style="margin-top:40px; display:flex; justify-content:space-between; align-items:center;">
+            <span id="importCount" style="font-weight:700; color:var(--n-gold);">0 records identified</span>
+            <button id="btnExecuteImport" class="n-btn primary" disabled onclick="window.executeImport()">PROCESS PERMANENT IMPORT</button>
+        </footer>
+      </div>
+    </div>
+
     <script src="./ui-utils.js" defer></script>
     <script type="module" src="./firebase.js"></script>
     <script type="module" src="./admin-auth.js"></script>
-    <script type="module" src="./document-import.js"></script>
     <script type="module" src="./enterprise-admin.js"></script>
     <script type="module" src="./admin-multipage.js"></script>
 </body>

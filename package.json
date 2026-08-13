@@ -4,8 +4,7 @@
   "description": "NOORANI CARGO SERVICES | Multi-Site Logistics",
   "scripts": {
     "start": "node server/index.js",
-    "install-server": "cd server && npm install",
-    "build": "npm run install-server",
+    "postinstall": "cd server && npm install",
     "serve-admin": "firebase serve --only hosting:admin",
     "serve-tracking": "firebase serve --only hosting:tracking"
   },
@@ -14,6 +13,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
-    "dotenv": "^17.4.2"
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2"
   }
 }

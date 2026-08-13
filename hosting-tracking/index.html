@@ -3,302 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Track your NOORANI CARGO SERVICES shipments in real-time. Global freight and logistics solutions with fast and secure delivery.">
-    <title>NOORANI CARGO SERVICES — Shipment Tracking</title>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+    <title>NOORANI CARGO — SWB Tracking</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="./core.css">
+    <link rel="stylesheet" href="../hosting-admin/core.css">
 </head>
-<body class="public-website">
-    <!-- Initial Loader -->
-    <div id="nooraniSplashOverlay" class="noorani-splash-screen">
-        <div class="noorani-splash-card">
-            <div class="splash-logo"><i class="fa-solid fa-shipping-fast"></i></div>
-            <h2 class="splash-title">NOORANI CARGO</h2>
-            <p class="splash-tagline">Cargo Tracking</p>
-        </div>
-    </div>
-
-    <div class="container">
-        <header class="header-bar">
-            <div class="header-brand">
-                <div class="brand-emblem"><i class="fa-solid fa-shipping-fast"></i></div>
+<body class="public-website" style="background:#030303; overflow-y:auto;">
+    <div class="container" style="max-width:1200px; margin:0 auto; padding:20px;">
+        <header class="header-bar" style="border-radius:12px; margin-bottom:40px;">
+            <div class="header-brand" style="display:flex; align-items:center; gap:16px;">
+                <div class="logo-icon"><i class="fa-solid fa-shipping-fast"></i></div>
                 <div>
-                    <div class="brand-title">NOORANI CARGO SERVICES</div>
-                    <div class="brand-sub">Shipment Tracking</div>
+                    <h1 style="font-size:1.2rem; color:var(--n-gold); letter-spacing:1px;">NOORANI CARGO</h1>
+                    <p style="font-size:0.65rem; text-transform:uppercase; color:var(--n-text-muted); font-weight:800; letter-spacing:2px;">Public Tracking Center</p>
                 </div>
             </div>
-            <nav class="header-actions">
-                <a class="n-btn primary" href="/" style="border-radius:100px;">
-                    <i class="fa-solid fa-rotate-right"></i> New Tracking Search
-                </a>
-            </nav>
         </header>
 
-        <section class="tracking-header">
-            <h1 style="font-size: clamp(2.5rem, 8vw, 4.5rem);">NOORANI CARGO SERVICES<br>SHIPMENT TRACKING</h1>
-            <p style="color:var(--n-gold); font-weight:800; text-transform:uppercase; letter-spacing:2px; margin-bottom:20px; font-family:var(--font-main);">Global Cargo Tracking</p>
-            <p>Track your shipment with fast, secure and reliable cargo updates.</p>
+        <section class="tracking-header" style="text-align:center; padding:100px 0;">
+            <h1 style="font-size:4rem; color:#fff; letter-spacing:-2px;">TRACK YOUR <span style="color:var(--n-gold);">SWB</span></h1>
+            <p class="text-muted" style="font-size:1.2rem; margin-top:10px;">Instant access to Sea Waybill documentation and cargo details.</p>
         </section>
 
-        <section class="search-container">
-            <div class="tracking-input-group">
-                <input id="trackingInput" type="text" placeholder="Track by ID, SWB No, or Invoice No..." autocomplete="off" autofocus aria-label="Enter Tracking, SWB or Invoice Number">
-                <button id="trackButton" class="btn-track primary">Track Shipment</button>
+        <section class="search-container" style="max-width:700px; margin:0 auto;">
+            <div class="n-card" style="padding:24px; background:#111;">
+                <div style="display:flex; gap:12px;">
+                    <input id="swbInput" type="text" placeholder="Enter SWB Serial Number..." class="n-input" style="font-size:1.2rem; padding:20px;">
+                    <button id="trackButton" class="n-btn primary" style="padding:0 40px; font-weight:800;">SEARCH</button>
+                </div>
+                <p id="statusMsg" style="text-align:center; margin-top:20px; color:var(--n-gold); font-weight:700; text-transform:uppercase; font-size:0.8rem;"></p>
             </div>
-            <p id="statusMsg" style="text-align: center; margin-top: 24px; font-weight: 700; color: var(--n-gold); text-transform: uppercase; letter-spacing: 2px; font-size: 0.85rem;"></p>
         </section>
 
-        <main id="resultArea" hidden>
-            <div class="status-banner">
-                <div>
-                    <span>Operational Status</span>
-                    <strong id="displayStatus">PENDING</strong>
+        <main id="resultArea" hidden style="margin-top:60px;">
+            <div class="info-card n-card" style="max-width:900px; margin:0 auto; padding:60px; background:#0a0a0a; border:1px solid var(--n-border-active);">
+                <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:40px; border-bottom:1px solid var(--n-border); padding-bottom:20px;">
+                    <h2 style="color:var(--n-gold);"><i class="fa-solid fa-file-contract"></i> DOCUMENT DETAILS</h2>
+                    <span id="displaySerial" style="font-family:monospace; font-size:1.5rem; color:#fff;"></span>
+                </header>
+                <div id="swbContent" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:40px;">
+                    <!-- Data will be injected here -->
                 </div>
-                <div style="text-align: right;">
-                    <span>Cargo Identifier</span>
-                    <strong id="displayTracking">NM-000000</strong>
-                </div>
-            </div>
-
-            <div class="info-grid">
-                <div class="info-card">
-                    <h3><i class="fa-solid fa-box-open"></i> Shipment Parameters</h3>
-                    <div class="data-row" id="row-date"><span class="data-label">Booking Date</span><span class="data-value" id="val-date">—</span></div>
-                    <div class="data-row" id="row-route"><span class="data-label">Route</span><span class="data-value" id="val-route">—</span></div>
-                    <div class="data-row" id="row-type"><span class="data-label">Freight Type</span><span class="data-value" id="val-type">—</span></div>
-                    <div class="data-row" id="row-invoice"><span class="data-label">Customer Inv. No.</span><span class="data-value" id="val-invoice">—</span></div>
-                    <div class="data-row" id="row-quantity"><span class="data-label">Total Quantity</span><span class="data-value" id="val-quantity">—</span></div>
-                    <div class="data-row" id="row-weight"><span class="data-label">Net Weight</span><span class="data-value" id="val-weight">—</span></div>
-                    <div class="data-row" id="row-payment"><span class="data-label">Settlement</span><span class="data-value" id="val-payment">—</span></div>
-                </div>
-
-                <div class="info-card">
-                    <h3><i class="fa-solid fa-map-location-dot"></i> Network Routing</h3>
-                    <div class="data-row" id="row-origin-country"><span class="data-label">Origin Country</span><span class="data-value" id="val-origin-country">—</span></div>
-                    <div class="data-row" id="row-dest-country"><span class="data-label">Final Destination</span><span class="data-value" id="val-dest-country">—</span></div>
-                    <div class="data-row" id="row-location"><span class="data-label">Current Hub</span><span class="data-value" id="val-location">—</span></div>
-                </div>
-
-                <div class="info-card">
-                    <h3><i class="fa-solid fa-user-shield"></i> Validated Parties</h3>
-                    <div class="data-row" id="row-sender"><span class="data-label">Shipper Name</span><span class="data-value" id="val-sender">—</span></div>
-                    <div class="data-row" id="row-receiver"><span class="data-label">Consignee Name</span><span class="data-value" id="val-receiver">—</span></div>
-                </div>
-            </div>
-
-            <div class="info-card" style="margin-top: 40px; border-color:var(--n-gold-soft);">
-                <h3><i class="fa-solid fa-clock-rotate-left"></i> Logistics Timeline</h3>
-                <div id="timelineContainer"></div>
             </div>
         </main>
 
-        <div id="notFoundArea" hidden>
-            <div class="info-card" style="text-align: center; border-color: var(--n-danger); background: rgba(239, 68, 68, 0.08);">
-                <i class="fa-solid fa-triangle-exclamation" style="font-size: 3rem; color: var(--n-danger); margin-bottom: 24px;"></i>
-                <h2 style="color: #fff; font-family:var(--font-display);">Manifest Not Found</h2>
-                <p style="color: var(--n-muted); font-size:1.1rem;">We couldn't locate any record matching that tracking identifier. Please verify and try again.</p>
+        <div id="notFoundArea" hidden style="text-align:center; margin-top:60px;">
+            <div class="n-card" style="display:inline-block; padding:60px; border-color:var(--n-danger); background:rgba(192, 57, 43, 0.05);">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size:4rem; color:var(--n-danger); margin-bottom:20px;"></i>
+                <h2 style="color:#fff;">SWB NOT IDENTIFIED</h2>
+                <p class="text-muted" style="font-size:1.1rem;">The system could not locate any record matching that serial number.</p>
             </div>
         </div>
 
-        <section class="company-info-section" style="margin-top:120px; padding-top:100px; border-top:1px solid var(--n-border);">
-            <div class="info-grid">
-                <div class="info-card">
-                    <h3><i class="fa-solid fa-shield-halved"></i> NOORANI CARGO SERVICES</h3>
-                    <p style="color:var(--n-gold-bright); font-weight:800; margin-bottom:20px; font-size:1.1rem;">Global Logistics Assurance</p>
-                    <ul style="list-style:none; padding:0; display:grid; gap:16px;">
-                        <li style="display:flex; align-items:center; gap:12px; color:var(--n-muted);"><i class="fa-solid fa-check-double" style="color:var(--n-gold);"></i> Premium Door-to-Door Logistics</li>
-                        <li style="display:flex; align-items:center; gap:12px; color:var(--n-muted);"><i class="fa-solid fa-check-double" style="color:var(--n-gold);"></i> Secure Air & Maritime Freight</li>
-                        <li style="display:flex; align-items:center; gap:12px; color:var(--n-muted);"><i class="fa-solid fa-check-double" style="color:var(--n-gold);"></i> Intelligent Customs Brokerage</li>
-                        <li style="display:flex; align-items:center; gap:12px; color:var(--n-muted);"><i class="fa-solid fa-check-double" style="color:var(--n-gold);"></i> 24/7 Global Support Network</li>
-                    </ul>
-                </div>
-
-                <div class="info-card">
-                    <h3><i class="fa-solid fa-gears"></i> Hub Status</h3>
-                    <div class="data-row"><span class="data-label">Operational Hours</span><span class="data-value">09:00 – 23:00 AST</span></div>
-                    <div class="data-row"><span class="data-label">Global Coverage</span><span class="data-value">Active</span></div>
-                    <p style="font-size:0.95rem; margin-top:32px; color:var(--n-muted); line-height:1.8;">Sahafa Street, Aziziyah District<br>Jeddah, Kingdom of Saudi Arabia</p>
-                </div>
-
-                <div class="info-card">
-                    <h3><i class="fa-solid fa-headset"></i> Support Concierge</h3>
-                    <div class="branch-list" style="display:grid; gap:24px;">
-                        <div class="branch-item">
-                            <strong style="color:#fff; display:block; margin-bottom:8px;">Regional Hub Support</strong>
-                            <a href="tel:0544897842" style="color:var(--n-gold); font-weight:800;">+966 54 489 7842</a>
-                        </div>
-                        <div class="branch-item">
-                            <strong style="color:#fff; display:block; margin-bottom:8px;">Operations Center</strong>
-                            <a href="tel:0596088919" style="color:var(--n-gold); font-weight:800;">+966 59 608 8919</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <footer class="app-footer">
-            <strong>NOORANI CARGO SERVICES</strong>
-            <p>WORLDWIDE CARGO SERVICES<br>DOOR TO DOOR</p>
+        <footer style="text-align:center; margin-top:120px; padding:60px; border-top:1px solid var(--n-border); color:var(--n-text-muted);">
+            <strong style="color:var(--n-gold); letter-spacing:4px;">NOORANI CARGO SERVICES</strong>
+            <p style="font-size:0.75rem; margin-top:10px; text-transform:uppercase; font-weight:700;">Worldwide Logistics Assurance</p>
         </footer>
     </div>
 
     <script type="module">
-        import { getShipmentByTracking, watchPublicShipment, getTimelineForShipment } from './firebase.js';
+        import { getSwbBySerial } from './firebase.js';
 
-        let stopListener = () => {};
         const $id = id => document.getElementById(id);
 
-        const milestones = [
-            { id: 'milestone1', label: '1. Loaded in Saudi' },
-            { id: 'milestone2', label: '2. Jeddah Port Transit' },
-            { id: 'milestone3', label: '3. Sea Voyage' },
-            { id: 'milestone4', label: '4. Karachi Port Arrival' },
-            { id: 'milestone5', label: '5. Transfer to Lahore' },
-            { id: 'milestone6', label: '6. Final Delivery' }
-        ];
-
-        function renderTimeline(currentStatus, timelineData, shipment) {
-            const container = $id('timelineContainer');
-            if (!container) return;
-
-            const formatDateStr = (v) => {
-                if (!v || v === 'Pending') return 'PENDING';
-                try {
-                    const d = new Date(v);
-                    if (isNaN(d.getTime())) return 'PENDING';
-                    return d.toISOString().split('T')[0];
-                } catch (e) { return 'PENDING'; }
-            };
-
-            container.innerHTML = `<div class="timeline-wrapper">
-                ${milestones.map((m, i) => {
-                    const mDateVal = shipment[m.id];
-                    const isActive = !!mDateVal;
-                    const mDate = formatDateStr(mDateVal);
-                    const dateDisplay = (mDate === 'PENDING') ? 'PENDING' : `DATE: ${mDate}`;
-
-                    return `
-                        <div class="timeline-item ${isActive ? 'active' : ''}">
-                            <div class="timeline-marker">${isActive ? '<i class="fa-solid fa-check" style="font-size:0.8rem;"></i>' : ''}</div>
-                            <div class="timeline-content">
-                                <h4>${m.label}</h4>
-                                <p style="color:var(--n-gold); font-weight:800; font-size:0.9rem; margin-top:4px; letter-spacing:1px;">${dateDisplay}</p>
-                            </div>
-                        </div>`;
-                }).join('')}
-            </div>`;
-        }
-
-        async function updateUI(s) {
-            $id('displayStatus').textContent = s.status || 'Active';
-            $id('displayTracking').textContent = s.ref || s.trackingId || s.trackingid;
-
-            const fields = [
-                { id: 'date', val: s.date },
-                { id: 'route', val: s.route },
-                { id: 'type', val: s.shipmentType },
-                { id: 'invoice', val: s.customerInvoice },
-                { id: 'quantity', val: s.quantity ? s.quantity + ' PCS' : null },
-                { id: 'weight', val: s.weight ? s.weight + ' KG' : null },
-                { id: 'payment', val: s.paymentStatus },
-                { id: 'origin-country', val: s.originCountry },
-                { id: 'dest-country', val: s.destinationCountry },
-                { id: 'location', val: s.currentLocation || s.origin },
-                { id: 'sender', val: s.sender },
-                { id: 'receiver', val: s.receiver }
-            ];
-
-            fields.forEach(f => {
-                const row = $id('row-' + f.id);
-                const val = $id('val-' + f.id);
-                if (row && val) {
-                    if (f.val) {
-                        val.textContent = f.val;
-                        row.hidden = false;
-                        row.style.display = 'flex';
-                    } else {
-                        row.hidden = true;
-                        row.style.display = 'none';
-                    }
-                }
-            });
-
-            try {
-                const timeline = await getTimelineForShipment(s.trackingId || s.trackingid);
-                renderTimeline(s.status, timeline, s);
-            } catch (e) {
-                renderTimeline(s.status, [], s);
-            }
-
-            $id('notFoundArea').hidden = true;
-            $id('resultArea').hidden = false;
-            $id('resultArea').style.display = 'block';
-        }
-
         async function performTrack() {
-            const code = $id('trackingInput').value.trim().toUpperCase();
-            stopListener();
-            $id('statusMsg').textContent = '';
+            const id = $id('swbInput').value.trim().toUpperCase();
+            if (!id) return;
+
+            $id('statusMsg').textContent = 'ESTABLISHING SECURE CONNECTION...';
             $id('resultArea').hidden = true;
-            $id('resultArea').style.display = 'none';
             $id('notFoundArea').hidden = true;
 
-            if (!code) {
-                $id('statusMsg').textContent = 'Tracking ID Required';
-                $id('statusMsg').style.color = 'var(--n-danger)';
-                return;
-            }
-
-            $id('statusMsg').textContent = 'Establishing Secure Connection...';
-
             try {
-                const res = await getShipmentByTracking(code);
-                if (res && res.data && res.data.public) {
-                    $id('statusMsg').textContent = '';
-                    updateUI(res.data);
-                    const resolvedId = res.trackingId || res.data.trackingId || code;
-                    stopListener = watchPublicShipment(resolvedId, (snap) => {
-                        if (snap && snap.data && snap.data.public) {
-                            $id('displayStatus').textContent = snap.data.status || 'Active';
-                            $id('displayTracking').textContent = snap.data.ref || snap.data.trackingId;
-                            renderTimeline(snap.data.status, snap.timeline || [], snap.data);
-                        }
-                    });
+                const res = await getSwbBySerial(id);
+                $id('statusMsg').textContent = '';
+
+                if (res && res.data) {
+                    const d = res.data;
+                    $id('displaySerial').textContent = d.swbSerial;
+
+                    const fields = [
+                        { l: 'Cust. Inv. No.', v: d.custInvNo, icon: 'fa-hashtag' },
+                        { l: 'SWB Date', v: d.swbDate, icon: 'fa-calendar-days' },
+                        { l: 'Customer', v: d.customer, icon: 'fa-user-tie' },
+                        { l: 'Customer Inv. No.', v: d.customerInvNo, icon: 'fa-receipt' },
+                        { l: 'Shipper Name', v: d.shipperName, icon: 'fa-truck-ramp-box' },
+                        { l: 'Consignee Name', v: d.consigneeName, icon: 'fa-box-open' },
+                        { l: 'Orig. Qty', v: d.origQty, icon: 'fa-cubes' },
+                        { l: 'Orig. Wt.', v: d.origWt, icon: 'fa-weight-hanging' },
+                        { l: 'Consignee City', v: d.consigneeCity, icon: 'fa-city' },
+                        { l: 'Consignee Address', v: d.consigneeAddress, icon: 'fa-map-location-dot' }
+                    ];
+
+                    $id('swbContent').innerHTML = fields.map(f => `
+                        <div style="display:grid; gap:12px; padding:20px; background:rgba(255,255,255,0.02); border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                            <div style="display:flex; align-items:center; gap:10px; color:var(--n-gold);">
+                                <i class="fa-solid ${f.icon}" style="font-size:0.9rem;"></i>
+                                <span style="font-size:0.7rem; text-transform:uppercase; font-weight:800; letter-spacing:1px;">${f.l}</span>
+                            </div>
+                            <strong style="font-size:1.15rem; color:#fff; display:block;">${f.v || '—'}</strong>
+                        </div>
+                    `).join('');
+
+                    $id('resultArea').hidden = false;
+                    $id('resultArea').scrollIntoView({ behavior: 'smooth' });
                 } else {
-                    $id('statusMsg').textContent = '';
                     $id('notFoundArea').hidden = false;
                 }
             } catch (err) {
-                $id('statusMsg').textContent = 'API Connection Error';
-                $id('statusMsg').style.color = 'var(--n-danger)';
+                $id('statusMsg').textContent = 'DATABASE OFFLINE: PLEASE CONTACT NOORANI SUPPORT';
             }
         }
 
         $id('trackButton').onclick = performTrack;
-        $id('trackingInput').onkeydown = e => { if (e.key === 'Enter') performTrack(); };
-
-        // Handle URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('tracking')) {
-            $id('trackingInput').value = urlParams.get('tracking');
-            performTrack();
-        }
-
-        // Splash screen management
-        window.addEventListener('load', () => {
-            const splash = $id('nooraniSplashOverlay');
-            if (splash) {
-                setTimeout(() => {
-                    splash.style.opacity = '0';
-                    splash.style.transition = 'opacity 0.8s ease';
-                    setTimeout(() => splash.style.display = 'none', 800);
-                }, 1000);
-            }
-        });
+        $id('swbInput').onkeydown = e => { if (e.key === 'Enter') performTrack(); };
     </script>
 </body>
 </html>
