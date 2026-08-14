@@ -1,13 +1,15 @@
 {
-  "name": "noorani-cargo-enterprise-v2",
-  "version": "2.3.9",
-  "description": "NOORANI CARGO SERVICES | Professional Enterprise SWB System",
+  "name": "noorani-cargo-tracking-enterprise",
+  "version": "2.9.0",
+  "description": "NOORANI CARGO SERVICES | Professional Global Logistics & Tracking System",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "echo 'Deploying Noorani Cargo API...'",
+    "dev": "nodemon index.js",
+    "build": "echo 'Deploying Noorani Cargo Enterprise API...'",
     "serve-admin": "firebase serve --only hosting:admin",
-    "serve-tracking": "firebase serve --only hosting:tracking"
+    "serve-tracking": "firebase serve --only hosting:tracking",
+    "test-api": "node .artifacts/5a3c318c-de55-488b-918f-7c37604ac2b1/scratch/test_actual_api.js"
   },
   "engines": {
     "node": ">=18.0.0"
