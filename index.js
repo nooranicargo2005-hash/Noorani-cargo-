@@ -120,13 +120,79 @@ const SHIPMENTS_WHITELIST = [
   'created_at', 'updated_at'
 ];
 
+let tableSchemas = { swbs: [], shipments: [], manifests: [], manifest_files: [] };
+
+async function discoverSchema() {
+  if (IS_DEMO || !supabase) return;
+  const tables = ['swbs', 'shipments', 'manifests', 'manifest_files', 'status_history', 'users'];
+  for (const table of tables) {
+    try {
+      // PostgREST trick: select one row, then check keys.
+      // If empty, we can try to probe via an error by selecting a non-existent column? No.
+      // Better: Use a view or information_schema if possible, but Supabase JS restricts this.
+      // Final fallback: try to select ALL known fields and see which ones fail? Too many requests.
+
+      // Let's try to get ONE row to see columns.
+      const { data, error } = await supabase.from(table).select("*").limit(1);
+      if (!error && data && data[0]) {
+        tableSchemas[table] = Object.keys(data[0]);
+        console.log(`[Schema] Discovered ${table}:`, tableSchemas[table]);
+      } else {
+        // If empty, we don't know columns. We'll have to be defensive.
+        console.log(`[Schema] ${table} is empty, using defensive defaults.`);
+      }
+    } catch (e) {
+      console.warn(`[Schema] Discovery failed for ${table}:`, e.message);
+    }
+  }
+}
+
+// Run discovery on start and periodically
+setTimeout(discoverSchema, 5000);
+setInterval(discoverSchema, 300000);
+
+/**
+ * Attempts a Supabase operation. If it fails due to a missing column,
+ * it re-maps and retries. This handles out-of-sync database schemas.
+ */
+async function selfHealingUpsert(table, records, onConflict) {
+  try {
+    const { data, error } = await supabase.from(table).upsert(records, { onConflict }).select("swbSerial");
+    if (error) {
+      if (error.message.includes("column") && error.message.includes("not found")) {
+        const match = error.message.match(/find the '(.*?)' column/);
+        if (match && match[1]) {
+          const col = match[1];
+          console.warn(`[Self-Heal] Column ${col} missing from ${table}. Retrying without it.`);
+          const reMapped = records.map(r => {
+            const clean = { ...r };
+            delete clean[col];
+            return clean;
+          });
+          return selfHealingUpsert(table, reMapped, onConflict);
+        }
+      }
+      throw error;
+    }
+    return { data, success: true };
+  } catch (e) {
+    console.error(`[Self-Heal] Failure for ${table}:`, e.message);
+    return { error: e.message, success: false };
+  }
+}
+
 /**
  * Standardizes record for Supabase based on the active table schema.
  * Handles legacy 'swbs' vs modern 'shipments' column names.
- * PERFORMS STRICT WHITELIST FILTERING.
+ * DYNAMICALLY FILTERS BASED ON DISCOVERED SCHEMA OR DEFENSIVE WHITELISTS.
  */
-function mapToTableSchema(item, isLegacy) {
-  const whitelist = isLegacy ? SWBS_WHITELIST : SHIPMENTS_WHITELIST;
+function mapToTableSchema(item, isLegacy, table) {
+  const discovered = tableSchemas[table] || [];
+  const hardWhitelists = {
+    swbs: SWBS_WHITELIST,
+    shipments: SHIPMENTS_WHITELIST
+  };
+  const whitelist = discovered.length > 0 ? discovered : (hardWhitelists[table] || []);
 
   const rawRecord = {
     swbSerial: String(item.swbSerial || "").trim(),
@@ -156,17 +222,15 @@ function mapToTableSchema(item, isLegacy) {
   };
 
   if (isLegacy) {
-    // Legacy 'swbs' table mapping
     rawRecord.consignee = item.consigneeName || item.consignee;
     rawRecord.destination = item.destination || item.consigneeCity;
   } else {
-    // Modern 'shipments' table mapping
     rawRecord.consigneeName = item.consigneeName;
     rawRecord.consigneeCity = item.consigneeCity;
     rawRecord.destination = item.destination;
   }
 
-  // Strict whitelist filtering
+  // Strict filtering: ONLY include keys that exist in the database (discovered or whitelist)
   const filteredRecord = {};
   whitelist.forEach(key => {
     if (rawRecord[key] !== undefined && rawRecord[key] !== null) {
@@ -203,12 +267,24 @@ app.get("/api/health", requireSupabase, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-app.get("/api/debug-schema", requireSupabase, async (req, res) => {
+app.post("/api/admin/initialize-db", requireSupabase, async (req, res) => {
   try {
-    const table = await getActiveTable();
-    const { data, error } = await supabase.from(table).select("*").limit(1);
-    if (error) throw error;
-    res.json({ success: true, table, columns: data && data[0] ? Object.keys(data[0]) : "No data to probe columns" });
+    const sql = `
+      -- Attempt to create shipments if missing
+      CREATE TABLE IF NOT EXISTS shipments (
+          "swbSerial" TEXT PRIMARY KEY,
+          "consigneeName" TEXT,
+          "consigneeCity" TEXT,
+          "status" TEXT DEFAULT 'Created',
+          "created_at" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      -- Add missing columns to swbs if legacy
+      ALTER TABLE swbs ADD COLUMN IF NOT EXISTS "consignee" TEXT;
+      ALTER TABLE swbs ADD COLUMN IF NOT EXISTS "destination" TEXT;
+    `;
+    // Note: Supabase JS cannot run raw SQL easily without a custom RPC.
+    // We will attempt to probe and report.
+    res.json({ success: false, message: "Manual SQL execution required in Supabase Editor. Use supabase_init.sql." });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -277,13 +353,13 @@ app.post("/api/shipments/:serial", requireSupabase, async (req, res) => {
     const table = await getActiveTable();
     const isLegacy = table === 'swbs';
 
-    const record = mapToTableSchema(req.body, isLegacy);
+    const record = mapToTableSchema(req.body, isLegacy, table);
     if (serial) record.swbSerial = serial;
     record.updated_at = new Date().toISOString();
 
     const { data: existing } = await supabase.from(table).select("status").eq("swbSerial", serial).maybeSingle();
-    const { data, error } = await supabase.from(table).upsert(record).select("swbSerial").single();
-    if (error) throw error;
+    const { success, data, error } = await selfHealingUpsert(table, [record], 'swbSerial');
+    if (!success) throw new Error(error);
 
     if (!existing || existing.status !== record.status) {
       await supabase.from("status_history").insert({
@@ -317,7 +393,7 @@ app.post("/api/shipments/bulk/import", requireSupabase, async (req, res) => {
 
     const records = items
       .filter(i => i.swbSerial)
-      .map(item => mapToTableSchema(item, isLegacy));
+      .map(item => mapToTableSchema(item, isLegacy, table));
 
     if (records.length === 0) return res.json({ success: true, count: 0 });
 
@@ -325,8 +401,8 @@ app.post("/api/shipments/bulk/import", requireSupabase, async (req, res) => {
       return res.json({ success: true, count: records.length, message: "Demo mode: Records simulated." });
     }
 
-    const { data, error } = await supabase.from(table).upsert(records, { onConflict: 'swbSerial' }).select("swbSerial");
-    if (error) throw error;
+    const { success, data, error } = await selfHealingUpsert(table, records, 'swbSerial');
+    if (!success) throw new Error(error);
     res.json({ success: true, count: data?.length || 0 });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
