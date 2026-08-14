@@ -181,7 +181,7 @@ async function selfHealingUpsert(table, records, onConflict, depth = 0) {
     return { data, success: true };
   } catch (e) {
     console.error(`[Self-Heal] Final Failure for ${table}:`, e.message);
-    return { error: e.message, success: false };
+    return { error: e.message, success: false, lastError: e.message, depth };
   }
 }
 
