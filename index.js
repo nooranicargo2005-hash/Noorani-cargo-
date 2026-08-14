@@ -159,24 +159,26 @@ async function selfHealingUpsert(table, records, onConflict) {
   try {
     const { data, error } = await supabase.from(table).upsert(records, { onConflict }).select("swbSerial");
     if (error) {
-      if (error.message.includes("column") && error.message.includes("not found")) {
-        const match = error.message.match(/find the '(.*?)' column/);
-        if (match && match[1]) {
-          const col = match[1];
-          console.warn(`[Self-Heal] Column ${col} missing from ${table}. Retrying without it.`);
-          const reMapped = records.map(r => {
-            const clean = { ...r };
-            delete clean[col];
-            return clean;
-          });
-          return selfHealingUpsert(table, reMapped, onConflict);
-        }
+      console.log(`[Self-Heal] DB Error for ${table}:`, error.message);
+
+      // Match column error: "Could not find the 'column_name' column..."
+      const colMatch = error.message.match(/find the '(.*?)' column/i) || error.message.match(/column "(.*?)"/i);
+
+      if (colMatch && colMatch[1]) {
+        const col = colMatch[1];
+        console.warn(`[Self-Heal] Column ${col} missing from ${table}. Stripping and retrying...`);
+        const reMapped = records.map(r => {
+          const clean = { ...r };
+          delete clean[col];
+          return clean;
+        });
+        return selfHealingUpsert(table, reMapped, onConflict);
       }
       throw error;
     }
     return { data, success: true };
   } catch (e) {
-    console.error(`[Self-Heal] Failure for ${table}:`, e.message);
+    console.error(`[Self-Heal] Final Failure for ${table}:`, e.message);
     return { error: e.message, success: false };
   }
 }
