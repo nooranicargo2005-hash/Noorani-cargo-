@@ -3,28 +3,28 @@ import * as perms from './permissions.js';
 
 /**
  * Noorani Cargo Enterprise | Robust API Bridge
+ * Version: 2.9.0
  */
 
 const getApiBase = () => {
-    // Check URL parameters for explicit override
+    // 1. Manual override
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('api')) return urlParams.get('api');
 
     const h = window.location.hostname;
-    const isLocal = ['localhost', '127.0.0.1', '::1'].includes(h);
+    const isLocal = ['localhost', '127.0.0.1', '::1', '0.0.0.0'].includes(h) || h.startsWith('192.168.') || h.startsWith('10.');
 
-    // If local, try to use the current hostname but port 10000 (Primary) or 3000 (Legacy)
-    if (isLocal) {
-        // We prioritize 10000 as it's the root server port
-        return `http://${h}:10000/api`;
+    // 2. Production detection
+    if (!isLocal || h.includes('firebaseapp.com') || h.includes('web.app')) {
+        return 'https://noorani-cargo-api.onrender.com/api';
     }
 
-    // Production Endpoint
-    return 'https://noorani-cargo-api.onrender.com/api';
+    // 3. Local fallback (Primary port 10000)
+    return `http://${h || 'localhost'}:10000/api`;
 };
 
 const API_BASE = getApiBase();
-console.log(`%c[Noorani System] Connectivity Node: ${API_BASE}`, 'background: #111; color: #d4af37; font-weight: bold; padding: 4px;');
+console.log(`%c[Noorani System] Gateway: ${API_BASE}`, 'background: #111; color: #d4af37; font-weight: bold; padding: 4px;');
 
 let firebaseApp = null;
 let firebaseAuth = null;
@@ -49,8 +49,8 @@ async function getAuthInstance() {
         }
         return firebaseAuth;
     } catch (err) {
-        console.error('[Firebase] Connection Failed', err);
-        throw new Error('Firebase Security Shield Active: Unable to verify credentials.');
+        console.error('[Firebase] Init Failed', err);
+        throw new Error('Security Shield Error: Authentication service unavailable.');
     }
 }
 
@@ -64,25 +64,19 @@ async function apiFetch(endpoint, options = {}) {
             headers: { 'Content-Type': 'application/json' }
         }, options));
 
-        if (!response.ok) {
-            let errorText = `HTTP Error ${response.status}`;
-            try {
-                const body = await response.json();
-                errorText = body.error || errorText;
-            } catch(e){}
-            throw new Error(errorText);
-        }
-        return await response.json();
-    } catch (err) {
-        console.error(`%c[Connectivity Failure] ${endpoint}`, 'color: #ff4444; font-weight: bold;', err);
+        const body = await response.json().catch(() => ({}));
 
-        // Detailed troubleshooting for the user
-        if (err.message.includes('Failed to fetch') || err.message === 'API Unreachable') {
-            const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-            const msg = isLocal
-                ? 'CRITICAL: Local API server is not running. Please open a terminal in the "server" directory and run: npm start'
-                : 'CRITICAL: Production API endpoint is unreachable. Please check server logs on Render.';
+        if (!response.ok) {
+            // Extract the most descriptive error message possible
+            let msg = body.message || body.error || `HTTP ${response.status}`;
+            if (response.status === 404) msg = `Endpoint not found at ${url}. Check API deployment.`;
             throw new Error(msg);
+        }
+        return body;
+    } catch (err) {
+        console.error(`%c[Gateway Failure] ${endpoint}`, 'color: #ff4444; font-weight: bold;', err);
+        if (err.message.includes('Failed to fetch')) {
+             throw new Error(`API Offline: Unable to reach ${API_BASE}. Ensure backend is active.`);
         }
         throw err;
     }
@@ -94,6 +88,8 @@ export const nooraniDb = {
         if (authInitialized) resolve(true);
         else { getAuthInstance().then(() => authReadyQueue.push(() => resolve(true))).catch(() => resolve(false)); }
     }),
+
+    // Auth
     signInAdmin: async (e, p) => {
         const auth = await getAuthInstance();
         const { signInWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
@@ -120,24 +116,39 @@ export const nooraniDb = {
     },
     profileHasPermission: perms.profileHasPermission,
     roleLabel: perms.roleLabel,
-    saveSwb: (id, data) => apiFetch(`/swbs/${id}`, { method: 'POST', body: JSON.stringify(data) }),
-    deleteSwb: (id) => apiFetch(`/swbs/${id}`, { method: 'DELETE' }),
-    getSwbBySerial: (id) => apiFetch(`/swbs/${id}`),
-    getSwbHistory: (id) => apiFetch(`/swbs/${id}/history`),
-    bulkUpdateStatus: (ids, status, remarks) => apiFetch('/swbs/bulk/status', {
+
+    // Core Shipments
+    saveShipment: (id, data) => apiFetch(`/shipments/${id}`, { method: 'POST', body: JSON.stringify(data) }),
+    deleteShipment: (id) => apiFetch(`/shipments/${id}`, { method: 'DELETE' }),
+    getShipmentBySerial: (id) => apiFetch(`/shipments/${id}`),
+    getShipmentHistory: (id) => apiFetch(`/shipments/${id}/history`),
+    bulkImportShipments: (items) => apiFetch('/shipments/bulk/import', {
+        method: 'POST',
+        body: JSON.stringify({ items })
+    }),
+    bulkUpdateStatus: (ids, status, remarks) => apiFetch('/shipments/bulk/status', {
         method: 'POST',
         body: JSON.stringify({ ids, status, remarks, actorEmail: window.nooraniAdminUser?.email })
     }),
-    querySwbs: (o = {}) => {
-        const params = new URLSearchParams(o).toString();
-        return apiFetch(`/swbs${params ? `?${params}` : ''}`);
+    queryShipments: (o = {}) => {
+        // Clean filters to avoid empty param pollution
+        const clean = {};
+        for(const [k,v] of Object.entries(o)) { if(v !== '' && v !== null && v !== undefined) clean[k] = v; }
+        const params = new URLSearchParams(clean).toString();
+        return apiFetch(`/shipments${params ? `?${params}` : ''}`);
     },
-    getDashboardStats: () => apiFetch('/stats/dashboard'),
+
+    // Legacy Support
+    saveSwb: (id, data) => apiFetch(`/shipments/${id}`, { method: 'POST', body: JSON.stringify(data) }),
+    getSwbBySerial: (id) => apiFetch(`/shipments/${id}`),
+
+    // Extensions
+    getManifests: () => apiFetch('/manifests'),
+    saveManifest: (d) => apiFetch('/manifests', { method: 'POST', body: JSON.stringify(d) }),
     getUserAccounts: () => apiFetch('/users'),
     saveUserAccount: (d) => apiFetch('/users', { method: 'POST', body: JSON.stringify(d) }),
     deleteUserAccount: (id) => apiFetch(`/users/${id}`, { method: 'DELETE' }),
-    getManifests: () => apiFetch('/manifests'),
-    saveManifest: (d) => apiFetch('/manifests', { method: 'POST', body: JSON.stringify(d) })
+    getDashboardStats: () => apiFetch('/stats/dashboard')
 };
 
 getAuthInstance().catch(console.error);

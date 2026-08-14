@@ -222,6 +222,46 @@ app.delete("/api/shipments/:serial", requireSupabase, async (req, res) => {
 });
 
 // 4. Bulk Updates
+app.post("/api/shipments/bulk/import", requireSupabase, async (req, res) => {
+  try {
+    const { items } = req.body || {};
+    if (!items || !Array.isArray(items)) return res.status(400).json({ success: false, error: "Invalid bulk data" });
+    const table = await getActiveTable();
+    const records = items.filter(i => i.swbSerial).map(item => cleanObject({
+      swbSerial: String(item.swbSerial).trim(),
+      custInvNo: item.custInvNo,
+      swbDate: item.swbDate,
+      customer: item.customer,
+      shipperName: item.shipperName,
+      shipperPhone: item.shipperPhone,
+      shipperAddress: item.shipperAddress,
+      consigneeName: item.consigneeName,
+      consigneePhone: item.consigneePhone,
+      consigneeCity: item.consigneeCity,
+      consigneeAddress: item.consigneeAddress,
+      origin: item.origin,
+      destination: item.destination,
+      status: item.status || "Created",
+      manifestNo: item.manifestNo,
+      notes: item.notes,
+      origQty: parseInt(item.origQty) || 0,
+      origWt: parseFloat(item.origWt) || 0,
+      type: item.type || "SWB",
+      updated_at: new Date().toISOString()
+    }));
+
+    if (records.length === 0) return res.json({ success: true, count: 0 });
+
+    if (IS_DEMO) {
+      return res.json({ success: true, count: records.length, message: "Demo mode: Records simulated." });
+    }
+
+    const { data, error } = await supabase.from(table).upsert(records, { onConflict: 'swbSerial' }).select("swbSerial");
+    if (error) throw error;
+    res.json({ success: true, count: data?.length || 0 });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 app.post("/api/shipments/bulk/status", requireSupabase, async (req, res) => {
   try {
     const { ids, status, remarks, actorEmail } = req.body || {};
