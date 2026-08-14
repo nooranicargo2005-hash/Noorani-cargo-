@@ -1,5 +1,6 @@
 /**
- * Noorani Cargo | Public SWB Tracking API Bridge
+ * Noorani Cargo | Public Tracking API Bridge
+ * Standardized: 2026-08-14
  */
 
 const getApiBase = () => {
@@ -11,30 +12,45 @@ const getApiBase = () => {
 
 const API_BASE = getApiBase();
 
+/**
+ * Generic fetch wrapper for public tracking calls.
+ */
 async function apiFetch(endpoint) {
     const cleanBase = API_BASE.replace(/\/+$/, '');
     const cleanEndpoint = endpoint.replace(/^\/+/, '');
     const url = `${cleanBase}/${cleanEndpoint}`;
 
     const response = await fetch(url);
-    if (!response.ok) throw new Error('API Request failed');
+    if (!response.ok) throw new Error('Tracking service unavailable');
     return response.json();
 }
 
-export async function getSwbBySerial(id) {
+/**
+ * Retrieves a shipment record for public tracking.
+ */
+export async function getShipmentBySerial(id) {
     try {
-        return await apiFetch(`/swbs/${id}`);
+        const res = await apiFetch(`/tracking/${id}`);
+        return res;
     } catch (e) {
         return null;
     }
 }
 
-export async function getSwbHistory(id) {
+/**
+ * Retrieves shipment history for public tracking.
+ */
+export async function getShipmentHistory(id) {
     try {
-        return await apiFetch(`/swbs/${id}/history`);
+        const res = await apiFetch(`/tracking/${id}`);
+        return res.history || [];
     } catch (e) {
         return [];
     }
 }
 
-window.nooraniDb = { getSwbBySerial, getSwbHistory };
+// Legacy Aliases for compatibility
+export const getSwbBySerial = getShipmentBySerial;
+export const getSwbHistory = getShipmentHistory;
+
+window.nooraniTracking = { getShipmentBySerial, getShipmentHistory };

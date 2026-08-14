@@ -1,10 +1,13 @@
 /**
- * Noorani Cargo Enterprise | Multi-Page SWB Engine
+ * Noorani Cargo Enterprise | Multi-Page Engine
+ * Handles client-side routing and UI structure injection.
+ * Updated: 2026-08-14
  */
 
 (function () {
   'use strict';
 
+  // Configuration for each view in the admin panel
   const pageConfigs = {
     'dashboard': { navKey: 'dashboard', title: 'Dashboard', showRegisterSwb: false, showDatabase: false, enterpriseCards: [] },
     'create-swb': { navKey: 'create-swb', title: 'Shipment Registration', showRegisterSwb: true, showDatabase: false, enterpriseCards: [] },
@@ -13,18 +16,34 @@
     'user-management': { navKey: 'user-management', title: 'User Access', showRegisterSwb: false, showDatabase: false, enterpriseCards: ['enterpriseUsersCard'] }
   };
 
+  /**
+   * Helper to get the current page name from URL query parameters.
+   */
   function getPageName() {
     const p = new URLSearchParams(window.location.search).get('page');
     return (p && pageConfigs[p]) ? p : 'dashboard';
   }
 
   function $id(i) { return document.getElementById(i); }
-  function setVisible(e, v) { if (e) { e.hidden = !v; e.style.display = v ? '' : 'none'; } }
 
+  /**
+   * Helper to toggle element visibility.
+   */
+  function setVisible(e, v) {
+    if (e) {
+        e.hidden = !v;
+        e.style.display = v ? '' : 'none';
+    }
+  }
+
+  /**
+   * Injects the Dashboard KPI and Activity cards if they don't exist.
+   */
   function ensureDashboardExperience() {
     let dashboard = $id('premiumDashboardExperience');
     const mainContent = $id('dashboardMainContent');
     if (dashboard || !mainContent) return dashboard;
+
     dashboard = document.createElement('section');
     dashboard.id = 'premiumDashboardExperience';
     dashboard.innerHTML = `
@@ -42,7 +61,7 @@
         <article class="kpi-card n-card" style="padding:20px !important;">
             <div style="color:var(--n-gold); font-size:1.5rem;"><i class="fa-solid fa-boxes-stacked"></i></div>
             <div style="margin-top:12px;">
-                <span class="text-muted small block">MASTER SWB</span>
+                <span class="text-muted small block">TOTAL SHIPMENTS</span>
                 <strong id="stat-total-swbs" style="font-size:1.8rem; color:#fff;">0</strong>
             </div>
         </article>
@@ -105,12 +124,17 @@
     return dashboard;
   }
 
+  /**
+   * Reorganizes the DOM into the enterprise layout shell.
+   */
   function buildEnterpriseStructure() {
     if ($id('enterpriseAppShell')) return;
     const header = $id('appHeader');
     const sidebar = $id('adminSidebar');
     const adminMain = document.querySelector('.admin-main');
     if (!header || !sidebar || !adminMain) return;
+
+    const modals = Array.from(document.querySelectorAll('.enterprise-modal-backdrop'));
 
     const shell = document.createElement('div');
     shell.id = 'enterpriseAppShell';
@@ -127,11 +151,16 @@
     setVisible(sidebar, true);
     main.appendChild(header);
     main.appendChild(adminMain);
+
+    modals.forEach(m => main.appendChild(m));
     setVisible(adminMain, true);
 
     applyLayout();
   }
 
+  /**
+   * Applies the configuration for the current active page.
+   */
   function applyLayout() {
     const name = getPageName();
     const config = pageConfigs[name];
@@ -149,6 +178,7 @@
     const dashboardExperience = name === 'dashboard' ? ensureDashboardExperience() : $id('premiumDashboardExperience');
     setVisible(dashboardExperience, name === 'dashboard');
 
+    // Trigger data loading based on current view
     if (name === 'dashboard' && typeof window.refreshDashboard === 'function') window.refreshDashboard();
     else if (config.showDatabase && typeof window.loadDashboard === 'function') window.loadDashboard();
     else if (name === 'user-management' && typeof window.renderUsers === 'function') window.renderUsers();
@@ -157,7 +187,6 @@
     const cards = ['enterpriseUsersCard', 'manifestSection'];
     cards.forEach(id => { const c = $id(id); if (c) setVisible(c, config.enterpriseCards.includes(id)); });
 
-    // Ensure scroll to top on page change
     const main = document.querySelector('.enterprise-main');
     if (main) main.scrollTop = 0;
   }
@@ -177,6 +206,7 @@
       }
     });
 
+    // Wait for the DOM to be ready before building the structure
     const timer = setInterval(() => {
       if ($id('adminView')) { clearInterval(timer); buildEnterpriseStructure(); }
     }, 50);

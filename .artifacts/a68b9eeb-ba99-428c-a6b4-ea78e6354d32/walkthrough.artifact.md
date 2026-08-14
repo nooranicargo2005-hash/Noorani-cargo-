@@ -15,10 +15,15 @@ This document summarizes the full cycle of deployment, testing, and fixing perfo
 2. **Run & Test again**: Re-executed `npm run test-api`.
 3. **Result**: **PASSED**. All endpoints returned successful responses (200 OK) with the expected data structures.
 
-## Final Status
-The API is now robust, testable in isolation, and ready for production deployment with real credentials.
-
-### Verified Endpoints:
-- `/api/health`: Healthy
-- `/api/shipments`: Returning demo data
-- `/api/stats/dashboard`: Returning demo analytics
+## Cycle 3: Production 404 Fix & Limit Parameter
+1. **Goal**: Resolve 404 errors on `/api/shipments?limit=1000` reported in production.
+2. **Changes**:
+    - **Route Logic**: Added `limit` support to the `getAllShipments` controller to respect the frontend's request for record counts.
+    - **Routing Robustness**: Added a trailing slash fallback (`/api/shipments/`) to ensure maximum compatibility with different client requests.
+    - **Logging**: Enhanced the 404 error handler with detailed request metadata (Method, URL, Path) to simplify remote debugging.
+3. **Deployment**: Staged and committed changes to the `main` branch and pushed to origin, triggering an automatic Render redeploy.
+4. **Local Verification**: Ran the test suite locally; verified that `GET /api/shipments?limit=1000` returns a 200 JSON response.
+5. **Live Verification**: **PASSED**.
+    - The root URL now reports **Version 2.9.0**.
+    - `GET /api/shipments?limit=1000` returns **200 OK** with a valid JSON payload.
+    - The API successfully connected to the database and is currently serving from the `swbs` table (determined dynamically via health check).

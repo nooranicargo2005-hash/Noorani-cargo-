@@ -76,11 +76,19 @@ function requireSupabase(req, res, next) {
   next();
 }
 
+let activeTableCache = { table: null, expiry: 0 };
+
 async function getActiveTable() {
   if (IS_DEMO || !supabase) return "shipments";
+  if (activeTableCache.table && activeTableCache.expiry > Date.now()) return activeTableCache.table;
+
   try {
-    const { error } = await supabase.from("shipments").select("id").limit(1);
-    if (error && (error.message.includes("does not exist") || error.code === '42P01')) return "swbs";
+    const { error } = await supabase.from("shipments").select("swbSerial").limit(1);
+    if (error && (error.message.includes("does not exist") || error.code === '42P01')) {
+      activeTableCache = { table: "swbs", expiry: Date.now() + 300000 }; // 5 min cache
+      return "swbs";
+    }
+    activeTableCache = { table: "shipments", expiry: Date.now() + 300000 };
   } catch (e) {
     console.error("[System] getActiveTable probe failed:", e.message);
   }
@@ -91,6 +99,95 @@ function cleanObject(obj) {
   const res = {};
   for (const [k, v] of Object.entries(obj || {})) if (v !== undefined && v !== null) res[k] = v;
   return res;
+}
+
+// =====================================================
+// SCHEMA WHITELISTS
+// =====================================================
+
+const SWBS_WHITELIST = [
+  'swbSerial', 'custInvNo', 'swbDate', 'customer', 'shipperName', 'shipperPhone', 'shipperAddress',
+  'consignee', 'consigneePhone', 'consigneeAddress', 'origin', 'destination', 'status',
+  'manifestNo', 'notes', 'origQty', 'origWt', 'type', 'created_at', 'updated_at'
+];
+
+const SHIPMENTS_WHITELIST = [
+  'swbSerial', 'customerInvNo', 'custInvNo', 'swbDate', 'customer', 'shipperName', 'shipperPhone', 'shipperAddress',
+  'consigneeName', 'consigneePhone', 'consigneeAddress', 'consigneeCity', 'origin', 'destination',
+  'status', 'manifestNo', 'notes', 'origQty', 'origWt', 'type', 'assignedTo',
+  'expectedDelivery', 'shippingCost', 'paymentStatus', 'originCountry', 'destinationCountry',
+  'created_at', 'updated_at'
+];
+
+/**
+ * Standardizes record for Supabase based on the active table schema.
+ * Handles legacy 'swbs' vs modern 'shipments' column names.
+ * PERFORMS STRICT WHITELIST FILTERING.
+ */
+function mapToTableSchema(item, isLegacy) {
+  const whitelist = isLegacy ? SWBS_WHITELIST : SHIPMENTS_WHITELIST;
+
+  const rawRecord = {
+    swbSerial: String(item.swbSerial || "").trim(),
+    custInvNo: item.custInvNo || item.customerInvNo,
+    customerInvNo: item.customerInvNo || item.custInvNo,
+    swbDate: item.swbDate,
+    customer: item.customer,
+    shipperName: item.shipperName,
+    shipperPhone: item.shipperPhone,
+    shipperAddress: item.shipperAddress,
+    consigneePhone: item.consigneePhone,
+    consigneeAddress: item.consigneeAddress,
+    origin: item.origin,
+    status: item.status || "Created",
+    manifestNo: item.manifestNo,
+    notes: item.notes,
+    origQty: parseInt(item.origQty) || 0,
+    origWt: parseFloat(item.origWt) || 0,
+    type: item.type || "SWB",
+    assignedTo: item.assignedTo,
+    expectedDelivery: item.expectedDelivery,
+    shippingCost: item.shippingCost ? parseFloat(item.shippingCost) : undefined,
+    paymentStatus: item.paymentStatus,
+    originCountry: item.originCountry,
+    destinationCountry: item.destinationCountry,
+    created_at: item.created_at
+  };
+
+  if (isLegacy) {
+    // Legacy 'swbs' table mapping
+    rawRecord.consignee = item.consigneeName || item.consignee;
+    rawRecord.destination = item.destination || item.consigneeCity;
+  } else {
+    // Modern 'shipments' table mapping
+    rawRecord.consigneeName = item.consigneeName;
+    rawRecord.consigneeCity = item.consigneeCity;
+    rawRecord.destination = item.destination;
+  }
+
+  // Strict whitelist filtering
+  const filteredRecord = {};
+  whitelist.forEach(key => {
+    if (rawRecord[key] !== undefined && rawRecord[key] !== null) {
+      filteredRecord[key] = rawRecord[key];
+    }
+  });
+
+  return filteredRecord;
+}
+
+/**
+ * Standardizes output from Supabase to match modern schema.
+ * Ensures 'consigneeName' and 'consigneeCity' are always present.
+ */
+function mapFromTableSchema(item, isLegacy) {
+  if (!item) return item;
+  if (isLegacy) {
+    item.consigneeName = item.consigneeName || item.consignee;
+    item.consigneeCity = item.consigneeCity || item.destination;
+    item.customerInvNo = item.customerInvNo || item.custInvNo;
+  }
+  return item;
 }
 
 // =====================================================
@@ -132,12 +229,15 @@ const getAllShipments = async (req, res) => {
     const { status, origin, destination, manifestNo, limit } = req.query;
     const table = await getActiveTable();
     const isLegacy = table === 'swbs';
-    let q = supabase.from(table).select("*").order("created_at", { ascending: false });
+    const whitelist = isLegacy ? SWBS_WHITELIST : SHIPMENTS_WHITELIST;
+
+    let q = supabase.from(table).select(whitelist.join(',')).order("created_at", { ascending: false });
 
     if (search) {
       const s = search.replace(/,/g, " ");
       const cityCol = isLegacy ? 'destination' : 'consigneeCity';
-      q = q.or(`swbSerial.ilike.%${s}%,customer.ilike.%${s}%,shipperName.ilike.%${s}%,consigneeName.ilike.%${s}%,${cityCol}.ilike.%${s}%`);
+      const consigneeCol = isLegacy ? 'consignee' : 'consigneeName';
+      q = q.or(`swbSerial.ilike.%${s}%,customer.ilike.%${s}%,shipperName.ilike.%${s}%,${consigneeCol}.ilike.%${s}%,${cityCol}.ilike.%${s}%`);
     }
     if (status && status !== "") q = q.eq("status", status);
     if (origin && origin !== "") q = q.ilike("origin", `%${origin}%`);
@@ -154,7 +254,8 @@ const getAllShipments = async (req, res) => {
 
     const { data, error } = await q;
     if (error) throw error;
-    res.json({ success: true, count: data?.length || 0, items: data || [] });
+    const items = (data || []).map(item => mapFromTableSchema(item, isLegacy));
+    res.json({ success: true, count: items.length, items });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 };
 
@@ -166,10 +267,13 @@ app.get("/api/swbs", requireSupabase, getAllShipments);
 app.get("/api/shipments/:serial", requireSupabase, async (req, res) => {
   try {
     const table = await getActiveTable();
-    const { data, error } = await supabase.from(table).select("*").eq("swbSerial", req.params.serial).maybeSingle();
+    const isLegacy = table === 'swbs';
+    const whitelist = isLegacy ? SWBS_WHITELIST : SHIPMENTS_WHITELIST;
+
+    const { data, error } = await supabase.from(table).select(whitelist.join(',')).eq("swbSerial", req.params.serial).maybeSingle();
     if (error) throw error;
     if (!data) return res.status(404).json({ success: false, error: "Shipment not found" });
-    res.json({ success: true, data });
+    res.json({ success: true, data: mapFromTableSchema(data, isLegacy) });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -179,31 +283,12 @@ app.post("/api/shipments/:serial", requireSupabase, async (req, res) => {
     const table = await getActiveTable();
     const isLegacy = table === 'swbs';
 
-    const record = cleanObject({
-      swbSerial: serial,
-      custInvNo: req.body.custInvNo,
-      swbDate: req.body.swbDate,
-      customer: req.body.customer,
-      shipperName: req.body.shipperName,
-      shipperPhone: req.body.shipperPhone,
-      shipperAddress: req.body.shipperAddress,
-      consigneeName: req.body.consigneeName,
-      consigneePhone: req.body.consigneePhone,
-      consigneeCity: isLegacy ? undefined : req.body.consigneeCity,
-      consigneeAddress: req.body.consigneeAddress,
-      origin: req.body.origin,
-      destination: isLegacy ? (req.body.destination || req.body.consigneeCity) : req.body.destination,
-      status: req.body.status || "Created",
-      manifestNo: req.body.manifestNo,
-      notes: req.body.notes,
-      origQty: req.body.origQty,
-      origWt: req.body.origWt,
-      type: req.body.type || "SWB",
-      updated_at: new Date().toISOString()
-    });
+    const record = mapToTableSchema(req.body, isLegacy);
+    if (serial) record.swbSerial = serial;
+    record.updated_at = new Date().toISOString();
 
     const { data: existing } = await supabase.from(table).select("status").eq("swbSerial", serial).maybeSingle();
-    const { data, error } = await supabase.from(table).upsert(record).select("*").single();
+    const { data, error } = await supabase.from(table).upsert(record).select("swbSerial").single();
     if (error) throw error;
 
     if (!existing || existing.status !== record.status) {
@@ -236,28 +321,9 @@ app.post("/api/shipments/bulk/import", requireSupabase, async (req, res) => {
     const table = await getActiveTable();
     const isLegacy = table === 'swbs';
 
-    const records = items.filter(i => i.swbSerial).map(item => cleanObject({
-      swbSerial: String(item.swbSerial).trim(),
-      custInvNo: item.custInvNo,
-      swbDate: item.swbDate,
-      customer: item.customer,
-      shipperName: item.shipperName,
-      shipperPhone: item.shipperPhone,
-      shipperAddress: item.shipperAddress,
-      consigneeName: item.consigneeName,
-      consigneePhone: item.consigneePhone,
-      consigneeCity: isLegacy ? undefined : item.consigneeCity,
-      consigneeAddress: item.consigneeAddress,
-      origin: item.origin,
-      destination: isLegacy ? (item.destination || item.consigneeCity) : item.destination,
-      status: item.status || "Created",
-      manifestNo: item.manifestNo,
-      notes: item.notes,
-      origQty: parseInt(item.origQty) || 0,
-      origWt: parseFloat(item.origWt) || 0,
-      type: item.type || "SWB",
-      updated_at: new Date().toISOString()
-    }));
+    const records = items
+      .filter(i => i.swbSerial)
+      .map(item => mapToTableSchema(item, isLegacy));
 
     if (records.length === 0) return res.json({ success: true, count: 0 });
 
@@ -288,10 +354,13 @@ app.post("/api/shipments/bulk/status", requireSupabase, async (req, res) => {
 app.get("/api/tracking/:serial", requireSupabase, async (req, res) => {
   try {
     const table = await getActiveTable();
-    const { data: shipment, error } = await supabase.from(table).select("*").eq("swbSerial", req.params.serial).maybeSingle();
+    const isLegacy = table === 'swbs';
+    const whitelist = isLegacy ? SWBS_WHITELIST : SHIPMENTS_WHITELIST;
+
+    const { data: shipment, error } = await supabase.from(table).select(whitelist.join(',')).eq("swbSerial", req.params.serial).maybeSingle();
     if (error || !shipment) return res.status(404).json({ success: false, error: "Not identified" });
     const { data: history } = await supabase.from("status_history").select("*").eq("swbSerial", req.params.serial).order("created_at", { ascending: true });
-    res.json({ success: true, shipment, history: history || [] });
+    res.json({ success: true, shipment: mapFromTableSchema(shipment, isLegacy), history: history || [] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -305,8 +374,46 @@ app.get("/api/shipments/:serial/history", requireSupabase, async (req, res) => {
 // 6. Manifests
 app.get("/api/manifests", requireSupabase, async (req, res) => {
   try {
-    const { data, error } = await supabase.from("manifests").select("*").order("created_at", { ascending: false });
-    res.json({ success: true, data: data || [] });
+    const table = await getActiveTable();
+    // Fetch manifests and calculate stats
+    const { data: manifests, error: mError } = await supabase.from("manifests").select("*").order("created_at", { ascending: false });
+    if (mError) throw mError;
+
+    // Fetch stats per manifest
+    const { data: stats, error: sError } = await supabase.from(table).select("manifestNo, origQty, origWt");
+    if (sError) throw sError;
+
+    const items = manifests.map(m => {
+      const related = stats.filter(s => s.manifestNo === m.manifestNo);
+      return {
+        ...m,
+        totalShipments: related.length,
+        totalQty: related.reduce((sum, r) => sum + (r.origQty || 0), 0),
+        totalWt: related.reduce((sum, r) => sum + (r.origWt || 0), 0)
+      };
+    });
+
+    res.json({ success: true, data: items });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get("/api/manifests/:id", requireSupabase, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from("manifests").select("*").eq("manifestNo", req.params.id).maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ success: false, error: "Manifest not found" });
+
+    const table = await getActiveTable();
+    const { data: shipments, error: sError } = await supabase.from(table).select("*").eq("manifestNo", req.params.id);
+    if (sError) throw sError;
+
+    res.json({
+      success: true,
+      data: {
+        ...data,
+        shipments: shipments.map(s => mapFromTableSchema(s, table === 'swbs'))
+      }
+    });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -318,6 +425,96 @@ app.post("/api/manifests", requireSupabase, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+app.delete("/api/manifests/:id", requireSupabase, async (req, res) => {
+  try {
+    const { error } = await supabase.from("manifests").delete().eq("manifestNo", req.params.id);
+    if (error) throw error;
+    res.json({ success: true, message: "Manifest deleted" });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// 6.1 Manifest File Manager
+app.get("/api/manifests/:id/files", requireSupabase, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from("manifest_files").select("*").eq("manifestNo", req.params.id).order("type", { ascending: false }).order("name", { ascending: true });
+    if (error) throw error;
+    res.json({ success: true, data: data || [] });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post("/api/manifests/:id/files", requireSupabase, async (req, res) => {
+  try {
+    const payload = {
+      manifestNo: req.params.id,
+      name: req.body.name,
+      parent_id: req.body.parent_id || null,
+      type: req.body.type,
+      content: req.body.content || "",
+      mime_type: req.body.mime_type || "text/plain",
+      size: req.body.size || 0
+    };
+    const { data, error } = await supabase.from("manifest_files").insert(payload).select("*").single();
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.patch("/api/manifests/files/:fileId", requireSupabase, async (req, res) => {
+  try {
+    const payload = cleanObject({
+      name: req.body.name,
+      parent_id: req.body.parent_id,
+      content: req.body.content,
+      updated_at: new Date().toISOString()
+    });
+    const { data, error } = await supabase.from("manifest_files").update(payload).eq("id", req.params.fileId).select("*").single();
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.delete("/api/manifests/files/:fileId", requireSupabase, async (req, res) => {
+  try {
+    const { error } = await supabase.from("manifest_files").delete().eq("id", req.params.fileId);
+    if (error) throw error;
+    res.json({ success: true, message: "Deleted" });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post("/api/manifests/files/bulk", requireSupabase, async (req, res) => {
+  try {
+    const { ids, action, target_parent_id } = req.body;
+    if (!ids || !Array.isArray(ids)) throw new Error("IDs required");
+
+    if (action === 'delete') {
+      const { error } = await supabase.from("manifest_files").delete().in("id", ids);
+      if (error) throw error;
+    } else if (action === 'move') {
+      const { error } = await supabase.from("manifest_files").update({ parent_id: target_parent_id, updated_at: new Date().toISOString() }).in("id", ids);
+      if (error) throw error;
+    } else if (action === 'copy') {
+      // Fetch originals
+      const { data: originals, error: fError } = await supabase.from("manifest_files").select("*").in("id", ids);
+      if (fError) throw fError;
+
+      const copies = originals.map(o => ({
+        manifestNo: o.manifestNo,
+        name: `${o.name} (Copy)`,
+        parent_id: target_parent_id,
+        type: o.type,
+        content: o.content,
+        storage_path: o.storage_path,
+        size: o.size,
+        mime_type: o.mime_type
+      }));
+      const { error: iError } = await supabase.from("manifest_files").insert(copies);
+      if (iError) throw iError;
+    }
+
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 // 7. Dashboard Stats
 app.get("/api/stats/dashboard", requireSupabase, async (req, res) => {
   try {
@@ -325,26 +522,38 @@ app.get("/api/stats/dashboard", requireSupabase, async (req, res) => {
       return res.json({
         success: true,
         totalSwbs: 1,
-        pending: 0,
-        received: 0,
-        processing: 0,
-        inTransit: 1,
-        arrived: 0,
-        delivered: 0,
-        cancelled: 0,
+        pending: 0, received: 0, processing: 0, inTransit: 1, arrived: 0, delivered: 0, cancelled: 0,
         breakdown: { "In Transit": 1 },
         recentItems: [{ swbSerial: "NOORANI-DEMO-001", status: "In Transit" }]
       });
     }
+
     const table = await getActiveTable();
-    const { data, error } = await supabase.from(table).select("status, swbSerial, customer, swbDate").order("created_at", { ascending: false });
-    if (error) throw error;
-    const b = {};
-    (data || []).forEach(r => { const s = r.status || "Created"; b[s] = (b[s] || 0) + 1; });
-    const count = s => b[s] || 0;
+
+    // 1. Get status counts via RPC or direct query if RPC fails
+    let breakdown = {};
+    const { data: counts, error: cError } = await supabase.rpc('get_status_counts');
+
+    if (!cError && counts) {
+      counts.forEach(r => { breakdown[r.status] = parseInt(r.count); });
+    } else {
+      // Fallback if RPC not initialized
+      const { data, error } = await supabase.from(table).select("status");
+      if (!error) (data || []).forEach(r => { const s = r.status || "Created"; breakdown[s] = (breakdown[s] || 0) + 1; });
+    }
+
+    // 2. Get recent activity
+    const { data: recent, error: rError } = await supabase.from(table)
+      .select("swbSerial, customer, status, swbDate, created_at")
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    const count = s => breakdown[s] || 0;
+    const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
+
     res.json({
       success: true,
-      totalSwbs: data?.length || 0,
+      totalSwbs: total,
       pending: count("Pending") + count("Created") + count("Received"),
       received: count("Received"),
       processing: count("Processing"),
@@ -352,8 +561,8 @@ app.get("/api/stats/dashboard", requireSupabase, async (req, res) => {
       arrived: count("Arrived"),
       delivered: count("Delivered"),
       cancelled: count("Cancelled"),
-      breakdown: b,
-      recentItems: (data || []).slice(0, 10),
+      breakdown,
+      recentItems: (recent || []).map(item => mapFromTableSchema(item, table === 'swbs')),
     });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

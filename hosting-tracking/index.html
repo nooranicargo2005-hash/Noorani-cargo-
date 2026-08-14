@@ -21,8 +21,8 @@
         </header>
 
         <section class="tracking-header" style="text-align:center; padding:100px 0;">
-            <h1 style="font-size:4rem; color:#fff; letter-spacing:-2px;">TRACK YOUR <span style="color:var(--n-gold);">SWB</span></h1>
-            <p class="text-muted" style="font-size:1.2rem; margin-top:10px;">Instant access to Sea Waybill documentation and cargo details.</p>
+            <h1 style="font-size:4rem; color:#fff; letter-spacing:-2px;">TRACK YOUR <span style="color:var(--n-gold);">SHIPMENT</span></h1>
+            <p class="text-muted" style="font-size:1.2rem; margin-top:10px;">Instant access to Noorani Cargo Waybill documentation and details.</p>
         </section>
 
         <section class="search-container" style="max-width:700px; margin:0 auto;">
@@ -71,7 +71,7 @@
     </div>
 
     <script type="module">
-        import { getSwbBySerial, getSwbHistory } from './firebase.js';
+        import { getShipmentBySerial, getShipmentHistory } from './firebase.js';
 
         const $id = id => document.getElementById(id);
 
@@ -79,17 +79,18 @@
             const id = $id('swbInput').value.trim().toUpperCase();
             if (!id) return;
 
-            $id('statusMsg').textContent = 'CONNECTING TO GLOBAL NETWORK...';
+            $id('statusMsg').textContent = 'CONNECTING TO NOORANI NETWORK...';
             $id('resultArea').hidden = true;
             $id('notFoundArea').hidden = true;
 
             try {
-                const res = await getSwbBySerial(id);
-                const history = await getSwbHistory(id);
+                const res = await getShipmentBySerial(id);
+                // The API /tracking/:serial returns both shipment and history in one go
                 $id('statusMsg').textContent = '';
 
-                if (res && res.data) {
-                    const d = res.data;
+                if (res && res.success && res.shipment) {
+                    const d = res.shipment;
+                    const history = res.history || [];
                     $id('displaySerial').textContent = d.swbSerial;
 
                     const fields = [
@@ -100,7 +101,9 @@
                         { l: 'Shipper', v: d.shipperName, icon: 'fa-truck-ramp-box' },
                         { l: 'Consignee', v: d.consigneeName, icon: 'fa-box-open' },
                         { l: 'Quantity', v: d.origQty, icon: 'fa-cubes' },
-                        { l: 'Weight (KG)', v: d.origWt, icon: 'fa-weight-hanging' }
+                        { l: 'Weight (KG)', v: d.origWt, icon: 'fa-weight-hanging' },
+                        { l: 'Invoice No.', v: d.customerInvNo || d.custInvNo, icon: 'fa-file-invoice' },
+                        { l: 'Expected Delivery', v: d.expectedDelivery, icon: 'fa-calendar-check' }
                     ];
 
                     $id('swbContent').innerHTML = fields.map(f => `
@@ -113,16 +116,19 @@
                         </div>
                     `).join('');
 
-                    // Timeline
-                    $id('track-timeline').innerHTML = (history || []).map(h => `
+                    // Timeline (Newest First)
+                    $id('track-timeline').innerHTML = (history || [])
+                        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                        .map(h => `
                         <div class="timeline-item">
                             <div class="timeline-point"></div>
-                            <div class="timeline-content" style="padding:10px; font-size:0.85rem;">
-                                <div style="display:flex; justify-content:space-between;">
-                                    <strong style="color:var(--n-gold);">${h.status}</strong>
-                                    <span class="text-muted" style="font-size:0.7rem;">${new Date(h.created_at).toLocaleDateString()}</span>
+                            <div class="timeline-content" style="padding:15px; font-size:0.85rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <strong style="color:var(--n-gold); font-size:0.95rem;">${h.status}</strong>
+                                    <span class="text-muted" style="font-size:0.7rem; font-weight:700;">${new Date(h.created_at).toLocaleDateString(undefined, {day:'2-digit', month:'short', year:'numeric'})}</span>
                                 </div>
-                                <p style="margin-top:4px; font-size:0.75rem;">${h.remarks || ''}</p>
+                                <p style="margin-top:8px; font-size:0.8rem; line-height:1.4;">${h.remarks || ''}</p>
+                                ${h.location ? `<div style="margin-top:6px; font-size:0.7rem; color:var(--n-gold-bright);"><i class="fa-solid fa-location-dot"></i> ${h.location}</div>` : ''}
                             </div>
                         </div>
                     `).join('') || '<p class="text-muted">No timeline data available.</p>';

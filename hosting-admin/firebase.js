@@ -144,7 +144,17 @@ export const nooraniDb = {
 
     // Extensions
     getManifests: () => apiFetch('/manifests'),
+    getManifestById: (id) => apiFetch(`/manifests/${id}`),
     saveManifest: (d) => apiFetch('/manifests', { method: 'POST', body: JSON.stringify(d) }),
+    deleteManifest: (id) => apiFetch(`/manifests/${id}`, { method: 'DELETE' }),
+
+    // Manifest File Manager
+    getManifestFiles: (id) => apiFetch(`/manifests/${id}/files`),
+    createManifestFile: (id, d) => apiFetch(`/manifests/${id}/files`, { method: 'POST', body: JSON.stringify(d) }),
+    updateManifestFile: (fileId, d) => apiFetch(`/manifests/files/${fileId}`, { method: 'PATCH', body: JSON.stringify(d) }),
+    deleteManifestFile: (fileId) => apiFetch(`/manifests/files/${fileId}`, { method: 'DELETE' }),
+    bulkFileOperation: (data) => apiFetch('/manifests/files/bulk', { method: 'POST', body: JSON.stringify(data) }),
+
     getUserAccounts: () => apiFetch('/users'),
     saveUserAccount: (d) => apiFetch('/users', { method: 'POST', body: JSON.stringify(d) }),
     deleteUserAccount: (id) => apiFetch(`/users/${id}`, { method: 'DELETE' }),

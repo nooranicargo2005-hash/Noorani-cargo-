@@ -67,17 +67,17 @@ window.loadDashboard = async () => {
         tbody.innerHTML = items.map(s => `
             <tr id="row_${s.swbSerial}">
                 <td><input type="checkbox" class="swb-select" value="${s.swbSerial}"></td>
-                <td style="font-weight:800; color:var(--n-gold); cursor:pointer;" onclick="window.viewShipment('${s.swbSerial}')">${s.swbSerial}</td>
-                <td><span class="status-badge status-${(s.status || '').toLowerCase().replace(/ /g, '-')}">${s.status || 'Created'}</span></td>
-                <td>${s.customer || ''}</td>
-                <td>${s.shipperName || ''}</td>
-                <td>${s.consigneeName || ''}</td>
+                <td style="font-weight:800; color:var(--n-gold); cursor:pointer;" onclick="window.viewShipment('${s.swbSerial}')">${s.swbSerial || 'N/A'}</td>
+                <td><span class="status-badge status-${(s.status || 'created').toLowerCase().replace(/ /g, '-')}">${s.status || 'Created'}</span></td>
+                <td>${s.customer || '—'}</td>
+                <td>${s.shipperName || '—'}</td>
+                <td>${s.consigneeName || '—'}</td>
                 <td>${s.origin || '—'}</td>
-                <td>${s.consigneeCity || ''}</td>
+                <td>${s.consigneeCity || '—'}</td>
                 <td>${s.origQty || 0}</td>
-                <td>${s.origWt || 0}</td>
+                <td>${s.origWt ? s.origWt.toFixed(2) : '0.00'}</td>
                 <td>${s.manifestNo || '—'}</td>
-                <td>${window.nooraniUtils?.formatDate(s.swbDate) || s.swbDate || ''}</td>
+                <td>${window.nooraniUtils?.formatDate(s.created_at) || '—'}</td>
                 <td class="text-right">
                     <div style="display:flex; justify-content:flex-end; gap:8px;">
                         <button class="n-btn" title="View" onclick="window.viewShipment('${s.swbSerial}')"><i class="fa-solid fa-eye"></i></button>
@@ -85,7 +85,7 @@ window.loadDashboard = async () => {
                     </div>
                 </td>
             </tr>
-        `).join('') || `<tr><td colspan="14" class="text-center py-40 text-muted">No records found.</td></tr>`;
+        `).join('') || `<tr><td colspan="13" class="text-center py-40 text-muted">No records found.</td></tr>`;
     } catch (e) {
         console.error('Fetch Error Detail:', e);
         tbody.innerHTML = `<tr><td colspan="13" class="text-center py-40 text-danger">
@@ -291,30 +291,62 @@ async function parseExcel(file) {
                 const firstSheet = workbook.SheetNames[0];
                 const raw = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], { defval: null });
 
+                // Dynamic Header Mapping Logic
+                const headers = raw.length > 0 ? Object.keys(raw[0]) : [];
+                // Robust Fuzzy Mapping Logic
+                const fieldMap = {
+                    swbSerial: ['swb', 'serial', 'tracking', 'awb', 'number', 'waybill', 'reference', 'hwb', 'id', 'air waybill'],
+                    custInvNo: ['cust inv', 'customer invoice', 'invoice no', 'inv #', 'inv no', 'bill no', 'cust ref'],
+                    swbDate: ['date', 'created', 'booking date', 'manifest date', 'ship date'],
+                    customer: ['customer', 'account', 'client', 'sender company', 'shipper company'],
+                    shipperName: ['shipper name', 'sender name', 'from name', 'shipper'],
+                    shipperPhone: ['shipper phone', 'sender phone', 'from phone', 'shipper tel'],
+                    shipperAddress: ['shipper address', 'sender address', 'from address', 'shipper addr'],
+                    consigneeName: ['consignee name', 'receiver name', 'to name', 'recipient', 'consignee', 'receiver'],
+                    consigneePhone: ['consignee phone', 'receiver phone', 'to phone', 'recipient phone', 'consignee tel'],
+                    consigneeAddress: ['consignee address', 'receiver address', 'to address', 'recipient address', 'consignee addr'],
+                    consigneeCity: ['city', 'destination city', 'dest city', 'to city', 'receiver city', 'town'],
+                    origQty: ['qty', 'pieces', 'pcs', 'count', 'quantity', 'units', 'packages'],
+                    origWt: ['weight', 'wt', 'kg', 'kgs', 'gross weight', 'mass', 'net weight'],
+                    manifestNo: ['manifest', 'bag', 'master', 'container', 'voyage', 'flight'],
+                    origin: ['origin', 'from city', 'origin facility', 'pol', 'source', 'departure'],
+                    destination: ['destination', 'dest facility', 'pod', 'target', 'arrival'],
+                    notes: ['notes', 'remarks', 'comment', 'description', 'detail'],
+                    type: ['type', 'service', 'mode', 'category', 'method'],
+                    assignedTo: ['assigned', 'driver', 'agent', 'courier', 'staff'],
+                    expectedDelivery: ['delivery date', 'eta', 'expected', 'due date'],
+                    shippingCost: ['cost', 'price', 'amount', 'charge', 'fee'],
+                    paymentStatus: ['payment', 'paid', 'billing status'],
+                    originCountry: ['origin country', 'from country'],
+                    destinationCountry: ['destination country', 'to country']
+                };
+
+                const dynamicMap = {};
+                headers.forEach(h => {
+                    const headerLower = h.toLowerCase();
+                    for (const [field, keywords] of Object.entries(fieldMap)) {
+                        if (keywords.some(k => headerLower.includes(k.toLowerCase()))) {
+                            dynamicMap[field] = h;
+                            break;
+                        }
+                    }
+                });
+
                 const mapped = raw.map(row => {
-                    const find = (keys) => {
-                        const k = Object.keys(row).find(rk => keys.some(sk => rk.toLowerCase().includes(sk.toLowerCase())));
-                        return k ? row[k] : null;
-                    };
-                    return {
-                        swbSerial: find(['swb', 'serial', 'tracking', 'awb', 'number']),
-                        customer: find(['customer', 'account', 'client']),
-                        shipperName: find(['shipper', 'sender']),
-                        shipperPhone: find(['shipper phone', 'sender phone']),
-                        shipperAddress: find(['shipper address', 'sender address']),
-                        consigneeName: find(['consignee', 'receiver']),
-                        consigneePhone: find(['consignee phone', 'receiver phone']),
-                        consigneeAddress: find(['consignee address', 'receiver address']),
-                        consigneeCity: find(['city', 'destination city', 'dest city']),
-                        origQty: parseInt(find(['qty', 'pieces', 'pcs'])) || 1,
-                        origWt: parseFloat(find(['weight', 'wt', 'kg'])) || 0,
-                        swbDate: find(['date', 'created']),
-                        manifestNo: find(['manifest']),
-                        origin: find(['origin', 'origin facility']),
-                        destination: find(['destination', 'destination facility']),
-                        notes: find(['notes', 'remarks'])
-                    };
+                    const item = {};
+                    for (const [field, header] of Object.entries(dynamicMap)) {
+                        item[field] = row[header];
+                    }
+
+                    // Fallbacks & Defaults
+                    item.swbSerial = item.swbSerial || null;
+                    item.origQty = parseInt(item.origQty) || 1;
+                    item.origWt = parseFloat(item.origWt) || 0;
+                    if (!item.status) item.status = 'Created';
+
+                    return item;
                 }).filter(i => i.swbSerial);
+
                 resolve(mapped);
             } catch (err) { reject(err); }
         };
@@ -324,7 +356,6 @@ async function parseExcel(file) {
 }
 
 async function parsePDF(file) {
-    // Ensure pdfjsLib is available and worker is configured
     const pdfLib = window['pdfjsLib'] || window.pdfjsLib;
     if (!pdfLib) throw new Error('PDF Engine (pdf.js) not loaded.');
     pdfLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -338,23 +369,33 @@ async function parsePDF(file) {
         fullText += textContent.items.map(item => item.str).join(" ") + "\n";
     }
 
-    // Advanced Regex for Serial Numbers (e.g., NC-2026-XXXX or standard alphanumeric)
     const lines = fullText.split('\n');
     const records = [];
-    const serialRegex = /\b([A-Z0-9-]{8,20})\b/g;
+
+    // Pattern for serials: Alphanumeric with dashes, 8-20 chars
+    const serialRegex = /\b([A-Z0-9-]{8,20})\b/;
 
     lines.forEach(line => {
-        const matches = line.match(serialRegex);
-        if (matches) {
-            matches.forEach(serial => {
-                if (!records.find(r => r.swbSerial === serial)) {
-                    records.push({
-                        swbSerial: serial,
-                        status: 'Created',
-                        notes: 'Imported from PDF manifest'
-                    });
-                }
-            });
+        const trimmed = line.trim();
+        if (!trimmed) return;
+
+        const match = trimmed.match(serialRegex);
+        if (match) {
+            const serial = match[1];
+            if (!records.find(r => r.swbSerial === serial)) {
+                // Heuristic: Try to find numbers for weight/qty in the same line
+                const numbers = trimmed.match(/\d+(\.\d+)?/g) || [];
+                const possibleQty = numbers.find(n => parseInt(n) > 0 && parseInt(n) < 100);
+                const possibleWt = numbers.find(n => parseFloat(n) > 0.1);
+
+                records.push({
+                    swbSerial: serial,
+                    origQty: possibleQty ? parseInt(possibleQty) : 1,
+                    origWt: possibleWt ? parseFloat(possibleWt) : 0,
+                    status: 'Created',
+                    notes: `Imported from PDF: ${trimmed.substring(0, 50)}...`
+                });
+            }
         }
     });
     return records;
@@ -393,6 +434,477 @@ window.executeImport = async () => {
         btn.disabled = false;
         btn.innerHTML = originalText;
     }
+};
+
+// =====================================================
+// MANIFEST MANAGEMENT
+// =====================================================
+
+let currentManifestId = null;
+let currentFolderId = null;
+let fmAllFiles = [];
+let fmSelection = [];
+let fmClipboard = { action: null, ids: [] };
+let currentFileId = null;
+
+window.loadManifests = async () => {
+    const db = getDb(); if (!db) return;
+    const tbody = $id('manifestTableBody'); if (!tbody) return;
+
+    try {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-40"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading manifests...</td></tr>';
+        const res = await db.getManifests();
+        const items = res.data || [];
+
+        tbody.innerHTML = items.map(m => `
+            <tr>
+                <td style="font-weight:800; color:var(--n-gold); cursor:pointer;" onclick="window.viewManifest('${m.manifestNo}')">${m.manifestNo}</td>
+                <td>${window.nooraniUtils?.formatDate(m.manifestDate) || m.manifestDate || '—'}</td>
+                <td><div style="font-size:0.85rem;"><strong>${m.origin || '—'}</strong></div><div style="font-size:0.75rem; color:var(--n-text-muted);">to ${m.destination || '—'}</div></td>
+                <td>${m.totalShipments || 0}</td>
+                <td>${m.totalQty || 0}</td>
+                <td>${m.totalWt ? m.totalWt.toFixed(2) : '0.00'}</td>
+                <td><span class="status-badge status-${(m.status || '').toLowerCase().replace(/ /g, '-')}">${m.status || 'Draft'}</span></td>
+                <td class="text-right">
+                    <div style="display:flex; justify-content:flex-end; gap:8px;">
+                        <button class="n-btn" title="View Workspace" onclick="window.viewManifest('${m.manifestNo}')"><i class="fa-solid fa-folder-open"></i></button>
+                        <button class="n-btn" title="Edit Settings" onclick="window.showManifestForm('${m.manifestNo}')"><i class="fa-solid fa-pen"></i></button>
+                        <button class="n-btn" style="color:var(--n-danger);" title="Delete" onclick="window.deleteManifest('${m.manifestNo}')"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `).join('') || `<tr><td colspan="8" class="text-center py-40 text-muted">No manifests found.</td></tr>`;
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-40 text-danger">${e.message}</td></tr>`;
+    }
+};
+
+window.showManifestForm = async (id) => {
+    const modal = $id('manifestFormModal');
+    const title = $id('manifestFormTitle');
+    const form = $id('manifestEntryForm');
+    form.reset();
+    $id('mf-no').disabled = false;
+
+    if (id) {
+        title.textContent = 'Edit Manifest';
+        try {
+            const res = await getDb().getManifestById(id);
+            const d = res.data;
+            if (d) {
+                $id('mf-no').value = d.manifestNo;
+                $id('mf-no').disabled = true;
+                $id('mf-date').value = d.manifestDate || '';
+                $id('mf-origin').value = d.origin || '';
+                $id('mf-dest').value = d.destination || '';
+                $id('mf-container').value = d.containerNo || '';
+                $id('mf-status').value = d.status || 'Draft';
+            }
+        } catch (e) { alert('Load failed'); }
+    } else {
+        title.textContent = 'Create Manifest';
+        $id('mf-date').value = new Date().toISOString().split('T')[0];
+    }
+
+    modal.style.opacity = '1';
+    modal.style.pointerEvents = 'auto';
+};
+
+window.closeManifestForm = () => {
+    $id('manifestFormModal').style.opacity = '0';
+    $id('manifestFormModal').style.pointerEvents = 'none';
+};
+
+window.saveManifest = async (e) => {
+    if (e) e.preventDefault();
+    const btn = $id('manifestEntryForm').querySelector('button[type="submit"]');
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> SAVING...';
+
+    const payload = {
+        manifestNo: $id('mf-no').value.trim(),
+        manifestDate: $id('mf-date').value,
+        origin: $id('mf-origin').value,
+        destination: $id('mf-dest').value,
+        containerNo: $id('mf-container').value,
+        status: $id('mf-status').value
+    };
+
+    try {
+        await getDb().saveManifest(payload);
+        window.closeManifestForm();
+        window.loadManifests();
+    } catch (err) { alert('Failure: ' + err.message); }
+    finally { btn.disabled = false; btn.innerHTML = originalText; }
+};
+
+$id('manifestEntryForm')?.addEventListener('submit', window.saveManifest);
+
+window.deleteManifest = async (id) => {
+    if (!confirm(`Are you sure you want to delete manifest ${id}?`)) return;
+    try {
+        await getDb().deleteManifest(id);
+        window.loadManifests();
+    } catch (e) { alert('Delete failed: ' + e.message); }
+};
+
+window.filterManifests = () => {
+    const search = $id('manifestSearch').value.toLowerCase();
+    const status = $id('manifestStatusFilter').value;
+    const rows = document.querySelectorAll('#manifestTableBody tr');
+
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        const rowStatus = row.querySelector('.status-badge').textContent;
+        const matchesSearch = text.includes(search);
+        const matchesStatus = !status || rowStatus === status;
+        row.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+    });
+};
+
+window.viewManifest = async (id) => {
+    currentManifestId = id;
+    const db = getDb(); if (!db) return;
+    try {
+        const res = await db.getManifestById(id);
+        const d = res.data;
+        if (!d) return;
+
+        $id('mw-title').textContent = d.manifestNo;
+        $id('mw-status').textContent = d.status || 'Draft';
+        $id('mw-origin').textContent = d.origin || '—';
+        $id('mw-destination').textContent = d.destination || '—';
+        $id('mw-container').textContent = d.containerNo || 'NONE';
+        $id('mw-date').textContent = window.nooraniUtils?.formatDate(d.manifestDate) || d.manifestDate || '—';
+
+        // Stats
+        const shipments = d.shipments || [];
+        $id('mw-stat-count').textContent = shipments.length;
+        $id('mw-stat-qty').textContent = shipments.reduce((s, r) => s + (r.origQty || 0), 0);
+        $id('mw-stat-wt').textContent = shipments.reduce((s, r) => s + (r.origWt || 0), 0).toFixed(2);
+
+        window.loadManifestShipments(id);
+        window.loadManifestFiles(id);
+
+        $id('manifestWorkspaceModal').style.opacity = '1';
+        $id('manifestWorkspaceModal').style.pointerEvents = 'auto';
+    } catch (e) { alert('View Failed: ' + e.message); }
+};
+
+window.closeManifestWorkspace = () => {
+    $id('manifestWorkspaceModal').style.opacity = '0';
+    $id('manifestWorkspaceModal').style.pointerEvents = 'none';
+};
+
+window.switchManifestTab = (tab, btn) => {
+    document.querySelectorAll('.workspace-tabs .tab-item').forEach(i => i.classList.remove('active'));
+    btn.classList.add('active');
+    $id('mw-tab-shipments').classList.toggle('hidden', tab !== 'shipments');
+    $id('mw-tab-files').classList.toggle('hidden', tab !== 'files');
+};
+
+window.loadManifestShipments = async (id) => {
+    const db = getDb(); if (!db) return;
+    try {
+        const res = await db.getManifestById(id);
+        const items = res.data?.shipments || [];
+        const tbody = $id('mwShipmentTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = items.map(s => `
+            <tr>
+                <td style="font-weight:700; color:var(--n-gold);">${s.swbSerial}</td>
+                <td>${s.customer || '—'}</td>
+                <td>${s.consigneeName || '—'}</td>
+                <td>${s.consigneeCity || '—'}</td>
+                <td>${s.origQty || 0}</td>
+                <td>${s.origWt || 0}</td>
+                <td><span class="status-badge status-${(s.status || '').toLowerCase().replace(/ /g, '-')}">${s.status || 'Created'}</span></td>
+            </tr>
+        `).join('') || '<tr><td colspan="7" class="text-center text-muted">No shipments assigned to this manifest.</td></tr>';
+    } catch (e) { console.error('Shipments failed', e); }
+};
+
+window.editCurrentManifest = () => {
+    if (currentManifestId) window.showManifestForm(currentManifestId);
+};
+
+window.exportManifestData = () => {
+    alert('PDF Generation Engine Initializing...');
+    // Logic for printing would go here
+};
+
+// =====================================================
+// FILE MANAGER
+// =====================================================
+
+window.loadManifestFiles = async (id) => {
+    try {
+        const res = await getDb().getManifestFiles(id);
+        fmAllFiles = res.data || [];
+        currentFolderId = null;
+        fmSelection = [];
+        window.renderFileManager(null);
+    } catch (e) { console.error('Files failed', e); }
+};
+
+window.renderFileManager = (parentId) => {
+    currentFolderId = parentId;
+    const container = $id('fm-grid-view');
+    if (!container) return;
+
+    const search = $id('fm-search')?.value?.toLowerCase() || '';
+
+    // If searching, show all files in manifest, otherwise just current folder
+    const items = search
+        ? fmAllFiles.filter(f => f.name.toLowerCase().includes(search))
+        : fmAllFiles.filter(f => f.parent_id == parentId);
+
+    $id('fm-bulk-ops').classList.add('hidden');
+    fmSelection = [];
+
+    // Breadcrumb
+    const bc = $id('fm-breadcrumb');
+    let bcHtml = `<span style="cursor:pointer; ${!parentId ? 'color:var(--n-gold);' : ''}" onclick="window.renderFileManager(null)">ROOT</span>`;
+    if (parentId) {
+        let curr = fmAllFiles.find(f => f.id === parentId);
+        let path = [];
+        while(curr) {
+            path.unshift(curr);
+            curr = fmAllFiles.find(f => f.id === curr.parent_id);
+        }
+        path.forEach(p => {
+            bcHtml += ` <i class="fa-solid fa-chevron-right" style="font-size:0.6rem; margin:0 4px; opacity:0.5;"></i> <span style="cursor:pointer; color:var(--n-gold);" onclick="window.renderFileManager(${p.id})">${p.name}</span>`;
+        });
+    }
+    bc.innerHTML = bcHtml;
+
+    container.innerHTML = items.map(f => {
+        const icon = f.type === 'folder' ? 'fa-folder' : (f.mime_type?.startsWith('image/') ? 'fa-file-image' : 'fa-file-lines');
+        const color = f.type === 'folder' ? 'var(--n-gold)' : 'var(--n-text-muted)';
+        return `
+            <div class="fm-item ${fmSelection.includes(f.id) ? 'selected' : ''}" id="fm-item-${f.id}" onclick="window.fmToggleSelect(${f.id}, event)" ondblclick="window.fmOpenItem(${f.id})">
+                <div class="fm-checkbox"></div>
+                <div class="fm-icon" style="color:${color};"><i class="fa-solid ${icon}"></i></div>
+                <div class="fm-name" title="${f.name}">${f.name}</div>
+                <div class="fm-meta">${f.type === 'folder' ? 'Folder' : window.nooraniUtils?.formatSize(f.size) || (f.size + ' B')}</div>
+            </div>
+        `;
+    }).join('') || '<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--n-text-muted);">Folder is empty.</div>';
+};
+
+window.fmGoBack = () => {
+    if (!currentFolderId) return;
+    const parent = fmAllFiles.find(f => f.id === currentFolderId);
+    window.renderFileManager(parent ? parent.parent_id : null);
+};
+
+window.fmOpenItem = (id) => {
+    const f = fmAllFiles.find(i => i.id === id);
+    if (!f) return;
+    if (f.type === 'folder') window.renderFileManager(f.id);
+    else window.fmOpenFile(f.id);
+};
+
+window.fmToggleSelect = (id, e) => {
+    if (e.target.closest('.fm-actions')) return;
+
+    const idx = fmSelection.indexOf(id);
+    if (e.ctrlKey || e.metaKey) {
+        if (idx > -1) fmSelection.splice(idx, 1);
+        else fmSelection.push(id);
+    } else {
+        fmSelection = [id];
+    }
+
+    document.querySelectorAll('.fm-item').forEach(el => {
+        const fid = parseInt(el.id.replace('fm-item-', ''));
+        el.classList.toggle('selected', fmSelection.includes(fid));
+    });
+
+    const ops = $id('fm-bulk-ops');
+    if (fmSelection.length > 0) {
+        ops.classList.remove('hidden');
+        $id('fm-select-count').textContent = `${fmSelection.length} ITEMS SELECTED`;
+
+        // Dynamic Rename handling
+        let renameBtn = ops.querySelector('.rename-btn');
+        if (!renameBtn) {
+            renameBtn = document.createElement('button');
+            renameBtn.className = 'n-btn small rename-btn';
+            renameBtn.innerHTML = '<i class="fa-solid fa-pen"></i> RENAME';
+            ops.querySelector('div').prepend(renameBtn);
+        }
+        renameBtn.onclick = () => {
+            const item = fmAllFiles.find(f => f.id === fmSelection[0]);
+            if (item) window.fmRename(item.id, item.name);
+        };
+        renameBtn.classList.toggle('hidden', fmSelection.length !== 1);
+    } else {
+        ops.classList.add('hidden');
+    }
+};
+
+window.fmNewFolder = async () => {
+    const name = prompt('Enter folder name:');
+    if (!name) return;
+    try {
+        await getDb().createManifestFile(currentManifestId, { name, type: 'folder', parent_id: currentFolderId });
+        window.loadManifestFiles(currentManifestId).then(() => window.renderFileManager(currentFolderId));
+    } catch (e) { alert(e.message); }
+};
+
+window.fmNewFile = async () => {
+    const name = prompt('Enter file name:');
+    if (!name) return;
+    try {
+        await getDb().createManifestFile(currentManifestId, { name, type: 'file', parent_id: currentFolderId, content: '' });
+        window.loadManifestFiles(currentManifestId).then(() => window.renderFileManager(currentFolderId));
+    } catch (e) { alert(e.message); }
+};
+
+window.fmRename = async (id, oldName, e) => {
+    if (e) e.stopPropagation();
+    const name = prompt('Enter new name:', oldName);
+    if (!name || name === oldName) return;
+    try {
+        await getDb().updateManifestFile(id, { name });
+        window.loadManifestFiles(currentManifestId).then(() => window.renderFileManager(currentFolderId));
+    } catch (e) { alert(e.message); }
+};
+
+window.fmDelete = async (id, e) => {
+    if (e) e.stopPropagation();
+    if (!confirm('Delete this item?')) return;
+    try {
+        await getDb().deleteManifestFile(id);
+        window.loadManifestFiles(currentManifestId).then(() => window.renderFileManager(currentFolderId));
+    } catch (e) { alert(e.message); }
+};
+
+window.fmOpenFile = (id) => {
+    const f = fmAllFiles.find(i => i.id === id);
+    if (!f) return;
+    currentFileId = id;
+    $id('fm-editor-title').textContent = f.name;
+    const isImg = f.mime_type?.startsWith('image/');
+
+    $id('fm-text-editor').classList.toggle('hidden', isImg);
+    $id('fm-image-preview').classList.toggle('hidden', !isImg);
+    $id('fm-save-btn').classList.toggle('hidden', isImg);
+
+    if (isImg) {
+        $id('fm-preview-img').src = f.content || ''; // Assuming base64 or URL
+    } else {
+        $id('fm-text-editor').value = f.content || '';
+    }
+
+    $id('fm-editor-modal').style.opacity = '1';
+    $id('fm-editor-modal').style.pointerEvents = 'auto';
+};
+
+window.fmSaveFileContent = async () => {
+    if (!currentFileId) return;
+    const content = $id('fm-text-editor').value;
+    try {
+        await getDb().updateManifestFile(currentFileId, { content });
+        alert('File saved.');
+        window.loadManifestFiles(currentManifestId).then(() => window.renderFileManager(currentFolderId));
+        window.fmCloseEditor();
+    } catch (e) { alert(e.message); }
+};
+
+window.fmCloseEditor = () => {
+    $id('fm-editor-modal').style.opacity = '0';
+    $id('fm-editor-modal').style.pointerEvents = 'none';
+    currentFileId = null;
+};
+
+window.fmHandleUpload = async (e) => {
+    const files = e.target.files;
+    if (!files.length) return;
+
+    for (const file of files) {
+        // Read file content if text, or just name/size for simulation
+        const isText = file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.csv') || file.name.endsWith('.json');
+        let content = '';
+        if (isText) {
+            content = await file.text();
+        } else if (file.type.startsWith('image/')) {
+            // For demo, we might convert to base64
+            content = await new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        await getDb().createManifestFile(currentManifestId, {
+            name: file.name,
+            type: 'file',
+            parent_id: currentFolderId,
+            mime_type: file.type,
+            size: file.size,
+            content: content
+        });
+    }
+
+    window.loadManifestFiles(currentManifestId).then(() => window.renderFileManager(currentFolderId));
+    e.target.value = '';
+};
+
+window.fmBulkCopy = () => {
+    if (!fmSelection.length) return;
+    fmClipboard = { action: 'copy', ids: [...fmSelection] };
+    $id('fm-paste-zone').classList.remove('hidden');
+    // Provide visual feedback
+    document.querySelectorAll('.fm-item.selected').forEach(el => el.style.opacity = '0.7');
+};
+
+window.fmBulkMove = () => {
+    if (!fmSelection.length) return;
+    fmClipboard = { action: 'move', ids: [...fmSelection] };
+    $id('fm-paste-zone').classList.remove('hidden');
+    // Provide visual feedback
+    document.querySelectorAll('.fm-item.selected').forEach(el => el.style.opacity = '0.5');
+};
+
+window.fmBulkDelete = async () => {
+    if (!confirm(`Delete ${fmSelection.length} items?`)) return;
+    try {
+        await getDb().bulkFileOperation({ ids: fmSelection, action: 'delete' });
+        window.loadManifestFiles(currentManifestId).then(() => window.renderFileManager(currentFolderId));
+    } catch (e) { alert(e.message); }
+};
+
+window.fmPaste = async () => {
+    if (!fmClipboard.ids.length) return;
+    try {
+        await getDb().bulkFileOperation({
+            ids: fmClipboard.ids,
+            action: fmClipboard.action,
+            target_parent_id: currentFolderId
+        });
+        window.loadManifestFiles(currentManifestId).then(() => window.renderFileManager(currentFolderId));
+        $id('fm-paste-zone').classList.add('hidden');
+        fmClipboard = { action: null, ids: [] };
+    } catch (e) { alert(e.message); }
+};
+
+window.fmDownloadCurrentFile = () => {
+    if (!currentFileId) return;
+    const f = fmAllFiles.find(i => i.id === currentFileId);
+    if (!f) return;
+
+    const blob = new Blob([f.content], { type: f.mime_type || 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = f.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 };
 
 // =====================================================

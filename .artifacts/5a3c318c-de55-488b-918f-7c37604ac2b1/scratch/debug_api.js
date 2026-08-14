@@ -1,13 +1,9 @@
 /**
- * Local API Debugger
- * This script starts the backend and performs a series of internal requests
- * to verify route matching and path resolution.
+ * Local API Debugger (Native Fetch)
  */
 
 const express = require('express');
-const fetch = require('node-fetch'); // Assuming it's available or we use dynamic import
 
-// We will simulate the app logic here to verify routing without external dependencies
 const app = express();
 const api = express.Router();
 
