@@ -1,7 +1,7 @@
 /**
  * NOORANI CARGO ENTERPRISE API
- * Version: 2.9.0
- * Updated: 2026-08-14 (Flattened Routes & Robust Connectivity)
+ * Version: 2.9.5
+ * Updated: 2026-08-14 (Flattened Routes & Robust Bulk Import)
  *
  * Central API for global logistics management.
  */

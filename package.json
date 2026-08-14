@@ -1,6 +1,6 @@
 {
   "name": "noorani-cargo-tracking-enterprise",
-  "version": "2.9.0",
+  "version": "2.9.5",
   "description": "NOORANI CARGO SERVICES | Professional Global Logistics & Tracking System",
   "main": "index.js",
   "scripts": {
