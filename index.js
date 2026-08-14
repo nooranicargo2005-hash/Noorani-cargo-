@@ -203,20 +203,13 @@ app.get("/api/health", requireSupabase, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-app.get("/api/debug", (req, res) => {
-    res.json({
-        success: true,
-        env: {
-            HAS_URL: !!SUPABASE_URL,
-            HAS_KEY: !!SUPABASE_KEY,
-            PORT: PORT,
-            NODE_ENV: process.env.NODE_ENV
-        },
-        headers: req.headers,
-        url: req.url,
-        baseUrl: req.baseUrl,
-        path: req.path
-    });
+app.get("/api/debug-schema", requireSupabase, async (req, res) => {
+  try {
+    const table = await getActiveTable();
+    const { data, error } = await supabase.from(table).select("*").limit(1);
+    if (error) throw error;
+    res.json({ success: true, table, columns: data && data[0] ? Object.keys(data[0]) : "No data to probe columns" });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 // 2. Shipment Management (Inventory)
