@@ -364,8 +364,8 @@ app.post("/api/shipments/:serial", requireSupabase, async (req, res) => {
     record.updated_at = new Date().toISOString();
 
     const { data: existing } = await supabase.from(table).select("status").eq("swbSerial", serial).maybeSingle();
-    const { success, data, error } = await selfHealingUpsert(table, [record], 'swbSerial');
-    if (!success) throw new Error(error);
+    const result = await selfHealingUpsert(table, [record], 'swbSerial');
+    if (!result.success) return res.status(400).json(result);
 
     if (!existing || existing.status !== record.status) {
       await supabase.from("status_history").insert({
@@ -407,9 +407,9 @@ app.post("/api/shipments/bulk/import", requireSupabase, async (req, res) => {
       return res.json({ success: true, count: records.length, message: "Demo mode: Records simulated." });
     }
 
-    const { success, data, error } = await selfHealingUpsert(table, records, 'swbSerial');
-    if (!success) throw new Error(error);
-    res.json({ success: true, count: data?.length || 0 });
+    const result = await selfHealingUpsert(table, records, 'swbSerial');
+    if (!result.success) return res.status(400).json(result);
+    res.json({ success: true, count: result.data?.length || 0 });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
