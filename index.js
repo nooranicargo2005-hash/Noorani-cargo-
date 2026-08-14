@@ -1,7 +1,7 @@
 /**
  * NOORANI CARGO ENTERPRISE API
- * Version: 2.9.5
- * Updated: 2026-08-14 (Flattened Routes & Robust Bulk Import)
+ * Version: 2.9.6
+ * Updated: 2026-08-14 (Legacy Table Compatibility: swbs)
  *
  * Central API for global logistics management.
  */
@@ -131,15 +131,20 @@ const getAllShipments = async (req, res) => {
     const search = String(req.query.search || "").trim();
     const { status, origin, destination, manifestNo, limit } = req.query;
     const table = await getActiveTable();
+    const isLegacy = table === 'swbs';
     let q = supabase.from(table).select("*").order("created_at", { ascending: false });
 
     if (search) {
       const s = search.replace(/,/g, " ");
-      q = q.or(`swbSerial.ilike.%${s}%,customer.ilike.%${s}%,shipperName.ilike.%${s}%,consigneeName.ilike.%${s}%,consigneeCity.ilike.%${s}%`);
+      const cityCol = isLegacy ? 'destination' : 'consigneeCity';
+      q = q.or(`swbSerial.ilike.%${s}%,customer.ilike.%${s}%,shipperName.ilike.%${s}%,consigneeName.ilike.%${s}%,${cityCol}.ilike.%${s}%`);
     }
     if (status && status !== "") q = q.eq("status", status);
     if (origin && origin !== "") q = q.ilike("origin", `%${origin}%`);
-    if (destination && destination !== "") q = q.ilike("consigneeCity", `%${destination}%`);
+    if (destination && destination !== "") {
+        const cityCol = isLegacy ? 'destination' : 'consigneeCity';
+        q = q.ilike(cityCol, `%${destination}%`);
+    }
     if (manifestNo && manifestNo !== "") q = q.eq("manifestNo", manifestNo);
 
     if (limit) {
@@ -172,6 +177,8 @@ app.post("/api/shipments/:serial", requireSupabase, async (req, res) => {
   try {
     const serial = req.params.serial;
     const table = await getActiveTable();
+    const isLegacy = table === 'swbs';
+
     const record = cleanObject({
       swbSerial: serial,
       custInvNo: req.body.custInvNo,
@@ -182,10 +189,10 @@ app.post("/api/shipments/:serial", requireSupabase, async (req, res) => {
       shipperAddress: req.body.shipperAddress,
       consigneeName: req.body.consigneeName,
       consigneePhone: req.body.consigneePhone,
-      consigneeCity: req.body.consigneeCity,
+      consigneeCity: isLegacy ? undefined : req.body.consigneeCity,
       consigneeAddress: req.body.consigneeAddress,
       origin: req.body.origin,
-      destination: req.body.destination,
+      destination: isLegacy ? (req.body.destination || req.body.consigneeCity) : req.body.destination,
       status: req.body.status || "Created",
       manifestNo: req.body.manifestNo,
       notes: req.body.notes,
@@ -227,6 +234,8 @@ app.post("/api/shipments/bulk/import", requireSupabase, async (req, res) => {
     const { items } = req.body || {};
     if (!items || !Array.isArray(items)) return res.status(400).json({ success: false, error: "Invalid bulk data" });
     const table = await getActiveTable();
+    const isLegacy = table === 'swbs';
+
     const records = items.filter(i => i.swbSerial).map(item => cleanObject({
       swbSerial: String(item.swbSerial).trim(),
       custInvNo: item.custInvNo,
@@ -237,10 +246,10 @@ app.post("/api/shipments/bulk/import", requireSupabase, async (req, res) => {
       shipperAddress: item.shipperAddress,
       consigneeName: item.consigneeName,
       consigneePhone: item.consigneePhone,
-      consigneeCity: item.consigneeCity,
+      consigneeCity: isLegacy ? undefined : item.consigneeCity,
       consigneeAddress: item.consigneeAddress,
       origin: item.origin,
-      destination: item.destination,
+      destination: isLegacy ? (item.destination || item.consigneeCity) : item.destination,
       status: item.status || "Created",
       manifestNo: item.manifestNo,
       notes: item.notes,
