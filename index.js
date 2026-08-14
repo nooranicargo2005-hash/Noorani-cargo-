@@ -155,24 +155,26 @@ setInterval(discoverSchema, 300000);
  * Attempts a Supabase operation. If it fails due to a missing column,
  * it re-maps and retries. This handles out-of-sync database schemas.
  */
-async function selfHealingUpsert(table, records, onConflict) {
+async function selfHealingUpsert(table, records, onConflict, depth = 0) {
+  if (depth > 25) throw new Error(`Self-healing recursion limit reached for ${table}`);
+
   try {
     const { data, error } = await supabase.from(table).upsert(records, { onConflict }).select("swbSerial");
     if (error) {
-      console.log(`[Self-Heal] DB Error for ${table}:`, error.message);
+      console.log(`[Self-Heal][${depth}] DB Error for ${table}:`, error.message);
 
       // Match column error: "Could not find the 'column_name' column..."
       const colMatch = error.message.match(/find the '(.*?)' column/i) || error.message.match(/column "(.*?)"/i);
 
       if (colMatch && colMatch[1]) {
         const col = colMatch[1];
-        console.warn(`[Self-Heal] Column ${col} missing from ${table}. Stripping and retrying...`);
+        console.warn(`[Self-Heal][${depth}] Column ${col} missing from ${table}. Stripping and retrying...`);
         const reMapped = records.map(r => {
           const clean = { ...r };
           delete clean[col];
           return clean;
         });
-        return selfHealingUpsert(table, reMapped, onConflict);
+        return selfHealingUpsert(table, reMapped, onConflict, depth + 1);
       }
       throw error;
     }
