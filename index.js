@@ -83,9 +83,10 @@ async function getActiveTable() {
   if (activeTableCache.table && activeTableCache.expiry > Date.now()) return activeTableCache.table;
 
   try {
-    const { error } = await supabase.from("shipments").select("swbSerial").limit(1);
-    if (error && (error.message.includes("does not exist") || error.code === '42P01')) {
-      activeTableCache = { table: "swbs", expiry: Date.now() + 300000 }; // 5 min cache
+    // Probe for shipments AND modern columns
+    const { error } = await supabase.from("shipments").select("consigneeName").limit(1);
+    if (error && (error.message.includes("does not exist") || error.code === '42P01' || error.message.includes("consigneeName"))) {
+      activeTableCache = { table: "swbs", expiry: Date.now() + 300000 };
       return "swbs";
     }
     activeTableCache = { table: "shipments", expiry: Date.now() + 300000 };
